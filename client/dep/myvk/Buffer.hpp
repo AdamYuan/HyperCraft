@@ -25,12 +25,21 @@ public:
 
 	static std::shared_ptr<Buffer> CreateStaging(const std::shared_ptr<Device> &device, VkDeviceSize size,
 	                                             const std::vector<std::shared_ptr<Queue>> &access_queues = {});
+	template <typename Iter>
+	static std::shared_ptr<Buffer> CreateStaging(const std::shared_ptr<Device> &device, Iter begin, Iter end,
+	                                             const std::vector<std::shared_ptr<Queue>> &access_queues = {}) {
+		using T = typename std::iterator_traits<Iter>::value_type;
+		std::shared_ptr<Buffer> ret = CreateStaging(device, (end - begin) * sizeof(T), access_queues);
+		ret->UpdateData(begin, end, 0);
+		return ret;
+	}
 
 	void *Map() const;
 
 	void Unmap() const;
 
-	template <typename T> void UpdateData(const T *begin, const T *end, uint32_t byte_offset = 0) const {
+	template <typename Iter> void UpdateData(Iter begin, Iter end, uint32_t byte_offset = 0) const {
+		using T = typename std::iterator_traits<Iter>::value_type;
 		std::copy(begin, end, (T *)((uint8_t *)Map() + byte_offset));
 		Unmap();
 	}

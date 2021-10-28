@@ -25,5 +25,6 @@ add_library(CubeCraft3_common STATIC
         )
 
 find_package(Threads REQUIRED)
+
 target_link_libraries(CubeCraft3_common PUBLIC common_dep Threads::Threads)
 target_include_directories(CubeCraft3_common PUBLIC include)

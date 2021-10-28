@@ -5,13 +5,14 @@
 #include <common/Light.hpp>
 #include <glm/glm.hpp>
 
+#include <chrono>
 #include <memory>
 #include <mutex>
 #include <vector>
 
 class World;
 
-class Chunk : std::enable_shared_from_this<Chunk> {
+class Chunk : public std::enable_shared_from_this<Chunk> {
 public:
 	static constexpr uint32_t kSize = 16;
 
@@ -152,20 +153,22 @@ public:             // Data for rendering
 
 	class Mesh {
 	private:
+		std::chrono::time_point<std::chrono::steady_clock> m_update_time;
+		bool m_updated{false};
+
 		std::vector<Vertex> m_vertices;
 		std::vector<uint16_t> m_indices;
+
 		mutable std::mutex m_mutex;
 
 	public:
-		const std::vector<Vertex> &GetVertices() const { return m_vertices; }
-		const std::vector<uint16_t> &GetIndices() const { return m_indices; }
-		std::mutex &GetMutex() const { return m_mutex; }
-
-		friend class ChunkMesher;
+		void Push(std::vector<Vertex> &&vertices, std::vector<uint16_t> &&indices,
+		          const std::chrono::time_point<std::chrono::steady_clock> &starting_time);
+		bool Pop(std::vector<Vertex> *vertices, std::vector<uint16_t> *indices);
 	};
 	inline Mesh &GetMesh() const { return m_mesh; }
 
-public:
+private:
 	mutable Mesh m_mesh;
 };
 

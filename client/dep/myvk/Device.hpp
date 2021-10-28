@@ -26,6 +26,7 @@ private:
 	VkResult create_pipeline_cache();
 
 public:
+	// TODO: enable custom device features
 	static std::shared_ptr<Device> Create(const DeviceCreateInfo &device_create_info, void *p_next = nullptr);
 
 	VmaAllocator GetAllocatorHandle() const { return m_allocator; }

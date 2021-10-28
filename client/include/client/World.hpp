@@ -13,13 +13,21 @@
 #include "Chunk.hpp"
 #include "ChunkWorker.hpp"
 
-class World : std::enable_shared_from_this<World> {
+class WorldRenderer;
+
+class World : public std::enable_shared_from_this<World> {
 public:
 	inline static std::shared_ptr<World> Create() { return std::make_shared<World>(); }
 
 private:
+	// Parent weak_ptrs
+	std::weak_ptr<WorldRenderer> m_world_renderer;
+	friend class WorldRenderer;
+
+	// Chunks
 	std::unordered_map<glm::i16vec3, std::shared_ptr<Chunk>> m_chunks;
 
+	// Chunk workers
 	bool m_chunk_threads_run = true;
 	moodycamel::ConcurrentQueue<std::unique_ptr<ChunkWorker>> m_chunk_workers;
 	std::vector<std::thread> m_chunk_threads;
@@ -28,6 +36,8 @@ private:
 	void chunk_thread_func();
 
 public:
+	inline std::shared_ptr<WorldRenderer> LockWorldRenderer() const { return m_world_renderer.lock(); }
+
 	inline void PushWorker(std::unique_ptr<ChunkWorker> &&worker) { m_chunk_workers.enqueue(std::move(worker)); }
 	std::shared_ptr<Chunk> FindChunk(const glm::i16vec3 &position) const {
 		auto it = m_chunks.find(position);
@@ -58,7 +68,7 @@ public:
 	void EraseChunk(const glm::i16vec3 &position) { m_chunks.erase(position); }
 
 	World() { launch_chunk_threads(); }
-	~World();
+	void Join(); // must be called in main thread
 };
 
 #endif

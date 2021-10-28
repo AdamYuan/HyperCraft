@@ -1,11 +1,12 @@
-#include <client/ImGuiRenderer.hpp>
+#include "ImGuiRenderer.hpp"
 
-#include "myvk/Buffer.hpp"
-#include "myvk/CommandBuffer.hpp"
-#include "myvk/ShaderModule.hpp"
+#include "Buffer.hpp"
+#include "CommandBuffer.hpp"
+#include "ShaderModule.hpp"
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
+namespace myvk {
 void ImGuiRenderer::Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool,
                                const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass,
                                uint32_t frame_count) {
@@ -395,3 +396,4 @@ void ImGuiRenderer::setup_render_state(const std::shared_ptr<myvk::CommandBuffer
 		                                 sizeof(translate), translate);
 	}
 }
+} // namespace myvk

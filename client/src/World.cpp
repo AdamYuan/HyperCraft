@@ -14,7 +14,7 @@ void World::chunk_thread_func() {
 	}
 }
 
-World::~World() {
+void World::Join() {
 	m_chunk_threads_run = false;
 	for (auto &i : m_chunk_threads)
 		i.join();

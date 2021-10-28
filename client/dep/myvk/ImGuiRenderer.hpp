@@ -1,16 +1,17 @@
-#ifndef IMGUI_RENDERER_HPP
-#define IMGUI_RENDERER_HPP
+#ifndef MYVK_IMGUI_RENDERER_HPP
+#define MYVK_IMGUI_RENDERER_HPP
 
-#include "../../dep/myvk/Buffer.hpp"
-#include "../../dep/myvk/CommandBuffer.hpp"
-#include "../../dep/myvk/CommandPool.hpp"
-#include "../../dep/myvk/DescriptorPool.hpp"
-#include "../../dep/myvk/DescriptorSet.hpp"
-#include "../../dep/myvk/GraphicsPipeline.hpp"
-#include "../../dep/myvk/Image.hpp"
-#include "../../dep/myvk/ImageView.hpp"
-#include "../../dep/myvk/Sampler.hpp"
+#include "Buffer.hpp"
+#include "CommandBuffer.hpp"
+#include "CommandPool.hpp"
+#include "DescriptorPool.hpp"
+#include "DescriptorSet.hpp"
+#include "GraphicsPipeline.hpp"
+#include "Image.hpp"
+#include "ImageView.hpp"
+#include "Sampler.hpp"
 
+namespace myvk {
 class ImGuiRenderer {
 private:
 	std::shared_ptr<myvk::Image> m_font_texture;
@@ -41,5 +42,6 @@ public:
 
 	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame);
 };
+} // namespace myvk
 
 #endif

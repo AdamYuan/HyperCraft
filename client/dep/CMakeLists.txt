@@ -94,6 +94,8 @@ add_library(client_dep STATIC
         myvk/ObjectTracker.hpp
         myvk/QueryPool.cpp
         myvk/QueryPool.hpp
+        myvk/ImGuiRenderer.cpp
+        myvk/ImGuiRenderer.hpp
         )
 
 target_include_directories(client_dep PUBLIC .)

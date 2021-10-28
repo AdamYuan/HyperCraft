@@ -1,10 +1,12 @@
 #include <client/ChunkMesher.hpp>
 
+#include <client/WorldRenderer.hpp>
+
 #include <bitset>
 #include <spdlog/spdlog.h>
 
 void ChunkMesher::generate_face_lights(
-	ChunkMesher::Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
+    ChunkMesher::Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
 
 	Block neighbour_blocks[27];
 	Light neighbour_lights[27];
@@ -112,7 +114,7 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 									goto end_height_loop;
 								}
 							}
-						end_height_loop:
+					end_height_loop:
 
 						// Add quad
 						x[u] = i;
@@ -129,14 +131,14 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 						}
 
 						uint8_t                   // texture uvs
-						v00u = du[u] + dv[u], //
-						v00v = du[v] + dv[v], // v00: u, v
-						v01u = dv[u],         //
-						v01v = dv[v],         // v01: u, v
-						v10u = 0,             //
-						v10v = 0,             // v10: u, v
-						v11u = du[u],         //
-						v11v = du[v];         // v11: u, v
+						    v00u = du[u] + dv[u], //
+						    v00v = du[v] + dv[v], // v00: u, v
+						    v01u = dv[u],         //
+						    v01v = dv[v],         // v01: u, v
+						    v10u = 0,             //
+						    v10v = 0,             // v10: u, v
+						    v11u = du[u],         //
+						    v11v = du[v];         // v11: u, v
 
 						// TODO: process texture rotation
 						// if (quad_texture.GetRotation() == )
@@ -169,36 +171,36 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 						                  quad_texture.GetID(),
 						                  v00u,
 						                  v00v},
-							v01 = {uint8_t(x[0] + du[0]),
-							       uint8_t(x[1] + du[1]),
-							       uint8_t(x[2] + du[2]),
-							       quad_face,
-							       quad_light.m_ao[1],
-							       quad_light.m_light[1].GetSunlight(),
-							       quad_light.m_light[1].GetTorchlight(),
-							       quad_texture.GetID(),
-							       v01u,
-							       v01v},
-							v10 = {uint8_t(x[0] + du[0] + dv[0]),
-							       uint8_t(x[1] + du[1] + dv[1]),
-							       uint8_t(x[2] + du[2] + dv[2]),
-							       quad_face,
-							       quad_light.m_ao[2],
-							       quad_light.m_light[2].GetSunlight(),
-							       quad_light.m_light[2].GetTorchlight(),
-							       quad_texture.GetID(),
-							       v10u,
-							       v10v},
-							v11 = {uint8_t(x[0] + dv[0]),
-							       uint8_t(x[1] + dv[1]),
-							       uint8_t(x[2] + dv[2]),
-							       quad_face,
-							       quad_light.m_ao[3],
-							       quad_light.m_light[3].GetSunlight(),
-							       quad_light.m_light[3].GetTorchlight(),
-							       quad_texture.GetID(),
-							       v11u,
-							       v11v};
+						    v01 = {uint8_t(x[0] + du[0]),
+						           uint8_t(x[1] + du[1]),
+						           uint8_t(x[2] + du[2]),
+						           quad_face,
+						           quad_light.m_ao[1],
+						           quad_light.m_light[1].GetSunlight(),
+						           quad_light.m_light[1].GetTorchlight(),
+						           quad_texture.GetID(),
+						           v01u,
+						           v01v},
+						    v10 = {uint8_t(x[0] + du[0] + dv[0]),
+						           uint8_t(x[1] + du[1] + dv[1]),
+						           uint8_t(x[2] + du[2] + dv[2]),
+						           quad_face,
+						           quad_light.m_ao[2],
+						           quad_light.m_light[2].GetSunlight(),
+						           quad_light.m_light[2].GetTorchlight(),
+						           quad_texture.GetID(),
+						           v10u,
+						           v10v},
+						    v11 = {uint8_t(x[0] + dv[0]),
+						           uint8_t(x[1] + dv[1]),
+						           uint8_t(x[2] + dv[2]),
+						           quad_face,
+						           quad_light.m_ao[3],
+						           quad_light.m_light[3].GetSunlight(),
+						           quad_light.m_light[3].GetTorchlight(),
+						           quad_texture.GetID(),
+						           v11u,
+						           v11v};
 
 						// spdlog::info("Face: x={}, y={}, z={}, x'={}, y'={}, z'={}", x[0], x[1], x[2],
 						//              x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]);
@@ -255,9 +257,14 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 }
 
 void ChunkMesher::apply_mesh(std::vector<Chunk::Vertex> &&vertices, std::vector<uint16_t> &&indices) const {
-	std::lock_guard<std::mutex> lock_guard{m_chunk->GetMesh().GetMutex()};
-	m_chunk->GetMesh().m_vertices = std::move(vertices);
-	m_chunk->GetMesh().m_indices = std::move(indices);
+	m_chunk->GetMesh().Push(std::move(vertices), std::move(indices), m_starting_time);
+
+	std::shared_ptr<World> wld = m_chunk->LockWorld();
+	if (wld) {
+		std::shared_ptr<WorldRenderer> renderer = wld->LockWorldRenderer();
+		if (renderer)
+			renderer->UpdateMesh(m_chunk);
+	}
 }
 
 void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_blocks[27],
@@ -279,9 +286,9 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	//     z
 
 	constexpr uint32_t kLookup3[6][4][3] = {
-		{{21, 18, 19}, {21, 24, 25}, {23, 26, 25}, {23, 20, 19}}, {{3, 0, 1}, {5, 2, 1}, {5, 8, 7}, {3, 6, 7}},
-		{{15, 6, 7}, {17, 8, 7}, {17, 26, 25}, {15, 24, 25}},     {{9, 0, 1}, {9, 18, 19}, {11, 20, 19}, {11, 2, 1}},
-		{{11, 2, 5}, {11, 20, 23}, {17, 26, 23}, {17, 8, 5}},     {{9, 0, 3}, {15, 6, 3}, {15, 24, 21}, {9, 18, 21}}};
+	    {{21, 18, 19}, {21, 24, 25}, {23, 26, 25}, {23, 20, 19}}, {{3, 0, 1}, {5, 2, 1}, {5, 8, 7}, {3, 6, 7}},
+	    {{15, 6, 7}, {17, 8, 7}, {17, 26, 25}, {15, 24, 25}},     {{9, 0, 1}, {9, 18, 19}, {11, 20, 19}, {11, 2, 1}},
+	    {{11, 2, 5}, {11, 20, 23}, {17, 26, 23}, {17, 8, 5}},     {{9, 0, 3}, {15, 6, 3}, {15, 24, 21}, {9, 18, 21}}};
 	constexpr uint32_t kLookup1[6] = {22, 4, 16, 10, 14, 12};
 
 	Block sides[3];
@@ -298,7 +305,7 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 
 		// smooth the LightLvl using the average value
 		uint32_t counter = 1, sunlight_sum = neighbour_lights[kLookup1[face]].GetSunlight(),
-			torchlight_sum = neighbour_lights[kLookup1[face]].GetTorchlight();
+		         torchlight_sum = neighbour_lights[kLookup1[face]].GetTorchlight();
 		if (pass[0] || pass[2])
 			for (uint32_t i = 0; i < 3; ++i) {
 				if (!pass[i])
@@ -314,9 +321,13 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	}
 }
 
+#include <random>
+
 void ChunkMesher::Run() {
 	if (!lock())
 		return;
+
+	m_starting_time = std::chrono::steady_clock::now();
 	std::vector<Chunk::Vertex> vertices;
 	std::vector<uint16_t> indices;
 	{
@@ -326,4 +337,9 @@ void ChunkMesher::Run() {
 	}
 	spdlog::info("Chunk meshed with {} vertices and {} indices", vertices.size(), indices.size());
 	apply_mesh(std::move(vertices), std::move(indices));
+
+	std::mt19937 gen{std::random_device{}()};
+	m_chunk->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 2);
+
+	m_chunk->LockWorld()->PushWorker(ChunkMesher::Create(m_chunk));
 }

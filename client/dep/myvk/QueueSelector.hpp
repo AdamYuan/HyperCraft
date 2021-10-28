@@ -25,15 +25,30 @@ using QueueSelectorFunc =
                        std::vector<PresentQueueSelection> *const)>;
 
 // default queue selectors
-class GraphicsPresentQueueSelector {
+class GenericPresentQueueSelector {
 private:
 	std::shared_ptr<Surface> m_surface;
-	std::shared_ptr<Queue> *m_graphics_queue;
+	std::shared_ptr<Queue> *m_generic_queue;
 	std::shared_ptr<PresentQueue> *m_present_queue;
 
 public:
-	GraphicsPresentQueueSelector(std::shared_ptr<Queue> *graphics_queue, const std::shared_ptr<Surface> &surface,
-	                             std::shared_ptr<PresentQueue> *present_queue);
+	GenericPresentQueueSelector(std::shared_ptr<Queue> *generic_queue, const std::shared_ptr<Surface> &surface,
+	                            std::shared_ptr<PresentQueue> *present_queue);
+	bool operator()(const std::shared_ptr<PhysicalDevice> &, std::vector<QueueSelection> *const,
+	                std::vector<PresentQueueSelection> *const) const;
+};
+
+// default queue selectors
+class GenericPresentTransferQueueSelector {
+private:
+	std::shared_ptr<Surface> m_surface;
+	std::shared_ptr<Queue> *m_generic_queue, *m_transfer_queue;
+	std::shared_ptr<PresentQueue> *m_present_queue;
+
+public:
+	GenericPresentTransferQueueSelector(std::shared_ptr<Queue> *generic_queue, std::shared_ptr<Queue> *transfer_queue,
+	                                    const std::shared_ptr<Surface> &surface,
+	                                    std::shared_ptr<PresentQueue> *present_queue);
 	bool operator()(const std::shared_ptr<PhysicalDevice> &, std::vector<QueueSelection> *const,
 	                std::vector<PresentQueueSelection> *const) const;
 };

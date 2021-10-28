@@ -1,9 +1,12 @@
 #ifndef APPLICATION_HPP
 #define APPLICATION_HPP
 
-#include "../../dep/myvk/FrameManager.hpp"
-#include "ImGuiRenderer.hpp"
 #include <GLFW/glfw3.h>
+#include <myvk/FrameManager.hpp>
+#include <myvk/ImGuiRenderer.hpp>
+
+#include <client/Camera.hpp>
+#include <client/WorldRenderer.hpp>
 
 class Application {
 private:
@@ -13,7 +16,7 @@ private:
 	std::shared_ptr<myvk::Instance> m_instance;
 	std::shared_ptr<myvk::Surface> m_surface;
 	std::shared_ptr<myvk::Device> m_device;
-	std::shared_ptr<myvk::Queue> m_main_queue;
+	std::shared_ptr<myvk::Queue> m_main_queue, m_transfer_queue;
 	std::shared_ptr<myvk::PresentQueue> m_present_queue;
 	std::shared_ptr<myvk::CommandPool> m_main_command_pool;
 
@@ -23,11 +26,20 @@ private:
 
 	// render pass
 	std::shared_ptr<myvk::RenderPass> m_render_pass;
-	ImGuiRenderer m_imgui_renderer;
+	myvk::ImGuiRenderer m_imgui_renderer;
+
+	std::shared_ptr<myvk::Image> m_depth_image;
+	std::shared_ptr<myvk::ImageView> m_depth_image_view;
+
+	// game objects and renderer
+	std::shared_ptr<Camera> m_camera;
+	std::shared_ptr<World> m_world;
+	std::shared_ptr<WorldRenderer> m_world_renderer;
 
 	void create_glfw_window();
 	void init_imgui();
 	void create_vulkan_base();
+	void create_depth_buffer();
 	void create_render_pass();
 	void create_framebuffers();
 
