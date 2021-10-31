@@ -6,6 +6,7 @@
 #include <myvk/ImGuiRenderer.hpp>
 
 #include <client/Camera.hpp>
+#include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
 
 class Application {
@@ -32,6 +33,7 @@ private:
 	std::shared_ptr<myvk::ImageView> m_depth_image_view;
 
 	// game objects and renderer
+	std::shared_ptr<GlobalTexture> m_global_texture;
 	std::shared_ptr<Camera> m_camera;
 	std::shared_ptr<World> m_world;
 	std::shared_ptr<WorldRenderer> m_world_renderer;

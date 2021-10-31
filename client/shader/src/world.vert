@@ -12,7 +12,7 @@ layout(location = 4) out float vTorchlight;
 layout(location = 5) out flat uint vTexture;
 layout(location = 6) out vec2 vTexcoord;
 
-layout(set = 0, binding = 0) uniform uuCamera { mat4 uProjection, uView; };
+layout(set = 1, binding = 0) uniform uuCamera { mat4 uProjection, uView; };
 
 const float kAOCurve[4] = {0.54, 0.7569, 0.87, 1.0};
 const float kSunlightCurve[16] = {0.000000, 0.066667, 0.133333, 0.200000, 0.266667, 0.333333, 0.400000, 0.466667,

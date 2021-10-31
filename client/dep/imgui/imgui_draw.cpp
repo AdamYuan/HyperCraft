@@ -700,9 +700,9 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
         const int integer_thickness = (int)thickness;
         const float fractional_thickness = thickness - integer_thickness;
 
-        // Do we want to draw this line using a texture?
+        // Do we want to draw this line using a resource?
         // - For now, only draw integer-width lines using textures to avoid issues with the way scaling occurs, could be improved.
-        // - If AA_SIZE is not 1.0f we cannot use the texture path.
+        // - If AA_SIZE is not 1.0f we cannot use the resource path.
         const bool use_texture = (Flags & ImDrawListFlags_AntiAliasedLinesUseTex) && (integer_thickness < IM_DRAWLIST_TEX_LINES_WIDTH_MAX) && (fractional_thickness <= 0.00001f) && (AA_SIZE == 1.0f);
 
         // We should never hit this, because NewFrame() doesn't set ImDrawListFlags_AntiAliasedLinesUseTex unless ImFontAtlasFlags_NoBakedLines is off
@@ -730,16 +730,16 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
         if (!closed)
             temp_normals[points_count - 1] = temp_normals[points_count - 2];
 
-        // If we are drawing a one-pixel-wide line without a texture, or a textured line of any width, we only need 2 or 3 vertices per point
+        // If we are drawing a one-pixel-wide line without a resource, or a textured line of any width, we only need 2 or 3 vertices per point
         if (use_texture || !thick_line)
         {
             // [PATH 1] Texture-based lines (thick or non-thick)
-            // [PATH 2] Non texture-based lines (non-thick)
+            // [PATH 2] Non resource-based lines (non-thick)
 
             // The width of the geometry we need to draw - this is essentially <thickness> pixels for the line itself, plus "one pixel" for AA.
-            // - In the texture-based path, we don't use AA_SIZE here because the +1 is tied to the generated texture
+            // - In the resource-based path, we don't use AA_SIZE here because the +1 is tied to the generated resource
             //   (see ImFontAtlasBuildRenderLinesTexData() function), and so alternate values won't work without changes to that code.
-            // - In the non texture-based paths, we would allow AA_SIZE to potentially be != 1.0f with a patch (e.g. fringe_scale patch to
+            // - In the non resource-based paths, we would allow AA_SIZE to potentially be != 1.0f with a patch (e.g. fringe_scale patch to
             //   allow scaling geometry while preserving one-screen-pixel AA fringe).
             const float half_draw_size = use_texture ? ((thickness * 0.5f) + 1) : AA_SIZE;
 
@@ -819,7 +819,7 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
             }
             else
             {
-                // If we're not using a texture, we need the center vertex as well
+                // If we're not using a resource, we need the center vertex as well
                 for (int i = 0; i < points_count; i++)
                 {
                     _VtxWritePtr[0].pos = points[i];              _VtxWritePtr[0].uv = opaque_uv; _VtxWritePtr[0].col = col;       // Center of line
@@ -831,7 +831,7 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
         }
         else
         {
-            // [PATH 2] Non texture-based lines (thick): we need to draw the solid line core and thus require four vertices per point
+            // [PATH 2] Non resource-based lines (thick): we need to draw the solid line core and thus require four vertices per point
             const float half_inner_thickness = (thickness - AA_SIZE) * 0.5f;
 
             // If line is not closed, the first and last points need to be generated differently as there are no normals to blend
@@ -903,7 +903,7 @@ void ImDrawList::AddPolyline(const ImVec2* points, const int points_count, ImU32
     }
     else
     {
-        // [PATH 4] Non texture-based, Non anti-aliased lines
+        // [PATH 4] Non resource-based, Non anti-aliased lines
         const int idx_count = count * 6;
         const int vtx_count = count * 4;    // FIXME-OPT: Not sharing edges
         PrimReserve(idx_count, vtx_count);
@@ -1733,7 +1733,7 @@ ImFontConfig::ImFontConfig()
 
 // A work of art lies ahead! (. = white layer, X = black layer, others are blank)
 // The 2x2 white texels on the top left are the ones we'll use everywhere in Dear ImGui to render filled shapes.
-const int FONT_ATLAS_DEFAULT_TEX_DATA_W = 108; // Actual texture will be 2 times that + 1 spacing.
+const int FONT_ATLAS_DEFAULT_TEX_DATA_W = 108; // Actual resource will be 2 times that + 1 spacing.
 const int FONT_ATLAS_DEFAULT_TEX_DATA_H = 27;
 static const char FONT_ATLAS_DEFAULT_TEX_DATA_PIXELS[FONT_ATLAS_DEFAULT_TEX_DATA_W * FONT_ATLAS_DEFAULT_TEX_DATA_H + 1] =
 {
@@ -1906,7 +1906,7 @@ ImFont* ImFontAtlas::AddFont(const ImFontConfig* font_cfg)
     if (new_font_cfg.DstFont->EllipsisChar == (ImWchar)-1)
         new_font_cfg.DstFont->EllipsisChar = font_cfg->EllipsisChar;
 
-    // Invalidate texture
+    // Invalidate resource
     ClearTexData();
     return new_font_cfg.DstFont;
 }
@@ -2287,7 +2287,7 @@ static bool ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas)
     }
 
     // We need a width for the skyline algorithm, any width!
-    // The exact width doesn't really matter much, but some API/GPU have texture size limitations and increasing width can decrease height.
+    // The exact width doesn't really matter much, but some API/GPU have resource size limitations and increasing width can decrease height.
     // User can override TexDesiredWidth and TexGlyphPadding if they wish, otherwise we use a simple heuristic to select the width based on expected surface.
     const int surface_sqrt = (int)ImSqrt((float)total_surface) + 1;
     atlas->TexHeight = 0;
@@ -2297,13 +2297,13 @@ static bool ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas)
         atlas->TexWidth = (surface_sqrt >= 4096 * 0.7f) ? 4096 : (surface_sqrt >= 2048 * 0.7f) ? 2048 : (surface_sqrt >= 1024 * 0.7f) ? 1024 : 512;
 
     // 5. Start packing
-    // Pack our extra data rectangles first, so it will be on the upper-left corner of our texture (UV will have small values).
+    // Pack our extra data rectangles first, so it will be on the upper-left corner of our resource (UV will have small values).
     const int TEX_HEIGHT_MAX = 1024 * 32;
     stbtt_pack_context spc = {};
     stbtt_PackBegin(&spc, NULL, atlas->TexWidth, TEX_HEIGHT_MAX, 0, atlas->TexGlyphPadding, NULL);
     ImFontAtlasBuildPackCustomRects(atlas, spc.pack_info);
 
-    // 6. Pack each source font. No rendering yet, we are working with rectangles in an infinitely tall texture at this point.
+    // 6. Pack each source font. No rendering yet, we are working with rectangles in an infinitely tall resource at this point.
     for (int src_i = 0; src_i < src_tmp_array.Size; src_i++)
     {
         ImFontBuildSrcData& src_tmp = src_tmp_array[src_i];
@@ -2312,14 +2312,14 @@ static bool ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas)
 
         stbrp_pack_rects((stbrp_context*)spc.pack_info, src_tmp.Rects, src_tmp.GlyphsCount);
 
-        // Extend texture height and mark missing glyphs as non-packed so we won't render them.
+        // Extend resource height and mark missing glyphs as non-packed so we won't render them.
         // FIXME: We are not handling packing failure here (would happen if we got off TEX_HEIGHT_MAX or if a single if larger than TexWidth?)
         for (int glyph_i = 0; glyph_i < src_tmp.GlyphsCount; glyph_i++)
             if (src_tmp.Rects[glyph_i].was_packed)
                 atlas->TexHeight = ImMax(atlas->TexHeight, src_tmp.Rects[glyph_i].y + src_tmp.Rects[glyph_i].h);
     }
 
-    // 7. Allocate texture
+    // 7. Allocate resource
     atlas->TexHeight = (atlas->Flags & ImFontAtlasFlags_NoPowerOfTwoHeight) ? (atlas->TexHeight + 1) : ImUpperPowerOfTwo(atlas->TexHeight);
     atlas->TexUvScale = ImVec2(1.0f / atlas->TexWidth, 1.0f / atlas->TexHeight);
     atlas->TexPixelsAlpha8 = (unsigned char*)IM_ALLOC(atlas->TexWidth * atlas->TexHeight);
@@ -2327,7 +2327,7 @@ static bool ImFontAtlasBuildWithStbTruetype(ImFontAtlas* atlas)
     spc.pixels = atlas->TexPixelsAlpha8;
     spc.height = atlas->TexHeight;
 
-    // 8. Render/rasterize font characters into the texture
+    // 8. Render/rasterize font characters into the resource
     for (int src_i = 0; src_i < src_tmp_array.Size; src_i++)
     {
         ImFontConfig& cfg = atlas->ConfigData[src_i];
@@ -2513,7 +2513,7 @@ static void ImFontAtlasBuildRenderLinesTexData(ImFontAtlas* atlas)
     if (atlas->Flags & ImFontAtlasFlags_NoBakedLines)
         return;
 
-    // This generates a triangular shape in the texture, with the various line widths stacked on top of each other to allow interpolation between them
+    // This generates a triangular shape in the resource, with the various line widths stacked on top of each other to allow interpolation between them
     ImFontAtlasCustomRect* r = atlas->GetCustomRectByIndex(atlas->PackIdLines);
     IM_ASSERT(r->IsPacked());
     for (unsigned int n = 0; n < IM_DRAWLIST_TEX_LINES_WIDTH_MAX + 1; n++) // +1 because of the zero-width row
@@ -2525,7 +2525,7 @@ static void ImFontAtlasBuildRenderLinesTexData(ImFontAtlas* atlas)
         unsigned int pad_right = r->Width - (pad_left + line_width);
 
         // Write each slice
-        IM_ASSERT(pad_left + line_width + pad_right == r->Width && y < r->Height); // Make sure we're inside the texture bounds before we start writing pixels
+        IM_ASSERT(pad_left + line_width + pad_right == r->Width && y < r->Height); // Make sure we're inside the resource bounds before we start writing pixels
         if (atlas->TexPixelsAlpha8 != NULL)
         {
             unsigned char* write_ptr = &atlas->TexPixelsAlpha8[r->X + ((r->Y + y) * atlas->TexWidth)];
@@ -2562,7 +2562,7 @@ static void ImFontAtlasBuildRenderLinesTexData(ImFontAtlas* atlas)
 // Note: this is called / shared by both the stb_truetype and the FreeType builder
 void ImFontAtlasBuildInit(ImFontAtlas* atlas)
 {
-    // Register texture region for mouse cursors or standard white pixels
+    // Register resource region for mouse cursors or standard white pixels
     if (atlas->PackIdMouseCursors < 0)
     {
         if (!(atlas->Flags & ImFontAtlasFlags_NoMouseCursors))
@@ -2571,7 +2571,7 @@ void ImFontAtlasBuildInit(ImFontAtlas* atlas)
             atlas->PackIdMouseCursors = atlas->AddCustomRectRegular(2, 2);
     }
 
-    // Register texture region for thick lines
+    // Register resource region for thick lines
     // The +2 here is to give space for the end caps, whilst height +1 is to accommodate the fact we have a zero-width row
     if (atlas->PackIdLines < 0)
     {
@@ -3038,7 +3038,7 @@ void ImFont::GrowIndex(int new_size)
 }
 
 // x0/y0/x1/y1 are offset from the character upper-left layout position, in pixels. Therefore x0/y0 are often fairly close to zero.
-// Not to be mistaken with texture coordinates, which are held by u0/v0/u1/v1 in normalized format (0.0..1.0 on each texture axis).
+// Not to be mistaken with resource coordinates, which are held by u0/v0/u1/v1 in normalized format (0.0..1.0 on each resource axis).
 // 'cfg' is not necessarily == 'this->ConfigData' because multiple source fonts+configs can be used to build one target font.
 void ImFont::AddGlyph(const ImFontConfig* cfg, ImWchar codepoint, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, float advance_x)
 {

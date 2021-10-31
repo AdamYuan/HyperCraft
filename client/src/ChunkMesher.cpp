@@ -130,7 +130,7 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 							du[u] = width;
 						}
 
-						uint8_t                   // texture uvs
+						uint8_t                   // resource uvs
 						    v00u = du[u] + dv[u], //
 						    v00v = du[v] + dv[v], // v00: u, v
 						    v01u = dv[u],         //
@@ -140,7 +140,7 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 						    v11u = du[u],         //
 						    v11v = du[v];         // v11: u, v
 
-						// TODO: process texture rotation
+						// TODO: process resource rotation
 						// if (quad_texture.GetRotation() == )
 
 						// face specified UV transforms
@@ -263,7 +263,7 @@ void ChunkMesher::apply_mesh(std::vector<Chunk::Vertex> &&vertices, std::vector<
 	if (wld) {
 		std::shared_ptr<WorldRenderer> renderer = wld->LockWorldRenderer();
 		if (renderer)
-			renderer->UpdateMesh(m_chunk);
+			renderer->UploadMesh(m_chunk);
 	}
 }
 
@@ -339,7 +339,7 @@ void ChunkMesher::Run() {
 	apply_mesh(std::move(vertices), std::move(indices));
 
 	std::mt19937 gen{std::random_device{}()};
-	m_chunk->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 2);
+	m_chunk->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
 
 	m_chunk->LockWorld()->PushWorker(ChunkMesher::Create(m_chunk));
 }

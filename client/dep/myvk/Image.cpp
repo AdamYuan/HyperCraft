@@ -64,6 +64,25 @@ std::shared_ptr<Image> Image::CreateTexture2D(const std::shared_ptr<Device> &dev
 	return Create(device, VMA_MEMORY_USAGE_GPU_ONLY, create_info, access_queue);
 }
 
+std::shared_ptr<Image> Image::CreateTexture2DArray(const std::shared_ptr<Device> &device, const VkExtent2D &size,
+                                                   uint32_t array_layer, uint32_t mip_level, VkFormat format,
+                                                   VkImageUsageFlags usage,
+                                                   const std::vector<std::shared_ptr<Queue>> &access_queue) {
+	VkImageCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	create_info.imageType = VK_IMAGE_TYPE_2D;
+	create_info.extent = {size.width, size.height, 1};
+	create_info.mipLevels = mip_level;
+	create_info.arrayLayers = array_layer;
+	create_info.format = format;
+	create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+	create_info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	create_info.usage = usage;
+	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	return Create(device, VMA_MEMORY_USAGE_GPU_ONLY, create_info, access_queue);
+}
+
 uint32_t Image::QueryMipLevel(uint32_t w) { return simple_ctz(w); }
 
 uint32_t Image::QueryMipLevel(const VkExtent2D &size) { return simple_ctz(size.width | size.height); }

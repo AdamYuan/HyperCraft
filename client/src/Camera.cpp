@@ -2,7 +2,6 @@
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/string_cast.hpp>
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 

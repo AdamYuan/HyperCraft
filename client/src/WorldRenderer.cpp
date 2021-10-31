@@ -2,7 +2,7 @@
 #include <myvk/ShaderModule.hpp>
 #include <spdlog/spdlog.h>
 
-void WorldRenderer::UpdateMesh(const std::shared_ptr<Chunk> &chunk) {
+void WorldRenderer::UploadMesh(const std::shared_ptr<Chunk> &chunk) {
 	std::vector<Chunk::Vertex> vertices;
 	std::vector<uint16_t> indices;
 
@@ -26,6 +26,8 @@ void WorldRenderer::push_draw_cmd(const std::vector<Chunk::Vertex> &vertices, co
 	if (indices.empty()) {
 		draw_cmd->m_vertex_buffer = nullptr;
 		draw_cmd->m_index_buffer = nullptr;
+
+		// TODO: remove empty item
 
 		return;
 	}
@@ -59,14 +61,15 @@ void WorldRenderer::push_draw_cmd(const std::vector<Chunk::Vertex> &vertices, co
 
 void WorldRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {
 	const std::shared_ptr<myvk::Device> &device = m_transfer_queue->GetDevicePtr();
-	m_pipeline_layout = myvk::PipelineLayout::Create(device, {m_camera->GetDescriptorSetLayout()},
-	                                                 {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t) * 4}});
+	m_pipeline_layout =
+	    myvk::PipelineLayout::Create(device, {m_texture->GetDescriptorSetLayout(), m_camera->GetDescriptorSetLayout()},
+	                                 {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t) * 4}});
 
 	constexpr uint32_t kWorldVertSpv[] = {
-#include "spirv/world.vert.u32"
+#include <client/shader/world.vert.u32>
 	};
 	constexpr uint32_t kWorldFragSpv[] = {
-#include "spirv/world.frag.u32"
+#include <client/shader/world.frag.u32>
 	};
 
 	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
@@ -82,7 +85,7 @@ void WorldRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 	                                           {{0, 0, VK_FORMAT_R32G32_UINT, 0}});
 	pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	pipeline_state.m_viewport_state.Enable(1, 1);
-	pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_LINE, VK_FRONT_FACE_COUNTER_CLOCKWISE,
+	pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
 	                                                VK_CULL_MODE_BACK_BIT);
 	pipeline_state.m_depth_stencil_state.Enable();
 	pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_1_BIT);
@@ -94,7 +97,8 @@ void WorldRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 void WorldRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
                                     const VkExtent2D &extent, uint32_t current_frame) const {
 	command_buffer->CmdBindPipeline(m_pipeline);
-	command_buffer->CmdBindDescriptorSets({m_camera->GetFrameDescriptorSet(current_frame)}, m_pipeline);
+	command_buffer->CmdBindDescriptorSets(
+	    {m_texture->GetDescriptorSet(), m_camera->GetFrameDescriptorSet(current_frame)}, m_pipeline);
 
 	VkRect2D scissor = {};
 	scissor.extent = extent;

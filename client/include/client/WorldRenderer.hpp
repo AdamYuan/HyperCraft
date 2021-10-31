@@ -3,6 +3,7 @@
 
 #include <client/Camera.hpp>
 #include <client/Config.hpp>
+#include <client/GlobalTexture.hpp>
 #include <client/World.hpp>
 
 #include <shared_mutex>
@@ -33,25 +34,27 @@ private:
 	void create_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass);
 
 	// Child
+	std::shared_ptr<GlobalTexture> m_texture;
 	std::shared_ptr<Camera> m_camera;
 	std::shared_ptr<World> m_world;
 
 public:
-	inline static std::shared_ptr<WorldRenderer> Create(const std::shared_ptr<World> &world,
-	                                                    const std::shared_ptr<Camera> &camera,
-	                                                    const std::shared_ptr<myvk::Queue> &transfer_queue,
-	                                                    const std::shared_ptr<myvk::RenderPass> &render_pass,
-	                                                    uint32_t subpass) {
+	inline static std::shared_ptr<WorldRenderer>
+	Create(const std::shared_ptr<World> &world, const std::shared_ptr<GlobalTexture> &texture,
+	       const std::shared_ptr<Camera> &camera, const std::shared_ptr<myvk::Queue> &transfer_queue,
+	       const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {
 		std::shared_ptr<WorldRenderer> ret = std::make_shared<WorldRenderer>();
 		world->m_world_renderer = ret->weak_from_this();
 		ret->m_world = world;
+		ret->m_texture = texture;
 		ret->m_camera = camera;
 		ret->m_transfer_queue = transfer_queue;
 		ret->create_pipeline(render_pass, subpass);
 		return ret;
 	}
 
-	void UpdateMesh(const std::shared_ptr<Chunk> &chunk); // A thread-safe function for mesh updating
+	void UploadMesh(const std::shared_ptr<Chunk> &chunk); // A thread-safe function for mesh uploading
+
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world; }
 
 	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, const VkExtent2D &extent,

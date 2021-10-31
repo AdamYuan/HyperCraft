@@ -19,7 +19,6 @@ add_subdirectory(volk)
 
 add_library(client_dep STATIC
         vk_mem_alloc.cpp
-        stb_image.cpp
 
         # IMGUI
         imgui/imgui.cpp

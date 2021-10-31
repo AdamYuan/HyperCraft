@@ -204,8 +204,9 @@ Application::Application() {
 	init_imgui();
 
 	m_world = World::Create();
+	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
-	m_world_renderer = WorldRenderer::Create(m_world, m_camera, m_transfer_queue, m_render_pass, 0);
+	m_world_renderer = WorldRenderer::Create(m_world, m_global_texture, m_camera, m_transfer_queue, m_render_pass, 0);
 }
 
 void Application::Run() {
@@ -213,7 +214,10 @@ void Application::Run() {
 	for (uint32_t i = 0; i < 26; ++i) {
 		glm::i16vec3 dp;
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(dp));
-		m_world->PushChunk(dp);
+		const auto &nei_chk = m_world->PushChunk(dp);
+		/*for (uint32_t j = 0; j < Chunk::kSize * Chunk::kSize; ++j) {
+		    nei_chk->SetBlock(j, Blocks::kPlank);
+		}*/
 	}
 
 	/* std::mt19937 gen{std::random_device{}()};
@@ -223,10 +227,15 @@ void Application::Run() {
 	} */
 	m_world->PushWorker(ChunkMesher::Create(chk));
 
+	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
+
 	while (!glfwWindowShouldClose(m_window)) {
 		glfwPollEvents();
 
-		m_camera->Control(m_window, 1.0f / ImGui::GetIO().Framerate);
+		std::chrono::time_point<std::chrono::steady_clock> cur_time = std::chrono::steady_clock::now();
+		std::chrono::duration<float, std::ratio<1, 1>> delta = cur_time - prev_time;
+		prev_time = cur_time;
+		m_camera->Control(m_window, delta.count());
 
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();

@@ -9,8 +9,8 @@ set(SHADER_SRC
 find_program(GLSLC "glslc")
 IF (GLSLC)
     function(add_spirv_shader INPUT_FILE)
-        add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/spirv/${INPUT_FILE}.u32
-                COMMAND glslc src/${INPUT_FILE} -o include/spirv/${INPUT_FILE}.u32 -O -Os -mfmt=num
+        add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/shader/${INPUT_FILE}.u32
+                COMMAND glslc src/${INPUT_FILE} -o include/client/shader/${INPUT_FILE}.u32 -O -Os -mfmt=num
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${INPUT_FILE}
                 )
@@ -23,7 +23,7 @@ ENDIF ()
 
 set(SHADER_U32)
 foreach (X IN LISTS SHADER_SRC)
-    list(APPEND SHADER_U32 include/spirv/${X}.u32)
+    list(APPEND SHADER_U32 include/client/shader/${X}.u32)
 endforeach ()
 
 add_custom_target(

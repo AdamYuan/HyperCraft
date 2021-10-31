@@ -142,13 +142,13 @@ private:
 
 public:             // Data for rendering
 	struct Vertex { // Compressed mesh vertex for chunk
-		// x, y, z, face, AO, sunlight, torchlight; texture, u, v
+		// x, y, z, face, AO, sunlight, torchlight; resource, u, v
 		uint32_t x5_y5_z5_face3_ao2_sl4_tl4, tex8_u5_v5;
 		Vertex(uint8_t x, uint8_t y, uint8_t z, BlockFace face, uint8_t ao, LightLvl sunlight, LightLvl torchlight,
 		       BlockTexID tex, uint8_t u, uint8_t v)
 		    : x5_y5_z5_face3_ao2_sl4_tl4(x | (y << 5u) | (z << 10u) | (face << 15u) | (ao << 18u) | (sunlight << 20u) |
 		                                 (torchlight << 24u)),
-		      tex8_u5_v5(tex | (u << 8u) | (v << 13u)) {}
+		      tex8_u5_v5((tex - 1u) | (u << 8u) | (v << 13u)) {}
 	};
 
 	class Mesh {

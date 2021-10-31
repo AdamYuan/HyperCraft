@@ -423,7 +423,7 @@ There are some exceptions though, when you should consider mapping memory only f
   matter if that particular memory block is actually used by the command buffer
   being submitted.
 - On Mac/MoltenVK there is a known bug - [Issue #175](https://github.com/KhronosGroup/MoltenVK/issues/175)
-  which requires unmapping before GPU can see updated texture.
+  which requires unmapping before GPU can see updated resource.
 - Keeping many large memory blocks mapped may impact performance or stability of some debugging tools.
 
 \section memory_mapping_cache_control Cache flush and invalidate
@@ -584,7 +584,7 @@ Some other allocations become lost instead to make room for it, if the mechanism
 [lost allocations](@ref lost_allocations) is used.
 If that is not possible, the allocation fails with `VK_ERROR_OUT_OF_DEVICE_MEMORY`.
 Example usage pattern may be to pass the #VMA_ALLOCATION_CREATE_WITHIN_BUDGET_BIT flag
-when creating resources that are not essential for the application (e.g. the texture
+when creating resources that are not essential for the application (e.g. the resource
 of a specific object) and not to pass it when creating critically important resources
 (e.g. render targets).
 
@@ -1733,7 +1733,7 @@ Features deliberately excluded from the scope of this library:
 
 - Data transfer. Uploading (straming) and downloading data of buffers and images
   between CPU and GPU memory and related synchronization is responsibility of the user.
-  Defining some "texture" object that would automatically stream its data from a
+  Defining some "resource" object that would automatically stream its data from a
   staging copy in CPU memory to GPU memory would rather be a feature of another,
   higher-level library implemented on top of VMA.
 - Allocations for imported/exported external memory. They tend to require

@@ -6,7 +6,7 @@
 
 using BlockFace = uint8_t;
 struct BlockFaces {
-	enum : BlockFace { kRight = 0, kLeft, kTop, kBottom, kFront, kBack };
+	enum FACE : BlockFace { kRight = 0, kLeft, kTop, kBottom, kFront, kBack };
 };
 template <typename T>
 inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type BlockFaceProceed(T *xyz, BlockFace f) {
@@ -36,8 +36,8 @@ public:
 };
 
 struct BlockTextures {
-	enum : BlockTexID { kNone = 0, kStone, kDirt, kGrass, kGrassSide, kSand, kLog, kLogSide, kPlank, kGlass };
-	enum : BlockTexRot { kRot0 = 0, kRot90, kRot180, kRot270 };
+	enum ID : BlockTexID { kNone = 0, kStone, kDirt, kGrassTop, kGrassSide, kSand, kLogTop, kLogSide, kPlank, kGlass };
+	enum ROT : BlockTexRot { kRot0 = 0, kRot90, kRot180, kRot270 };
 };
 
 using BlockID = uint8_t;
@@ -55,7 +55,7 @@ struct BlockProperty {
 	{ s, s, t, b, s, s }
 
 struct Blocks {
-	enum : BlockID { kAir = 0, kStone, kDirt, kGrass, kSand, kLog, kPlank, kGlass };
+	enum ID : BlockID { kAir = 0, kStone, kDirt, kGrass, kSand, kLog, kPlank, kGlass };
 };
 
 class Block {
@@ -76,10 +76,10 @@ private:
 		    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false}, //
 		    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},   //
 		    {"Grass",
-		     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassSide, BlockTextures::kGrass), false,
-		     false},                                                          //
+		     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassSide, BlockTextures::kGrassTop),
+		     false, false},                                                   //
 		    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
-		    {"Log", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kLog, BlockTextures::kLogSide, BlockTextures::kLog),
+		    {"Log", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kLogTop, BlockTextures::kLogSide, BlockTextures::kLogTop),
 		     false, false},                                                     //
 		    {"Plank", BLOCK_TEXTURE_SAME(BlockTextures::kPlank), false, false}, //
 		    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},   //

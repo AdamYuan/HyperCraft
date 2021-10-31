@@ -274,7 +274,7 @@ void CommandBuffer::CmdGenerateMipmap2D(const std::shared_ptr<ImageBase> &image,
 		CmdBlitImage(image, image, blit, VK_FILTER_LINEAR);
 
 		CmdPipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, dst_stage, {}, {},
-		                   image->GetMemoryBarriers({blit.srcSubresource}, VK_ACCESS_TRANSFER_READ_BIT, dst_access_mask,
+		                   image->GetMemoryBarriers({blit.srcSubresource}, 0, dst_access_mask,
 		                                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, new_layout));
 		if (i == image->GetMipLevels() - 1) {
 			CmdPipelineBarrier(VK_PIPELINE_STAGE_TRANSFER_BIT, dst_stage, {}, {},

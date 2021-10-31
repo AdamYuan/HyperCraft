@@ -15,6 +15,7 @@ endif ()
 
 add_subdirectory(dep)
 add_subdirectory(shader)
+add_subdirectory(resource)
 if (NOT TARGET CubeCraft3_common)
     add_subdirectory(../common ../common)
 endif ()
@@ -33,7 +34,12 @@ add_executable(CubeCraft3_client
         src/ChunkMesher.cpp
         include/client/ChunkMesher.hpp
         src/WorldRenderer.cpp
-        include/client/WorldRenderer.hpp src/Camera.cpp include/client/Camera.hpp)
+        include/client/WorldRenderer.hpp
+        src/Camera.cpp
+        include/client/Camera.hpp
+        src/GlobalTexture.cpp
+        include/client/GlobalTexture.hpp
+        )
 
-target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader CubeCraft3_common)
+target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
 target_include_directories(CubeCraft3_client PRIVATE include)
