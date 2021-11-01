@@ -23,7 +23,7 @@ void Application::init_imgui() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
-	m_imgui_renderer.Initialize(m_main_command_pool, m_render_pass, 1, kFrameCount);
+	m_imgui_renderer.Initialize(m_main_command_pool, m_canvas.GetRenderPass(), 1, kFrameCount);
 }
 
 void Application::create_vulkan_base() {
@@ -56,115 +56,17 @@ void Application::create_vulkan_base() {
 	             m_main_queue->GetFamilyIndex(), (void *)m_main_queue->GetHandle(),        // main queue
 	             m_transfer_queue->GetFamilyIndex(), (void *)m_transfer_queue->GetHandle() // transfer queue
 	);
+}
 
+void Application::create_frame_object() {
 	m_frame_manager.Initialize(m_main_queue, m_present_queue, false, kFrameCount);
-	m_frame_manager.SetResizeFunc([&](uint32_t w, uint32_t h) { resize(w, h); });
+	m_frame_manager.SetResizeFunc([&](const myvk::FrameManager &frame_manager) { resize(frame_manager); });
+	m_canvas.Initialize(m_frame_manager);
 }
 
-void Application::create_depth_buffer() {
-	m_depth_image = myvk::Image::CreateTexture2D(m_device, m_frame_manager.GetSwapchain()->GetExtent(), 1,
-	                                             VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-	m_depth_image_view = myvk::ImageView::Create(m_depth_image, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT);
-}
-
-void Application::create_render_pass() {
-	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = m_frame_manager.GetSwapchain()->GetImageFormat();
-	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentDescription depth_attachment = {};
-	depth_attachment.format = m_depth_image->GetFormat();
-	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference color_attachment_ref = {};
-	color_attachment_ref.attachment = 0;
-	color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depth_attachment_ref = {};
-	depth_attachment_ref.attachment = 1;
-	depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	std::vector<VkSubpassDescription> subpasses(2);
-	subpasses[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpasses[0].colorAttachmentCount = 1;
-	subpasses[0].pColorAttachments = &color_attachment_ref;
-	subpasses[0].pDepthStencilAttachment = &depth_attachment_ref;
-
-	subpasses[1].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpasses[1].colorAttachmentCount = 1;
-	subpasses[1].pColorAttachments = &color_attachment_ref;
-	subpasses[1].pDepthStencilAttachment = nullptr;
-
-	VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
-
-	VkRenderPassCreateInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_info.attachmentCount = 2;
-	render_pass_info.pAttachments = attachments;
-	render_pass_info.subpassCount = subpasses.size();
-	render_pass_info.pSubpasses = subpasses.data();
-
-	std::vector<VkSubpassDependency> subpass_dependencies(3);
-	subpass_dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-	subpass_dependencies[0].dstSubpass = 0;
-	subpass_dependencies[0].srcStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	subpass_dependencies[0].dstStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	subpass_dependencies[0].srcAccessMask = 0;
-	subpass_dependencies[0].dstAccessMask =
-	    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	subpass_dependencies[1].srcSubpass = 0;
-	subpass_dependencies[1].dstSubpass = 1;
-	subpass_dependencies[1].srcStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	subpass_dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[1].srcAccessMask =
-	    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	subpass_dependencies[2].srcSubpass = 1;
-	subpass_dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
-	subpass_dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[2].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-	subpass_dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[2].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	subpass_dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	render_pass_info.dependencyCount = subpass_dependencies.size();
-	render_pass_info.pDependencies = subpass_dependencies.data();
-
-	m_render_pass = myvk::RenderPass::Create(m_device, render_pass_info);
-}
-
-void Application::create_framebuffers() {
-	if (m_framebuffers.empty())
-		m_framebuffers.resize(m_frame_manager.GetSwapchain()->GetImageCount());
-	for (uint32_t i = 0; i < m_frame_manager.GetSwapchain()->GetImageCount(); ++i)
-		m_framebuffers[i] =
-		    myvk::Framebuffer::Create(m_render_pass, {m_frame_manager.GetSwapchainImageViews()[i], m_depth_image_view},
-		                              m_frame_manager.GetSwapchain()->GetExtent());
-}
-
-void Application::resize(uint32_t width, uint32_t height) {
-	m_camera->m_aspect_ratio = (float)width / (float)height;
-	create_depth_buffer();
-	create_framebuffers();
+void Application::resize(const myvk::FrameManager &frame_manager) {
+	m_camera->m_aspect_ratio = (float)frame_manager.GetExtent().width / (float)frame_manager.GetExtent().height;
+	m_canvas.Resize(frame_manager);
 }
 
 void Application::draw_frame() {
@@ -177,11 +79,7 @@ void Application::draw_frame() {
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager.GetCurrentCommandBuffer();
 	command_buffer->Begin();
 
-	VkClearValue color_clear_value, depth_clear_value;
-	color_clear_value.color = {0.0f, 0.0f, 0.0f, 1.0f};
-	depth_clear_value.depthStencil = {1.0f, 0u};
-	command_buffer->CmdBeginRenderPass(m_render_pass, m_framebuffers[image_index],
-	                                   {color_clear_value, depth_clear_value});
+	m_canvas.CmdBeginRenderPass(command_buffer, image_index);
 	m_camera->UpdateFrameUniformBuffer(current_frame);
 	m_world_renderer->CmdDrawPipeline(command_buffer, m_frame_manager.GetSwapchain()->GetExtent(), current_frame);
 	command_buffer->CmdNextSubpass();
@@ -198,15 +96,14 @@ Application::Application() {
 
 	create_glfw_window();
 	create_vulkan_base();
-	create_depth_buffer();
-	create_render_pass();
-	create_framebuffers();
+	create_frame_object();
 	init_imgui();
 
 	m_world = World::Create();
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
-	m_world_renderer = WorldRenderer::Create(m_world, m_global_texture, m_camera, m_transfer_queue, m_render_pass, 0);
+	m_world_renderer =
+	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_transfer_queue, m_canvas.GetRenderPass(), 0);
 }
 
 void Application::Run() {

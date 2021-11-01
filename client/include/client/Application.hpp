@@ -5,6 +5,8 @@
 #include <myvk/FrameManager.hpp>
 #include <myvk/ImGuiRenderer.hpp>
 
+#include <client/Canvas.hpp>
+
 #include <client/Camera.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
@@ -23,29 +25,23 @@ private:
 
 	// frame objects
 	myvk::FrameManager m_frame_manager;
-	std::vector<std::shared_ptr<myvk::Framebuffer>> m_framebuffers;
+	Canvas m_canvas;
 
 	// render pass
-	std::shared_ptr<myvk::RenderPass> m_render_pass;
 	myvk::ImGuiRenderer m_imgui_renderer;
+	std::shared_ptr<WorldRenderer> m_world_renderer;
 
-	std::shared_ptr<myvk::Image> m_depth_image;
-	std::shared_ptr<myvk::ImageView> m_depth_image_view;
-
-	// game objects and renderer
+	// game objects and resources
 	std::shared_ptr<GlobalTexture> m_global_texture;
 	std::shared_ptr<Camera> m_camera;
 	std::shared_ptr<World> m_world;
-	std::shared_ptr<WorldRenderer> m_world_renderer;
 
 	void create_glfw_window();
-	void init_imgui();
 	void create_vulkan_base();
-	void create_depth_buffer();
-	void create_render_pass();
-	void create_framebuffers();
+	void create_frame_object();
+	void init_imgui();
 
-	void resize(uint32_t width, uint32_t height);
+	void resize(const myvk::FrameManager &frame_manager);
 	void draw_frame();
 
 	static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);

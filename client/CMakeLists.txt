@@ -39,6 +39,8 @@ add_executable(CubeCraft3_client
         include/client/Camera.hpp
         src/GlobalTexture.cpp
         include/client/GlobalTexture.hpp
+        src/Canvas.cpp
+        include/client/Canvas.hpp
         )
 
 target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
