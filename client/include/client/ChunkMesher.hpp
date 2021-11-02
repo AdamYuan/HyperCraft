@@ -1,5 +1,5 @@
-#ifndef CHUNK_MESHER_HPP
-#define CHUNK_MESHER_HPP
+#ifndef CUBECRAFT3_CLIENT_CHUNK_MESHER_HPP
+#define CUBECRAFT3_CLIENT_CHUNK_MESHER_HPP
 
 #include "ChunkWorker.hpp"
 
@@ -10,11 +10,11 @@ private:
 	std::chrono::time_point<std::chrono::steady_clock> m_starting_time;
 
 public:
-	static inline std::unique_ptr<ChunkWorker> Create(const std::weak_ptr<Chunk> &weak_chunk) {
-		return std::make_unique<ChunkMesher>(weak_chunk);
+	static inline std::unique_ptr<ChunkWorker> Create(const std::weak_ptr<Chunk> &chunk_ptr) {
+		return std::make_unique<ChunkMesher>(chunk_ptr);
 	}
 
-	explicit ChunkMesher(const std::weak_ptr<Chunk> &weak_chunk) : ChunkWorkerS26(weak_chunk) {}
+	explicit ChunkMesher(const std::weak_ptr<Chunk> &chunk_ptr) : ChunkWorkerS26(chunk_ptr) {}
 
 	void Run() override;
 

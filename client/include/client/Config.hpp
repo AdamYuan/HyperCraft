@@ -1,5 +1,5 @@
-#ifndef CONFIG_HPP
-#define CONFIG_HPP
+#ifndef CUBECRAFT3_CLIENT_CONFIG_HPP
+#define CUBECRAFT3_CLIENT_CONFIG_HPP
 
 #include <cinttypes>
 

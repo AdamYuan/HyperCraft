@@ -1,0 +1,6 @@
+#ifndef CUBECRAFT3_CLIENT_LOCAL_CLIENT_HPP
+#define CUBECRAFT3_CLIENT_LOCAL_CLIENT_HPP
+
+class LocalClient {};
+
+#endif

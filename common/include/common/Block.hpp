@@ -1,5 +1,5 @@
-#ifndef BLOCK_HPP
-#define BLOCK_HPP
+#ifndef CUBECRAFT3_COMMON_BLOCK_HPP
+#define CUBECRAFT3_COMMON_BLOCK_HPP
 
 #include <cinttypes>
 #include <type_traits>
@@ -63,8 +63,8 @@ private:
 	union {
 		uint16_t m_data;
 		struct {
-#ifdef LITTLE_ENDIAN
-			uint8_t m_id, m_meta;
+#ifndef IS_BIG_ENDIAN
+			uint8_t m_id, m_meta; // regular order for little endian
 #else
 			uint8_t m_meta, m_id;
 #endif

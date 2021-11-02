@@ -1,5 +1,5 @@
-#ifndef WORLD_HPP
-#define WORLD_HPP
+#ifndef CUBECRAFT3_CLIENT_WORLD_HPP
+#define CUBECRAFT3_CLIENT_WORLD_HPP
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -10,10 +10,11 @@
 #include <concurrentqueue.h>
 #include <thread>
 
-#include "Chunk.hpp"
-#include "ChunkWorker.hpp"
+#include <client/Chunk.hpp>
+#include <client/ChunkWorker.hpp>
 
 class WorldRenderer;
+class ClientBase;
 
 class World : public std::enable_shared_from_this<World> {
 public:
@@ -21,8 +22,10 @@ public:
 
 private:
 	// Parent weak_ptrs
-	std::weak_ptr<WorldRenderer> m_world_renderer;
+	std::weak_ptr<WorldRenderer> m_world_renderer_weak_ptr;
 	friend class WorldRenderer;
+	std::weak_ptr<ClientBase> m_client_weak_ptr;
+	friend class ClientBase;
 
 	// Chunks
 	std::unordered_map<glm::i16vec3, std::shared_ptr<Chunk>> m_chunks;
@@ -36,7 +39,7 @@ private:
 	void chunk_thread_func();
 
 public:
-	inline std::shared_ptr<WorldRenderer> LockWorldRenderer() const { return m_world_renderer.lock(); }
+	inline std::shared_ptr<WorldRenderer> LockWorldRenderer() const { return m_world_renderer_weak_ptr.lock(); }
 
 	inline void PushWorker(std::unique_ptr<ChunkWorker> &&worker) { m_chunk_workers.enqueue(std::move(worker)); }
 	std::shared_ptr<Chunk> FindChunk(const glm::i16vec3 &position) const {

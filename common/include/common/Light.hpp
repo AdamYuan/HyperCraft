@@ -1,5 +1,5 @@
-#ifndef LIGHT_HPP
-#define LIGHT_HPP
+#ifndef CUBECRAFT3_COMMON_LIGHT_HPP
+#define CUBECRAFT3_COMMON_LIGHT_HPP
 
 #include <cinttypes>
 

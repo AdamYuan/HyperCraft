@@ -62,7 +62,7 @@ void WorldRenderer::push_draw_cmd(const std::vector<Chunk::Vertex> &vertices, co
 void WorldRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {
 	const std::shared_ptr<myvk::Device> &device = m_transfer_queue->GetDevicePtr();
 	m_pipeline_layout =
-	    myvk::PipelineLayout::Create(device, {m_texture->GetDescriptorSetLayout(), m_camera->GetDescriptorSetLayout()},
+	    myvk::PipelineLayout::Create(device, {m_texture_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout()},
 	                                 {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t) * 4}});
 
 	constexpr uint32_t kWorldVertSpv[] = {
@@ -98,7 +98,7 @@ void WorldRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &
                                     const VkExtent2D &extent, uint32_t current_frame) const {
 	command_buffer->CmdBindPipeline(m_pipeline);
 	command_buffer->CmdBindDescriptorSets(
-	    {m_texture->GetDescriptorSet(), m_camera->GetFrameDescriptorSet(current_frame)}, m_pipeline);
+	    {m_texture_ptr->GetDescriptorSet(), m_camera_ptr->GetFrameDescriptorSet(current_frame)}, m_pipeline);
 
 	VkRect2D scissor = {};
 	scissor.extent = extent;

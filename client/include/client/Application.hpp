@@ -1,5 +1,5 @@
-#ifndef APPLICATION_HPP
-#define APPLICATION_HPP
+#ifndef CUBECRAFT3_CLIENT_APPLICATION_HPP
+#define CUBECRAFT3_CLIENT_APPLICATION_HPP
 
 #include <GLFW/glfw3.h>
 #include <myvk/FrameManager.hpp>

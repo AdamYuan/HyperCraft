@@ -1,5 +1,5 @@
-#ifndef GLOBAL_TEXTURE_HPP
-#define GLOBAL_TEXTURE_HPP
+#ifndef CUBECRAFT3_CLIENT_GLOBAL_TEXTURE_HPP
+#define CUBECRAFT3_CLIENT_GLOBAL_TEXTURE_HPP
 
 #include <myvk/CommandPool.hpp>
 #include <myvk/DescriptorSet.hpp>

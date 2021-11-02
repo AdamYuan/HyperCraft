@@ -15,7 +15,7 @@ void ChunkMesher::generate_face_lights(
 		Chunk::Index2XYZ(index, pos);
 
 		Block block;
-		if ((block = m_chunk->GetBlock(index)).GetID() == Blocks::kAir)
+		if ((block = m_chunk_ptr->GetBlock(index)).GetID() == Blocks::kAir)
 			continue;
 
 		bool filled_neighbours = false;
@@ -257,13 +257,13 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 }
 
 void ChunkMesher::apply_mesh(std::vector<Chunk::Vertex> &&vertices, std::vector<uint16_t> &&indices) const {
-	m_chunk->GetMesh().Push(std::move(vertices), std::move(indices), m_starting_time);
+	m_chunk_ptr->GetMesh().Push(std::move(vertices), std::move(indices), m_starting_time);
 
-	std::shared_ptr<World> wld = m_chunk->LockWorld();
+	std::shared_ptr<World> wld = m_chunk_ptr->LockWorld();
 	if (wld) {
 		std::shared_ptr<WorldRenderer> renderer = wld->LockWorldRenderer();
 		if (renderer)
-			renderer->UploadMesh(m_chunk);
+			renderer->UploadMesh(m_chunk_ptr);
 	}
 }
 
@@ -339,7 +339,7 @@ void ChunkMesher::Run() {
 	apply_mesh(std::move(vertices), std::move(indices));
 
 	std::mt19937 gen{std::random_device{}()};
-	m_chunk->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
+	m_chunk_ptr->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
 
-	m_chunk->LockWorld()->PushWorker(ChunkMesher::Create(m_chunk));
+	m_chunk_ptr->LockWorld()->PushWorker(ChunkMesher::Create(m_chunk_ptr));
 }

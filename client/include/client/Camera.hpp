@@ -1,5 +1,5 @@
-#ifndef CAMERA_HPP
-#define CAMERA_HPP
+#ifndef CUBECRAFT3_CLIENT_CAMERA_HPP
+#define CUBECRAFT3_CLIENT_CAMERA_HPP
 
 #include <client/Config.hpp>
 
