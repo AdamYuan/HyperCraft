@@ -11,8 +11,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-DNOMINMAX)
 ENDIF ()
 
-add_library(server_dep STATIC
-        sqlite3.c)
+add_library(server_dep INTERFACE
+        )
 
-target_link_libraries(server_dep PRIVATE ${CMAKE_DL_LIBS})
-target_include_directories(server_dep PUBLIC .)
+#target_link_libraries(server_dep PRIVATE ${CMAKE_DL_LIBS})
+#target_include_directories(server_dep PUBLIC .)

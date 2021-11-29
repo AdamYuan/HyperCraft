@@ -16,6 +16,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
 endif ()
 add_subdirectory(volk)
+add_subdirectory(FastNoise2)
 
 add_library(client_dep STATIC
         vk_mem_alloc.cpp
@@ -98,5 +99,5 @@ add_library(client_dep STATIC
         )
 
 target_include_directories(client_dep PUBLIC .)
-target_link_libraries(client_dep PUBLIC volk glfw)
+target_link_libraries(client_dep PUBLIC volk glfw FastNoise)
 target_compile_definitions(client_dep PUBLIC VK_NO_PROTOTYPES)

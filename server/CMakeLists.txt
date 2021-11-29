@@ -10,7 +10,8 @@ endif ()
 
 add_executable(CubeCraft3_server
         src/main.cpp
-        src/Database.cpp
+        src/ENetServer.cpp
+        include/server/ENetServer.hpp
         )
 
 target_link_libraries(CubeCraft3_server PRIVATE server_dep CubeCraft3_common)

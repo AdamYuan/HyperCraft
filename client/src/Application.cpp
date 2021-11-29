@@ -106,7 +106,13 @@ Application::Application() {
 	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_transfer_queue, m_canvas.GetRenderPass(), 0);
 }
 
+#include <FastNoise/FastNoise.h>
+
 void Application::Run() {
+	auto fnSimplex = FastNoise::New<FastNoise::Simplex>();
+	std::shared_ptr<ENetClient> client = ENetClient::Create(m_world);
+	client->AsyncConnect("localhost", 60000);
+
 	const auto &chk = m_world->PushChunk({0, 0, 0});
 	for (uint32_t i = 0; i < 26; ++i) {
 		glm::i16vec3 dp;

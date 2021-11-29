@@ -18,7 +18,10 @@ add_subdirectory(enet)
 
 add_library(common_dep STATIC
         concurrentqueue.h
+        sqlite3.c
+        sqlite3.h
+        sqlite3ext.h
         )
 
 target_include_directories(common_dep PUBLIC .)
-target_link_libraries(common_dep PUBLIC spdlog enet)
+target_link_libraries(common_dep PRIVATE ${CMAKE_DL_LIBS} PUBLIC spdlog enet)

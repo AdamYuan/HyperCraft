@@ -10,6 +10,7 @@
 #include <client/Camera.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
+#include <client/ENetClient.hpp>
 
 class Application {
 private:

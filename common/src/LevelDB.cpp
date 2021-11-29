@@ -1,7 +1,7 @@
-#include <server/Database.hpp>
+#include <common/LevelDB.hpp>
 
-std::shared_ptr<Database> Database::Create(const char *filename) {
-	std::shared_ptr<Database> ret = std::make_shared<Database>();
+std::shared_ptr<LevelDB> LevelDB::Create(const char *filename) {
+	std::shared_ptr<LevelDB> ret = std::make_shared<LevelDB>();
 	if (sqlite3_open_v2(filename, &ret->m_db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK)
 		return nullptr;
 
@@ -21,7 +21,15 @@ std::shared_ptr<Database> Database::Create(const char *filename) {
 	return ret;
 }
 
-Database::~Database() {
+void LevelDB::SetSeed(uint32_t seed) {
+
+}
+
+uint32_t LevelDB::GetSeed() {
+	return 0;
+}
+
+LevelDB::~LevelDB() {
 	if (m_db)
 		sqlite3_close_v2(m_db);
 }

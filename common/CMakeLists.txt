@@ -18,7 +18,11 @@ add_library(CubeCraft3_common STATIC
         include/common/Block.hpp
         include/common/Light.hpp
         include/common/Message.hpp
-        include/common/ByteStream.hpp)
+        include/common/ByteStream.hpp
+
+        include/common/LevelDB.hpp
+        src/LevelDB.cpp
+        )
 find_package(Threads REQUIRED)
 target_link_libraries(CubeCraft3_common PUBLIC common_dep Threads::Threads)
 target_include_directories(CubeCraft3_common PUBLIC include)

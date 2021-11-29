@@ -24,8 +24,8 @@ private:
 		std::shared_ptr<myvk::Buffer> m_frame_vertices[kFrameCount], m_frame_indices[kFrameCount];
 	};
 	mutable std::unordered_map<glm::i16vec3, DrawCmd> m_draw_commands;
-	mutable std::shared_mutex m_draw_cmd_mutex;
-	void push_draw_cmd(const std::vector<Chunk::Vertex> &vertices, const std::vector<uint16_t> &indices,
+	mutable std::mutex m_draw_cmd_mutex;
+	bool push_draw_cmd(const std::vector<Chunk::Vertex> &vertices, const std::vector<uint16_t> &indices,
 	                   DrawCmd *draw_cmd) const;
 
 	// Pipeline
