@@ -113,22 +113,23 @@ void Application::Run() {
 	std::shared_ptr<ENetClient> client = ENetClient::Create(m_world);
 	client->AsyncConnect("localhost", 60000);
 
-	const auto &chk = m_world->PushChunk({0, 0, 0});
-	for (uint32_t i = 0; i < 26; ++i) {
-		glm::i16vec3 dp;
-		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(dp));
-		const auto &nei_chk = m_world->PushChunk(dp);
-		/*for (uint32_t j = 0; j < Chunk::kSize * Chunk::kSize; ++j) {
-		    nei_chk->SetBlock(j, Blocks::kPlank);
-		}*/
-	}
+	constexpr int16_t kR = 10;
+	for (int16_t i = -kR; i <= kR; ++i)
+		for (int16_t j = -kR; j <= kR; ++j)
+			for (int16_t k = -kR; k <= kR; ++k) {
+				m_world->PushChunk({i, j, k});
+			}
+	for (int16_t i = -kR + 1; i <= kR - 1; ++i)
+		for (int16_t j = -kR + 1; j <= kR - 1; ++j)
+			for (int16_t k = -kR + 1; k <= kR - 1; ++k) {
+				m_world->PushWorker(ChunkMesher::Create(m_world->FindChunk({i, j, k})));
+			}
 
 	/* std::mt19937 gen{std::random_device{}()};
 	for (uint32_t i = 0; i < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++i) {
 	    chk->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, Blocks::kSand);
 	    m_world->PushWorker(ChunkMesher::Create(chk));
 	} */
-	m_world->PushWorker(ChunkMesher::Create(chk));
 
 	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
 
@@ -146,6 +147,7 @@ void Application::Run() {
 		ImGui::Begin("Test");
 		ImGui::Button("2333");
 		ImGui::Text("%f", ImGui::GetIO().Framerate);
+		ImGui::Text("%f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
 		ImGui::End();
 
 		ImGui::Render();

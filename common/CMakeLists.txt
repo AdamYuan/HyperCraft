@@ -22,7 +22,7 @@ add_library(CubeCraft3_common STATIC
 
         include/common/LevelDB.hpp
         src/LevelDB.cpp
-        )
+        include/common/AABB.hpp include/common/Position.hpp)
 find_package(Threads REQUIRED)
 target_link_libraries(CubeCraft3_common PUBLIC common_dep Threads::Threads)
 target_include_directories(CubeCraft3_common PUBLIC include)

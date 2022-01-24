@@ -28,7 +28,7 @@ private:
 	friend class ClientBase;
 
 	// Chunks
-	std::unordered_map<glm::i16vec3, std::shared_ptr<Chunk>> m_chunks;
+	std::unordered_map<ChunkPos3, std::shared_ptr<Chunk>> m_chunks;
 
 	// Chunk workers
 	bool m_chunk_threads_run = true;
@@ -39,14 +39,15 @@ private:
 	void chunk_thread_func();
 
 public:
+	inline const std::weak_ptr<WorldRenderer> &GetWorldRendererWeakPtr() const { return m_world_renderer_weak_ptr; }
 	inline std::shared_ptr<WorldRenderer> LockWorldRenderer() const { return m_world_renderer_weak_ptr.lock(); }
 
 	inline void PushWorker(std::unique_ptr<ChunkWorker> &&worker) { m_chunk_workers.enqueue(std::move(worker)); }
-	std::shared_ptr<Chunk> FindChunk(const glm::i16vec3 &position) const {
+	std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const {
 		auto it = m_chunks.find(position);
 		return it == m_chunks.end() ? nullptr : it->second;
 	}
-	std::shared_ptr<Chunk> PushChunk(const glm::i16vec3 &position) {
+	std::shared_ptr<Chunk> PushChunk(const ChunkPos3 &position) {
 		{ // If exists, return the existing one
 			const std::shared_ptr<Chunk> &ret = FindChunk(position);
 			if (ret)
@@ -58,7 +59,7 @@ public:
 
 		// assign chunk neighbours
 		for (uint32_t i = 0; i < 26; ++i) {
-			glm::i16vec3 dp;
+			ChunkPos3 dp;
 			Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(dp));
 
 			const std::shared_ptr<Chunk> &nei = FindChunk(position + dp);
@@ -68,7 +69,7 @@ public:
 		}
 		return ret;
 	}
-	void EraseChunk(const glm::i16vec3 &position) { m_chunks.erase(position); }
+	void EraseChunk(const ChunkPos3 &position) { m_chunks.erase(position); }
 
 	World() { launch_chunk_threads(); }
 	void Join(); // must be called in main thread

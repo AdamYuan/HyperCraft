@@ -46,7 +46,7 @@ void ChunkMesher::generate_face_lights(
 }
 
 void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
-                                std::vector<Chunk::Vertex> *vertices, std::vector<uint16_t> *indices) const {
+                                std::vector<ChunkMesh::Vertex> *vertices, std::vector<uint16_t> *indices) const {
 	uint32_t cur_vertex = 0;
 
 	for (uint_fast8_t axis = 0; axis < 3; ++axis) {
@@ -161,16 +161,16 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 							std::swap(v11v, v10v);
 						}
 
-						Chunk::Vertex v00{uint8_t(x[0]),
-						                  uint8_t(x[1]),
-						                  uint8_t(x[2]),
-						                  quad_face,
-						                  quad_light.m_ao[0],
-						                  quad_light.m_light[0].GetSunlight(),
-						                  quad_light.m_light[0].GetTorchlight(),
-						                  quad_texture.GetID(),
-						                  v00u,
-						                  v00v},
+						ChunkMesh::Vertex v00{uint8_t(x[0]),
+						                      uint8_t(x[1]),
+						                      uint8_t(x[2]),
+						                      quad_face,
+						                      quad_light.m_ao[0],
+						                      quad_light.m_light[0].GetSunlight(),
+						                      quad_light.m_light[0].GetTorchlight(),
+						                      quad_texture.GetID(),
+						                      v00u,
+						                      v00v},
 						    v01 = {uint8_t(x[0] + du[0]),
 						           uint8_t(x[1] + du[1]),
 						           uint8_t(x[2] + du[2]),
@@ -256,17 +256,6 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 	}
 }
 
-void ChunkMesher::apply_mesh(std::vector<Chunk::Vertex> &&vertices, std::vector<uint16_t> &&indices) const {
-	m_chunk_ptr->GetMesh().Push(std::move(vertices), std::move(indices), m_starting_time);
-
-	std::shared_ptr<World> wld = m_chunk_ptr->LockWorld();
-	if (wld) {
-		std::shared_ptr<WorldRenderer> renderer = wld->LockWorldRenderer();
-		if (renderer)
-			renderer->UploadMesh(m_chunk_ptr);
-	}
-}
-
 void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_blocks[27],
                                      const Light neighbour_lights[27]) {
 	//  structure of the neighbour arrays
@@ -328,18 +317,22 @@ void ChunkMesher::Run() {
 		return;
 
 	m_starting_time = std::chrono::steady_clock::now();
-	std::vector<Chunk::Vertex> vertices;
+	std::vector<ChunkMesh::Vertex> vertices;
 	std::vector<uint16_t> indices;
 	{
 		Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6];
 		generate_face_lights(face_lights);
 		generate_mesh(face_lights, &vertices, &indices);
 	}
-	spdlog::info("Chunk meshed with {} vertices and {} indices", vertices.size(), indices.size());
-	apply_mesh(std::move(vertices), std::move(indices));
+	spdlog::info("Chunk ({}, {}, {}) meshed with {} vertices and {} indices", m_chunk_ptr->GetPosition().x,
+	             m_chunk_ptr->GetPosition().y, m_chunk_ptr->GetPosition().z, vertices.size(), indices.size());
+	std::shared_ptr<ChunkMesh> chunk_mesh = ChunkMesh::Allocate(m_chunk_ptr);
+	if (chunk_mesh)
+		chunk_mesh->Update({std::move(vertices), std::move(indices)});
 
 	std::mt19937 gen{std::random_device{}()};
 	m_chunk_ptr->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
 
-	m_chunk_ptr->LockWorld()->PushWorker(ChunkMesher::Create(m_chunk_ptr));
+	if (gen() % 50)
+		m_chunk_ptr->LockWorld()->PushWorker(ChunkMesher::Create(m_chunk_ptr));
 }

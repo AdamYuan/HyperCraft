@@ -1,7 +1,7 @@
 #ifndef CUBECRAFT3_CLIENT_CHUNK_MESHER_HPP
 #define CUBECRAFT3_CLIENT_CHUNK_MESHER_HPP
 
-#include "ChunkWorker.hpp"
+#include <client/ChunkWorker.hpp>
 
 #include <chrono>
 
@@ -60,8 +60,7 @@ private:
 
 	void generate_face_lights(Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
 	void generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
-	                   std::vector<Chunk::Vertex> *vertices, std::vector<uint16_t> *indices) const;
-	void apply_mesh(std::vector<Chunk::Vertex> &&vertices, std::vector<uint16_t> &&indices) const;
+	                   std::vector<ChunkMesh::Vertex> *vertices, std::vector<uint16_t> *indices) const;
 };
 
 #endif

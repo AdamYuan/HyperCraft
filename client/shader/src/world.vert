@@ -20,14 +20,16 @@ const float kSunlightCurve[16] = {0.000000, 0.066667, 0.133333, 0.200000, 0.2666
 const float kTorchlightCurve[16] = {0.000000, 0.100000, 0.200000, 0.300000, 0.400000, 0.500000, 0.600000, 0.700000,
                                     0.800000, 0.900000, 1.000000, 1.100000, 1.200000, 1.300000, 1.400000, 1.500000};
 
+layout(push_constant) uniform uuPushConstant { int uBaseX, uBaseY, uBaseZ; };
+
 void main() {
 	uint x5_y5_z5_face3_ao2_sl4_tl4 = aVertData.x, tex8_u5_v5 = aVertData.y;
 
-	vPosition.x = x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu;
+	vPosition.x = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uBaseX;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
-	vPosition.y = x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu;
+	vPosition.y = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uBaseY;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
-	vPosition.z = x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu;
+	vPosition.z = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uBaseZ;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
 
 	gl_Position = uProjection * uView * vec4(vPosition, 1.0f);

@@ -1,9 +1,12 @@
 #ifndef CUBECRAFT3_CLIENT_CHUNK_HPP
 #define CUBECRAFT3_CLIENT_CHUNK_HPP
 
+#include <common/Position.hpp>
 #include <common/Block.hpp>
 #include <common/Light.hpp>
 #include <glm/glm.hpp>
+
+#include <client/ChunkMesh.hpp>
 
 #include <chrono>
 #include <memory>
@@ -63,7 +66,7 @@ public:
 		cmp_xyz[0] = kRevLookUp[idx / 3u];
 	}
 
-	inline const glm::i16vec3 &GetPosition() const { return m_position; }
+	inline const ChunkPos3 &GetPosition() const { return m_position; }
 
 	// Block Getter and Setter
 	inline const Block *GetBlockData() const { return m_blocks; }
@@ -102,8 +105,10 @@ public:
 	inline void SetLight(uint32_t idx, Light l) { m_lights[idx] = l; }
 
 	// Neighbours
-	inline void SetNeighbour(uint32_t idx, const std::weak_ptr<Chunk> &neighbour) { m_neighbours[idx] = neighbour; }
-	inline std::shared_ptr<Chunk> LockNeighbour(uint32_t idx) const { return m_neighbours[idx].lock(); }
+	inline void SetNeighbour(uint32_t idx, const std::weak_ptr<Chunk> &neighbour) {
+		m_neighbour_weak_ptrs[idx] = neighbour;
+	}
+	inline std::shared_ptr<Chunk> LockNeighbour(uint32_t idx) const { return m_neighbour_weak_ptrs[idx].lock(); }
 	template <typename T>
 	inline typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, Block>::type
 	GetBlockFromNeighbour(T x, T y, T z) const {
@@ -124,52 +129,27 @@ public:
 	}
 
 	// World (parent)
-	inline std::shared_ptr<World> LockWorld() const { return m_world.lock(); }
+	inline std::shared_ptr<World> LockWorld() const { return m_world_weak_ptr.lock(); }
 
-	static inline std::shared_ptr<Chunk> Create(const std::weak_ptr<World> &world, const glm::i16vec3 &position) {
+	static inline std::shared_ptr<Chunk> Create(const std::weak_ptr<World> &world, const ChunkPos3 &position) {
 		auto ret = std::make_shared<Chunk>();
 		ret->m_position = position;
-		ret->m_world = world;
+		ret->m_world_weak_ptr = world;
 		return ret;
 	}
+
+	inline std::shared_ptr<ChunkMesh> LockMesh() const { return m_mesh_weak_ptr.lock(); }
+
+	friend class ChunkMesh;
 
 private:
 	Block m_blocks[kSize * kSize * kSize];
 	Light m_lights[kSize * kSize * kSize];
-	glm::i16vec3 m_position;
-	std::weak_ptr<Chunk> m_neighbours[26];
-	std::weak_ptr<World> m_world;
-
-public:             // Data for rendering
-	struct Vertex { // Compressed mesh vertex for chunk
-		// x, y, z, face, AO, sunlight, torchlight; resource, u, v
-		uint32_t x5_y5_z5_face3_ao2_sl4_tl4, tex8_u5_v5;
-		Vertex(uint8_t x, uint8_t y, uint8_t z, BlockFace face, uint8_t ao, LightLvl sunlight, LightLvl torchlight,
-		       BlockTexID tex, uint8_t u, uint8_t v)
-		    : x5_y5_z5_face3_ao2_sl4_tl4(x | (y << 5u) | (z << 10u) | (face << 15u) | (ao << 18u) | (sunlight << 20u) |
-		                                 (torchlight << 24u)),
-		      tex8_u5_v5((tex - 1u) | (u << 8u) | (v << 13u)) {}
-	};
-
-	class Mesh {
-	private:
-		std::chrono::time_point<std::chrono::steady_clock> m_update_time;
-		bool m_updated{false};
-
-		std::vector<Vertex> m_vertices;
-		std::vector<uint16_t> m_indices;
-
-		mutable std::mutex m_mutex;
-
-	public:
-		void Push(std::vector<Vertex> &&vertices, std::vector<uint16_t> &&indices,
-		          const std::chrono::time_point<std::chrono::steady_clock> &starting_time);
-		bool Pop(std::vector<Vertex> *vertices, std::vector<uint16_t> *indices);
-	};
-	inline Mesh &GetMesh() const { return m_mesh; }
-
-private:
-	mutable Mesh m_mesh;
+	ChunkPos3 m_position;
+	std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
+	std::weak_ptr<World> m_world_weak_ptr;
+	std::weak_ptr<ChunkMesh> m_mesh_weak_ptr;
+	std::mutex m_mesh_mutex; // used in ChunkMesh::Create
 };
 
 #endif

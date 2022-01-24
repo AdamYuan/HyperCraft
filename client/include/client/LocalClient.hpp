@@ -16,8 +16,8 @@ public:
 
 	inline const std::shared_ptr<LevelDB> &GetLevelDBPtr() const { return m_level_db_ptr; }
 
-	void LoadChunk(const glm::i16vec3 &chk_pos) override {}
-	void SetBlock(const glm::i16vec3 &chk_pos, uint32_t index, Block block) override {}
+	void LoadChunk(const ChunkPos3 &chk_pos) override {}
+	void SetBlock(const ChunkPos3 &chk_pos, uint32_t index, Block block) override {}
 };
 
 #endif

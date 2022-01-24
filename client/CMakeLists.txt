@@ -37,7 +37,7 @@ add_executable(CubeCraft3_client
         include/client/ClientBase.hpp
         src/LocalClient.cpp
         include/client/LocalClient.hpp
-        )
+        src/ChunkGenerator.cpp include/client/ChunkGenerator.hpp src/ChunkMesh.cpp include/client/ChunkMesh.hpp)
 
 target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
 target_include_directories(CubeCraft3_client PRIVATE include)

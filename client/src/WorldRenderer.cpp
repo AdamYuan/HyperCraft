@@ -3,74 +3,21 @@
 #include <myvk/ShaderModule.hpp>
 #include <spdlog/spdlog.h>
 
-void WorldRenderer::UploadMesh(const std::shared_ptr<Chunk> &chunk) {
-	std::vector<Chunk::Vertex> vertices;
-	std::vector<uint16_t> indices;
+void WorldRenderer::upload_chunk_mesh(const ChunkPos3 &chunk_pos, const std::shared_ptr<ChunkMesh> &chunk_mesh_ptr) {
+	std::scoped_lock lock{m_chunk_meshes_mutex};
 
-	if (!chunk->GetMesh().Pop(&vertices, &indices))
-		return;
-
-	{
-		std::scoped_lock draw_cmd_lock{m_draw_cmd_mutex};
-
-		auto it = m_draw_commands.find(chunk->GetPosition());
-		if (it == m_draw_commands.end()) {
-			DrawCmd cmd;
-			if (push_draw_cmd(vertices, indices, &cmd))
-				m_draw_commands[chunk->GetPosition()] = std::move(cmd);
-		} else
-			push_draw_cmd(vertices, indices, &it->second);
-	}
-
-	spdlog::info("Chunk ({}, {}, {}) Updated mesh", chunk->GetPosition().x, chunk->GetPosition().y,
-	             chunk->GetPosition().z);
-	spdlog::info("DrawCmd Size = {}", m_draw_commands.size());
-}
-
-bool WorldRenderer::push_draw_cmd(const std::vector<Chunk::Vertex> &vertices, const std::vector<uint16_t> &indices,
-                                  WorldRenderer::DrawCmd *draw_cmd) const {
-	if (indices.empty()) {
-		draw_cmd->m_vertex_buffer = nullptr;
-		draw_cmd->m_index_buffer = nullptr;
-
-		return false;
-	}
-
-	std::shared_ptr<myvk::Buffer> m_vertices_staging =
-	    myvk::Buffer::CreateStaging(m_transfer_queue->GetDevicePtr(), vertices.begin(), vertices.end());
-	std::shared_ptr<myvk::Buffer> m_indices_staging =
-	    myvk::Buffer::CreateStaging(m_transfer_queue->GetDevicePtr(), indices.begin(), indices.end());
-
-	draw_cmd->m_vertex_buffer =
-	    myvk::Buffer::Create(m_transfer_queue->GetDevicePtr(), m_vertices_staging->GetSize(), VMA_MEMORY_USAGE_GPU_ONLY,
-	                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-	draw_cmd->m_index_buffer =
-	    myvk::Buffer::Create(m_transfer_queue->GetDevicePtr(), m_indices_staging->GetSize(), VMA_MEMORY_USAGE_GPU_ONLY,
-	                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-
-	std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_transfer_queue);
-	std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
-
-	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	command_buffer->CmdCopy(m_vertices_staging, draw_cmd->m_vertex_buffer, {{0, 0, m_vertices_staging->GetSize()}});
-	command_buffer->CmdCopy(m_indices_staging, draw_cmd->m_index_buffer, {{0, 0, m_indices_staging->GetSize()}});
-	command_buffer->End();
-
-	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_transfer_queue->GetDevicePtr());
-	command_buffer->Submit(fence);
-	fence->Wait();
-
-	spdlog::info("Vertex ({} byte) and Index buffer ({} byte) uploaded", m_vertices_staging->GetSize(),
-	             m_indices_staging->GetSize());
-
-	return true;
+	auto it = m_chunk_meshes.find(chunk_pos);
+	if (it == m_chunk_meshes.end()) {
+		m_chunk_meshes[chunk_pos] = chunk_mesh_ptr;
+	} else
+		it->second = chunk_mesh_ptr;
 }
 
 void WorldRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {
 	const std::shared_ptr<myvk::Device> &device = m_transfer_queue->GetDevicePtr();
 	m_pipeline_layout = myvk::PipelineLayout::Create(
 	    device, {m_texture_ptr->GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout()},
-	    {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t) * 4}});
+	    {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(int32_t) * 3}});
 
 	constexpr uint32_t kWorldVertSpv[] = {
 #include <client/shader/world.vert.u32>
@@ -88,7 +35,7 @@ void WorldRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
 
 	myvk::GraphicsPipelineState pipeline_state = {};
-	pipeline_state.m_vertex_input_state.Enable({{0, sizeof(Chunk::Vertex), VK_VERTEX_INPUT_RATE_VERTEX}},
+	pipeline_state.m_vertex_input_state.Enable({{0, sizeof(ChunkMesh::Vertex), VK_VERTEX_INPUT_RATE_VERTEX}},
 	                                           {{0, 0, VK_FORMAT_R32G32_UINT, 0}});
 	pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 	pipeline_state.m_viewport_state.Enable(1, 1);
@@ -118,26 +65,14 @@ void WorldRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &
 	command_buffer->CmdSetViewport({viewport});
 
 	{
-		std::scoped_lock draw_cmd_lock{m_draw_cmd_mutex};
+		std::scoped_lock global_lock{m_chunk_meshes_mutex};
 
-		for (auto i = m_draw_commands.begin(); i != m_draw_commands.end();) {
-			DrawCmd &cmd = i->second;
-			cmd.m_frame_vertices[current_frame] = cmd.m_vertex_buffer;
-			cmd.m_frame_indices[current_frame] = cmd.m_index_buffer;
-
-			if (!cmd.m_vertex_buffer) {
-				if (std::all_of(cmd.m_frame_vertices, cmd.m_frame_vertices + kFrameCount,
-				                [](const std::shared_ptr<myvk::Buffer> &x) -> bool { return x == nullptr; })) {
-					i = m_draw_commands.erase(i);
-					continue;
-				}
-			} else {
-				command_buffer->CmdBindVertexBuffer(cmd.m_vertex_buffer, 0);
-				command_buffer->CmdBindIndexBuffer(cmd.m_index_buffer, 0, VK_INDEX_TYPE_UINT16);
-
-				command_buffer->CmdDrawIndexed(cmd.m_index_buffer->GetSize() / sizeof(uint16_t), 1, 0, 0, 0);
-			}
-			++i;
+		for (auto i = m_chunk_meshes.begin(); i != m_chunk_meshes.end();) {
+			const std::shared_ptr<ChunkMesh> &chunk_mesh = i->second;
+			if (chunk_mesh->CmdDraw(command_buffer, m_pipeline_layout, i->first, current_frame))
+				i = m_chunk_meshes.erase(i);
+			else
+				++i;
 		}
 	}
 }

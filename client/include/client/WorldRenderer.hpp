@@ -2,6 +2,7 @@
 #define CUBECRAFT3_CLIENT_WORLD_RENDERER_HPP
 
 #include <client/Camera.hpp>
+#include <client/ChunkMesh.hpp>
 #include <client/Config.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/World.hpp>
@@ -18,15 +19,11 @@ private:
 	// Vulkan Queue
 	std::shared_ptr<myvk::Queue> m_transfer_queue;
 
-	// Draw Commands
-	struct DrawCmd {
-		std::shared_ptr<myvk::Buffer> m_vertex_buffer, m_index_buffer;
-		std::shared_ptr<myvk::Buffer> m_frame_vertices[kFrameCount], m_frame_indices[kFrameCount];
-	};
-	mutable std::unordered_map<glm::i16vec3, DrawCmd> m_draw_commands;
-	mutable std::mutex m_draw_cmd_mutex;
-	bool push_draw_cmd(const std::vector<Chunk::Vertex> &vertices, const std::vector<uint16_t> &indices,
-	                   DrawCmd *draw_cmd) const;
+	// Chunk Meshes
+	mutable std::unordered_map<ChunkPos3, std::shared_ptr<ChunkMesh>> m_chunk_meshes;
+	mutable std::mutex m_chunk_meshes_mutex;
+	void upload_chunk_mesh(const ChunkPos3 &chunk_pos, const std::shared_ptr<ChunkMesh> &chunk_mesh_ptr);
+	friend class ChunkMesh;
 
 	// Pipeline
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
@@ -53,9 +50,8 @@ public:
 		return ret;
 	}
 
-	void UploadMesh(const std::shared_ptr<Chunk> &chunk); // A thread-safe function for mesh uploading
-
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world_ptr; }
+	inline const std::shared_ptr<myvk::Queue> &GetTransferQueue() const { return m_transfer_queue; }
 
 	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, const VkExtent2D &extent,
 	                     uint32_t current_frame) const;

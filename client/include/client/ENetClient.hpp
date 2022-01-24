@@ -30,8 +30,8 @@ public:
 	bool AsyncConnect(const char *host, uint16_t port, uint32_t timeout = 5000);
 	bool TryGetConnected();
 
-	void LoadChunk(const glm::i16vec3 &chk_pos) override {}
-	void SetBlock(const glm::i16vec3 &chk_pos, uint32_t index, Block block) override {}
+	void LoadChunk(const ChunkPos3 &chk_pos) override {}
+	void SetBlock(const ChunkPos3 &chk_pos, uint32_t index, Block block) override {}
 };
 
 #endif
