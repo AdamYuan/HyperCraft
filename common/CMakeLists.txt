@@ -7,6 +7,7 @@ add_library(CubeCraft3_common_header INTERFACE)
 target_include_directories(CubeCraft3_common_header INTERFACE include)
 
 add_library(CubeCraft3_common STATIC
+        include/common/Endian.hpp
         include/common/Block.hpp
         include/common/Light.hpp
         include/common/Message.hpp

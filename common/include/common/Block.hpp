@@ -2,6 +2,7 @@
 #define CUBECRAFT3_COMMON_BLOCK_HPP
 
 #include <cinttypes>
+#include <common/Endian.hpp>
 #include <type_traits>
 
 using BlockFace = uint8_t;
@@ -63,7 +64,7 @@ private:
 	union {
 		uint16_t m_data;
 		struct {
-#ifndef IS_BIG_ENDIAN
+#ifdef IS_SMALL_ENDIAN
 			uint8_t m_id, m_meta; // regular order for little endian
 #else
 			uint8_t m_meta, m_id;

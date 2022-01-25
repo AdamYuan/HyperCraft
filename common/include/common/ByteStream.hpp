@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include <common/Endian.hpp>
+
 class InputByteStream {
 private:
 	std::vector<uint8_t> m_data{};
@@ -18,9 +20,8 @@ public:
 			T data;
 			uint8_t bytes[sizeof(T)];
 		} u = {x};
-#ifdef IS_BIG_ENDIAN // reverse bytes in big endian machine
-		std::reverse(u.bytes, u.bytes + sizeof(T));
-#endif
+		if constexpr (is_big_endian()) // reverse bytes in big endian machine
+			std::reverse(u.bytes, u.bytes + sizeof(T));
 		m_data.insert(m_data.end(), u.bytes, u.bytes + sizeof(T));
 	}
 	inline void Push(std::string_view str) {
@@ -42,9 +43,8 @@ public:
 			uint8_t bytes[sizeof(T)];
 		} u;
 		std::copy(m_begin, m_begin + sizeof(T), u.bytes);
-#ifdef IS_BIG_ENDIAN // reverse bytes in big endian machine
-		std::reverse(u.bytes, u.bytes + sizeof(T));
-#endif
+		if constexpr (is_big_endian()) // reverse bytes in big endian machine
+			std::reverse(u.bytes, u.bytes + sizeof(T));
 		m_begin += sizeof(T);
 		return u.data;
 	}
