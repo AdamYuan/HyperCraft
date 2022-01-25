@@ -1,6 +1,11 @@
 #ifndef CUBECRAFT3_COMMON_BYTE_STREAM_HPP
 #define CUBECRAFT3_COMMON_BYTE_STREAM_HPP
 
+#include <algorithm>
+#include <cinttypes>
+#include <string>
+#include <vector>
+
 class InputByteStream {
 private:
 	std::vector<uint8_t> m_data{};

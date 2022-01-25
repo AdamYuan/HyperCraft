@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_COMMON_ATOMIC_SHARED_PTR_HPP
-#define CUBECRAFT3_COMMON_ATOMIC_SHARED_PTR_HPP
+#ifndef ATOMIC_SHARED_PTR_HPP
+#define ATOMIC_SHARED_PTR_HPP
 
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// copy from
+// copied from
 // https://github.com/facebook/folly/blob/master/folly/concurrency/detail/AtomicSharedPtr-detail.h
 // https://github.com/facebook/folly/blob/master/folly/PackedSyncPtr.h
 // https://github.com/facebook/folly/blob/master/folly/concurrency/AtomicSharedPtr.h
@@ -547,6 +547,6 @@ private:
 	}
 };
 
-} // namespace std
+} // namespace folly
 
 #endif
