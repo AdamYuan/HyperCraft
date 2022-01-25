@@ -10,9 +10,10 @@
 #include <myvk/Buffer.hpp>
 #include <myvk/CommandBuffer.hpp>
 
-#include <mutex>
+#include <atomic_shared_ptr.hpp>
 
 class Chunk;
+
 class ChunkMesh : public std::enable_shared_from_this<ChunkMesh> {
 public:
 	// Data for rendering
@@ -33,8 +34,8 @@ public:
 private:
 	std::weak_ptr<Chunk> m_chunk_weak_ptr;
 
-	std::shared_ptr<myvk::Buffer> m_vertex_buffer, m_index_buffer;
-	std::shared_ptr<myvk::Buffer> m_frame_vertices[kFrameCount], m_frame_indices[kFrameCount];
+	std::atomic_shared_ptr<myvk::Buffer> m_buffer;
+	std::shared_ptr<myvk::Buffer> m_frame_buffers[kFrameCount];
 
 public:
 	static std::shared_ptr<ChunkMesh> Allocate(const std::shared_ptr<Chunk> &chunk_ptr);
