@@ -1,7 +1,7 @@
 #ifndef CUBECRAFT3_CLIENT_CHUNK_WORKER_HPP
 #define CUBECRAFT3_CLIENT_CHUNK_WORKER_HPP
 
-#include "Chunk.hpp"
+#include <client/Chunk.hpp>
 
 class ChunkWorker {
 private:
@@ -9,28 +9,23 @@ private:
 
 protected:
 	std::shared_ptr<Chunk> m_chunk_ptr;
-	virtual inline bool lock() { return (m_chunk_ptr = m_chunk_weak_ptr.lock()) != nullptr; };
+	virtual inline bool lock() { return (m_chunk_ptr = m_chunk_weak_ptr.lock()) != nullptr; }
+	void push_worker(std::unique_ptr<ChunkWorker> &&worker) const;
 
 public:
 	virtual void Run() = 0;
 	inline explicit ChunkWorker(const std::weak_ptr<Chunk> &chunk_ptr) : m_chunk_weak_ptr(chunk_ptr) {}
 };
 
-#include <glm/gtx/string_cast.hpp>
-#include <spdlog/spdlog.h>
 class ChunkWorkerS26 : public ChunkWorker {
 protected:
 	std::shared_ptr<Chunk> m_neighbour_chunk_ptr[26];
 	inline bool lock() override {
-		if (!ChunkWorker::lock()) {
-			spdlog::error("chunk not locked");
+		if (!ChunkWorker::lock())
 			return false;
-		}
 		for (uint32_t i = 0; i < 26; ++i)
-			if ((m_neighbour_chunk_ptr[i] = m_chunk_ptr->LockNeighbour(i)) == nullptr) {
-				spdlog::error("neighbour {} not locked for chunk {}", i, glm::to_string(m_chunk_ptr->GetPosition()));
+			if ((m_neighbour_chunk_ptr[i] = m_chunk_ptr->LockNeighbour(i)) == nullptr)
 				return false;
-			}
 		return true;
 	}
 	template <typename T>

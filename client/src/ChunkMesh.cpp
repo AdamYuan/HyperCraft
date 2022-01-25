@@ -2,44 +2,42 @@
 
 #include <client/WorldRenderer.hpp>
 
-std::shared_ptr<ChunkMesh> ChunkMesh::Allocate(const std::shared_ptr<Chunk> &chunk_ptr) {
-	std::scoped_lock lock{chunk_ptr->m_mesh_mutex};
+#include <spdlog/spdlog.h>
 
-	std::shared_ptr<ChunkMesh> ret = chunk_ptr->LockMesh();
-	if (ret)
-		return ret;
+bool ChunkMesh::Register() {
+	std::shared_ptr<Chunk> chunk;
 	std::shared_ptr<WorldRenderer> world_renderer;
 	{
-		std::shared_ptr<World> world = chunk_ptr->LockWorld();
+		chunk = m_chunk_weak_ptr.lock();
+		if (!chunk)
+			return false;
+		std::shared_ptr<World> world = chunk->LockWorld();
 		if (!world)
-			return nullptr;
+			return false;
 		world_renderer = world->LockWorldRenderer();
 		if (!world_renderer)
-			return nullptr;
+			return false;
 	}
-	ret = std::make_shared<ChunkMesh>();
-	ret->m_chunk_weak_ptr = chunk_ptr;
-	world_renderer->upload_chunk_mesh(chunk_ptr->GetPosition(), ret);
-	chunk_ptr->m_mesh_weak_ptr = ret;
-	return ret;
+	world_renderer->upload_chunk_mesh(chunk, shared_from_this());
+	return true;
 }
 
-void ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
+bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 	std::shared_ptr<WorldRenderer> world_renderer;
 	{ // Access transfer queue
 		std::shared_ptr<Chunk> chunk = m_chunk_weak_ptr.lock();
 		if (!chunk)
-			return;
+			return false;
 		std::shared_ptr<World> world = chunk->LockWorld();
 		if (!world)
-			return;
+			return false;
 		world_renderer = world->LockWorldRenderer();
 		if (!world_renderer)
-			return;
+			return false;
 	}
 	if (update_info.indices.empty()) {
 		m_buffer.store(nullptr, std::memory_order_release);
-		return;
+		return true;
 	}
 	const std::shared_ptr<myvk::Queue> &transfer_queue = world_renderer->GetTransferQueue();
 
@@ -69,8 +67,9 @@ void ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 		m_buffer.store(buffer, std::memory_order_release);
 	}
 
-	spdlog::info("Vertex ({} byte) and Index buffer ({} byte) uploaded", m_vertices_staging->GetSize(),
-	             m_indices_staging->GetSize());
+	// spdlog::info("Vertex ({} byte) and Index buffer ({} byte) uploaded", m_vertices_staging->GetSize(),
+	//              m_indices_staging->GetSize());
+	return true;
 }
 bool ChunkMesh::CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
                         const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, const ChunkPos3 &chunk_pos,

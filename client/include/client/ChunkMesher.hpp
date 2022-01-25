@@ -6,9 +6,6 @@
 #include <chrono>
 
 class ChunkMesher : public ChunkWorkerS26 {
-private:
-	std::chrono::time_point<std::chrono::steady_clock> m_starting_time;
-
 public:
 	static inline std::unique_ptr<ChunkWorker> Create(const std::weak_ptr<Chunk> &chunk_ptr) {
 		return std::make_unique<ChunkMesher>(chunk_ptr);

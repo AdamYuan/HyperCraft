@@ -7,8 +7,6 @@
 #include <client/GlobalTexture.hpp>
 #include <client/World.hpp>
 
-#include <shared_mutex>
-
 #include <myvk/Buffer.hpp>
 #include <myvk/CommandBuffer.hpp>
 #include <myvk/DescriptorSet.hpp>
@@ -22,7 +20,7 @@ private:
 	// Chunk Meshes
 	mutable std::unordered_map<ChunkPos3, std::shared_ptr<ChunkMesh>> m_chunk_meshes;
 	mutable std::mutex m_chunk_meshes_mutex;
-	void upload_chunk_mesh(const ChunkPos3 &chunk_pos, const std::shared_ptr<ChunkMesh> &chunk_mesh_ptr);
+	void upload_chunk_mesh(const std::shared_ptr<Chunk> &chunk_ptr, const std::shared_ptr<ChunkMesh> &chunk_mesh_ptr);
 	friend class ChunkMesh;
 
 	// Pipeline

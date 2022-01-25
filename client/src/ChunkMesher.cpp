@@ -310,13 +310,24 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	}
 }
 
-#include <random>
-
+#include <atomic>
 void ChunkMesher::Run() {
 	if (!lock())
 		return;
 
-	m_starting_time = std::chrono::steady_clock::now();
+	// if the neighbour chunks are not totally generated, return and move it back
+	if (!m_chunk_ptr->HaveFlags(Chunk::Flag::kGenerated)) {
+		push_worker(ChunkMesher::Create(m_chunk_ptr));
+		spdlog::info("remesh");
+		return;
+	}
+	for (const auto &i : m_neighbour_chunk_ptr)
+		if (!i->HaveFlags(Chunk::Flag::kGenerated)) {
+			push_worker(ChunkMesher::Create(m_chunk_ptr));
+			spdlog::info("remesh");
+			return;
+		}
+
 	std::vector<ChunkMesh::Vertex> vertices;
 	std::vector<uint16_t> indices;
 	{
@@ -326,13 +337,12 @@ void ChunkMesher::Run() {
 	}
 	spdlog::info("Chunk ({}, {}, {}) meshed with {} vertices and {} indices", m_chunk_ptr->GetPosition().x,
 	             m_chunk_ptr->GetPosition().y, m_chunk_ptr->GetPosition().z, vertices.size(), indices.size());
-	std::shared_ptr<ChunkMesh> chunk_mesh = ChunkMesh::Allocate(m_chunk_ptr);
-	if (chunk_mesh)
+
+	std::shared_ptr<ChunkMesh> chunk_mesh = m_chunk_ptr->LockMesh();
+	if (!chunk_mesh) {
+		chunk_mesh = ChunkMesh::Create(m_chunk_ptr);
 		chunk_mesh->Update({std::move(vertices), std::move(indices)});
-
-	std::mt19937 gen{std::random_device{}()};
-	m_chunk_ptr->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
-
-	if (gen() % 50)
-		m_chunk_ptr->LockWorld()->PushWorker(ChunkMesher::Create(m_chunk_ptr));
+		chunk_mesh->Register();
+	} else
+		chunk_mesh->Update({std::move(vertices), std::move(indices)});
 }

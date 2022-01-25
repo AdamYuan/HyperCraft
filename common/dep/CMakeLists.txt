@@ -18,6 +18,9 @@ add_subdirectory(enet)
 
 add_library(common_dep STATIC
         concurrentqueue.h
+        lightweightsemaphore.h
+        blockingconcurrentqueue.h
+
         atomic_shared_ptr.hpp
         sqlite3.c
         sqlite3.h

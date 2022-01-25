@@ -1,9 +1,9 @@
 #ifndef CUBECRAFT3_CLIENT_CHUNK_HPP
 #define CUBECRAFT3_CLIENT_CHUNK_HPP
 
-#include <common/Position.hpp>
 #include <common/Block.hpp>
 #include <common/Light.hpp>
+#include <common/Position.hpp>
 #include <glm/glm.hpp>
 
 #include <client/ChunkMesh.hpp>
@@ -131,6 +131,20 @@ public:
 	// World (parent)
 	inline std::shared_ptr<World> LockWorld() const { return m_world_weak_ptr.lock(); }
 
+	// Mesh
+	inline std::shared_ptr<ChunkMesh> LockMesh() const { return m_mesh_weak_ptr.lock(); }
+	friend class WorldRenderer;
+
+	// Flags
+	using Flags = uint16_t;
+	enum Flag : Flags { kGenerated = 1u << 0u, kDecorated = 1u << 1u, kAll = 0xffu };
+	Flags GetFlags() const { return m_flags; }
+	bool HaveFlags(Flags flags) const { return (m_flags & flags) == flags; }
+	void EnableFlags(Flags flags) { m_flags |= flags; }
+	void DisableFlags(Flags flags) { m_flags &= (~flags); }
+	void ToggleFlags(Flags flags) { m_flags ^= flags; }
+
+	// Creation
 	static inline std::shared_ptr<Chunk> Create(const std::weak_ptr<World> &world, const ChunkPos3 &position) {
 		auto ret = std::make_shared<Chunk>();
 		ret->m_position = position;
@@ -138,18 +152,20 @@ public:
 		return ret;
 	}
 
-	inline std::shared_ptr<ChunkMesh> LockMesh() const { return m_mesh_weak_ptr.lock(); }
-
-	friend class ChunkMesh;
-
 private:
 	Block m_blocks[kSize * kSize * kSize];
 	Light m_lights[kSize * kSize * kSize];
+
 	ChunkPos3 m_position;
+
 	std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
+
 	std::weak_ptr<World> m_world_weak_ptr;
+
 	std::weak_ptr<ChunkMesh> m_mesh_weak_ptr;
 	std::mutex m_mesh_mutex; // used in ChunkMesh::Create
+
+	Flags m_flags{};
 };
 
 #endif

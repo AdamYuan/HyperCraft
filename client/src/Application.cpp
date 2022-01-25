@@ -1,5 +1,4 @@
 #include <client/Application.hpp>
-#include <client/ChunkMesher.hpp>
 #include <client/Config.hpp>
 #include <client/World.hpp>
 #include <client/WorldRenderer.hpp>
@@ -108,6 +107,8 @@ Application::Application() {
 
 #include <FastNoise/FastNoise.h>
 
+#include <client/ChunkGenerator.hpp>
+
 void Application::Run() {
 	auto fnSimplex = FastNoise::New<FastNoise::Simplex>();
 	std::shared_ptr<ENetClient> client = ENetClient::Create(m_world);
@@ -119,17 +120,16 @@ void Application::Run() {
 			for (int16_t k = -kR; k <= kR; ++k) {
 				m_world->PushChunk({i, j, k});
 			}
-	for (int16_t i = -kR + 1; i <= kR - 1; ++i)
-		for (int16_t j = -kR + 1; j <= kR - 1; ++j)
-			for (int16_t k = -kR + 1; k <= kR - 1; ++k) {
-				m_world->PushWorker(ChunkMesher::Create(m_world->FindChunk({i, j, k})));
+	for (int16_t i = -kR; i <= kR; ++i)
+		for (int16_t j = -kR; j <= kR; ++j)
+			for (int16_t k = -kR; k <= kR; ++k) {
+				m_world->PushWorker(ChunkGenerator::Create(m_world->FindChunk({i, j, k})));
 			}
-
-	/* std::mt19937 gen{std::random_device{}()};
-	for (uint32_t i = 0; i < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++i) {
-	    chk->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, Blocks::kSand);
-	    m_world->PushWorker(ChunkMesher::Create(chk));
-	} */
+	/* for (int16_t i = -kR + 1; i <= kR - 1; ++i)
+	    for (int16_t j = -kR + 1; j <= kR - 1; ++j)
+	        for (int16_t k = -kR + 1; k <= kR - 1; ++k) {
+	            m_world->PushWorker(ChunkMesher::Create(m_world->FindChunk({i, j, k})));
+	        } */
 
 	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
 
@@ -145,9 +145,9 @@ void Application::Run() {
 		ImGui::NewFrame();
 
 		ImGui::Begin("Test");
-		ImGui::Button("2333");
-		ImGui::Text("%f", ImGui::GetIO().Framerate);
-		ImGui::Text("%f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
+		ImGui::Text("fps: %f", ImGui::GetIO().Framerate);
+		ImGui::Text("frame time: %.1f ms", delta.count() * 1000.0f);
+		ImGui::Text("cam: %f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
 		ImGui::End();
 
 		ImGui::Render();

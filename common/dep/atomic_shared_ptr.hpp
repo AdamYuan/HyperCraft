@@ -29,11 +29,11 @@
 #include <type_traits>
 #include <vector>
 
-#if !__x86_64__
+/* #if !__x86_64__
 #error "PackedSyncPtr is x64 specific code."
-#endif
+#endif */
 
-namespace std {
+namespace folly {
 namespace detail {
 
 // This implementation is specific to libstdc++, now accepting

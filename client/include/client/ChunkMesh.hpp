@@ -34,13 +34,18 @@ public:
 private:
 	std::weak_ptr<Chunk> m_chunk_weak_ptr;
 
-	std::atomic_shared_ptr<myvk::Buffer> m_buffer;
+	folly::atomic_shared_ptr<myvk::Buffer> m_buffer;
 	std::shared_ptr<myvk::Buffer> m_frame_buffers[kFrameCount];
 
 public:
-	static std::shared_ptr<ChunkMesh> Allocate(const std::shared_ptr<Chunk> &chunk_ptr);
+	inline static std::shared_ptr<ChunkMesh> Create(const std::weak_ptr<Chunk> &chunk_weak_ptr) {
+		std::shared_ptr<ChunkMesh> ret = std::make_shared<ChunkMesh>();
+		ret->m_chunk_weak_ptr = chunk_weak_ptr;
+		return ret;
+	}
+	bool Register();
 
-	void Update(const UpdateInfo &update_info);
+	bool Update(const UpdateInfo &update_info);
 	bool CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
 	             const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, const ChunkPos3 &chunk_pos,
 	             uint32_t frame); // if the mesh can be destroyed, return true

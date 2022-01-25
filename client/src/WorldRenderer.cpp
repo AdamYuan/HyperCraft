@@ -3,14 +3,14 @@
 #include <myvk/ShaderModule.hpp>
 #include <spdlog/spdlog.h>
 
-void WorldRenderer::upload_chunk_mesh(const ChunkPos3 &chunk_pos, const std::shared_ptr<ChunkMesh> &chunk_mesh_ptr) {
+void WorldRenderer::upload_chunk_mesh(const std::shared_ptr<Chunk> &chunk_ptr,
+                                      const std::shared_ptr<ChunkMesh> &chunk_mesh_ptr) {
 	std::scoped_lock lock{m_chunk_meshes_mutex};
 
-	auto it = m_chunk_meshes.find(chunk_pos);
-	if (it == m_chunk_meshes.end()) {
-		m_chunk_meshes[chunk_pos] = chunk_mesh_ptr;
-	} else
-		it->second = chunk_mesh_ptr;
+	m_chunk_meshes[chunk_ptr->GetPosition()] = chunk_mesh_ptr;
+	chunk_ptr->m_mesh_weak_ptr = chunk_mesh_ptr;
+
+	spdlog::info("chunk mesh count: {}", m_chunk_meshes.size());
 }
 
 void WorldRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass) {

@@ -3,12 +3,13 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtx/hash.hpp>
+
+#include <blockingconcurrentqueue.h>
+
+#include <atomic>
+#include <thread>
 #include <unordered_map>
 #include <vector>
-
-#include <concurrentqueue.h>
-#include <thread>
 
 #include <client/Chunk.hpp>
 #include <client/ChunkWorker.hpp>
@@ -31,8 +32,8 @@ private:
 	std::unordered_map<ChunkPos3, std::shared_ptr<Chunk>> m_chunks;
 
 	// Chunk workers
-	bool m_chunk_threads_run = true;
-	moodycamel::ConcurrentQueue<std::unique_ptr<ChunkWorker>> m_chunk_workers;
+	std::atomic_bool m_chunk_threads_running{true};
+	moodycamel::BlockingConcurrentQueue<std::unique_ptr<ChunkWorker>> m_chunk_workers;
 	std::vector<std::thread> m_chunk_threads;
 
 	void launch_chunk_threads();
