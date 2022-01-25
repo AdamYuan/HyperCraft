@@ -9,13 +9,13 @@ void ChunkGenerator::Run() {
 	if (!lock())
 		return;
 
-	if (m_chunk_ptr->GetPosition().y <= 0) {
+	if (m_chunk_ptr->GetPosition().y < 0) {
 		std::mt19937 gen{std::random_device{}()};
 		for (uint32_t i = 0; i < 1000; ++i)
 			m_chunk_ptr->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
 	} else {
 		std::mt19937 gen{std::random_device{}()};
-		for (uint32_t i = 0; i < 1; ++i)
+		for (uint32_t i = 0; i < 10; ++i)
 			m_chunk_ptr->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
 	}
 

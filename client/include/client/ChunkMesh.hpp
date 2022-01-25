@@ -3,6 +3,7 @@
 
 #include <client/Config.hpp>
 
+#include <common/AABB.hpp>
 #include <common/Block.hpp>
 #include <common/Light.hpp>
 #include <common/Position.hpp>
@@ -29,13 +30,22 @@ public:
 	struct UpdateInfo {
 		std::vector<Vertex> vertices;
 		std::vector<uint16_t> indices;
+		AABB<uint_fast8_t> aabb;
 	};
 
 private:
+	// buffers
+	std::shared_ptr<myvk::Buffer> m_frame_buffers[kFrameCount];
+
+	// updates
+	folly::atomic_shared_ptr<myvk::Buffer> m_atomic_buffer;
+
+	// parent chunk
 	std::weak_ptr<Chunk> m_chunk_weak_ptr;
 
-	folly::atomic_shared_ptr<myvk::Buffer> m_buffer;
-	std::shared_ptr<myvk::Buffer> m_frame_buffers[kFrameCount];
+	// misc
+	glm::i32vec3 m_base_pos;
+	fAABB m_aabb;
 
 public:
 	inline static std::shared_ptr<ChunkMesh> Create(const std::weak_ptr<Chunk> &chunk_weak_ptr) {
@@ -47,11 +57,14 @@ public:
 
 	bool Update(const UpdateInfo &update_info);
 	bool CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-	             const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, const ChunkPos3 &chunk_pos,
+	             const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout,
 	             uint32_t frame); // if the mesh can be destroyed, return true
 
 	inline const std::weak_ptr<Chunk> &GetChunkWeakPtr() const { return m_chunk_weak_ptr; }
 	inline std::shared_ptr<Chunk> LockChunk() const { return m_chunk_weak_ptr.lock(); }
+
+	inline const glm::i32vec3 &GetBasePosition() const { return m_base_pos; }
+	inline const fAABB &GetAABB() const { return m_aabb; }
 };
 
 #endif

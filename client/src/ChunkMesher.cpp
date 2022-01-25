@@ -5,6 +5,8 @@
 #include <bitset>
 #include <spdlog/spdlog.h>
 
+#include <glm/gtx/string_cast.hpp>
+
 void ChunkMesher::generate_face_lights(
     ChunkMesher::Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
 
@@ -45,8 +47,11 @@ void ChunkMesher::generate_face_lights(
 	}
 }
 
-void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
-                                std::vector<ChunkMesh::Vertex> *vertices, std::vector<uint16_t> *indices) const {
+AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
+                                              std::vector<ChunkMesh::Vertex> *vertices,
+                                              std::vector<uint16_t> *indices) const {
+	AABB<uint_fast8_t> aabb;
+
 	uint32_t cur_vertex = 0;
 
 	for (uint_fast8_t axis = 0; axis < 3; ++axis) {
@@ -201,6 +206,8 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 						           quad_texture.GetID(),
 						           v11u,
 						           v11v};
+						aabb.Merge(
+						    {{x[0], x[1], x[2]}, {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]}});
 
 						// spdlog::info("Face: x={}, y={}, z={}, x'={}, y'={}, z'={}", x[0], x[1], x[2],
 						//              x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]);
@@ -254,6 +261,7 @@ void ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::k
 			}
 		}
 	}
+	return aabb;
 }
 
 void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_blocks[27],
@@ -310,7 +318,6 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	}
 }
 
-#include <atomic>
 void ChunkMesher::Run() {
 	if (!lock())
 		return;
@@ -330,13 +337,15 @@ void ChunkMesher::Run() {
 
 	std::vector<ChunkMesh::Vertex> vertices;
 	std::vector<uint16_t> indices;
+	AABB<uint_fast8_t> aabb;
 	{
 		Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6];
 		generate_face_lights(face_lights);
-		generate_mesh(face_lights, &vertices, &indices);
+		aabb = generate_mesh(face_lights, &vertices, &indices);
 	}
-	spdlog::info("Chunk ({}, {}, {}) meshed with {} vertices and {} indices", m_chunk_ptr->GetPosition().x,
-	             m_chunk_ptr->GetPosition().y, m_chunk_ptr->GetPosition().z, vertices.size(), indices.size());
+	spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
+	             glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
+	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax()));
 
 	std::shared_ptr<ChunkMesh> chunk_mesh = m_chunk_ptr->LockMesh();
 	if (!chunk_mesh) {

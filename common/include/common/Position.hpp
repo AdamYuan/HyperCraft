@@ -9,6 +9,7 @@
 #include <glm/gtx/hash.hpp>
 #include <cinttypes>
 
-using ChunkPos3 = glm::i16vec3;
+using ChunkPos1 = int16_t;
+using ChunkPos3 = glm::vec<3, ChunkPos1>;
 
 #endif

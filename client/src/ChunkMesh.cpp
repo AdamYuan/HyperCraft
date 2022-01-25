@@ -1,7 +1,7 @@
 #include <client/ChunkMesh.hpp>
 
 #include <client/WorldRenderer.hpp>
-
+#include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>
 
 bool ChunkMesh::Register() {
@@ -11,6 +11,9 @@ bool ChunkMesh::Register() {
 		chunk = m_chunk_weak_ptr.lock();
 		if (!chunk)
 			return false;
+		// Initialize base position
+		m_base_pos = (glm::i32vec3)chunk->GetPosition() * (int32_t)Chunk::kSize;
+
 		std::shared_ptr<World> world = chunk->LockWorld();
 		if (!world)
 			return false;
@@ -28,6 +31,7 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 		std::shared_ptr<Chunk> chunk = m_chunk_weak_ptr.lock();
 		if (!chunk)
 			return false;
+
 		std::shared_ptr<World> world = chunk->LockWorld();
 		if (!world)
 			return false;
@@ -35,10 +39,16 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 		if (!world_renderer)
 			return false;
 	}
+	// if empty, set as nullptr and return
 	if (update_info.indices.empty()) {
-		m_buffer.store(nullptr, std::memory_order_release);
+		m_atomic_buffer.store(nullptr, std::memory_order_release);
 		return true;
 	}
+
+	// update AABB
+	m_aabb = (fAABB)((i32AABB)update_info.aabb + m_base_pos);
+
+	// upload buffer
 	const std::shared_ptr<myvk::Queue> &transfer_queue = world_renderer->GetTransferQueue();
 
 	std::shared_ptr<myvk::Buffer> m_vertices_staging = myvk::Buffer::CreateStaging(
@@ -64,7 +74,7 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 		command_buffer->Submit(fence);
 		fence->Wait();
 
-		m_buffer.store(buffer, std::memory_order_release);
+		m_atomic_buffer.store(buffer, std::memory_order_release);
 	}
 
 	// spdlog::info("Vertex ({} byte) and Index buffer ({} byte) uploaded", m_vertices_staging->GetSize(),
@@ -72,23 +82,20 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 	return true;
 }
 bool ChunkMesh::CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-                        const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, const ChunkPos3 &chunk_pos,
-                        uint32_t frame) {
-	m_frame_buffers[frame] = m_buffer.load(std::memory_order_acquire);
-	const std::shared_ptr<myvk::Buffer> &current_buffer = m_frame_buffers[frame];
-
-	if (!current_buffer) {
+                        const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, uint32_t frame) {
+	const std::shared_ptr<myvk::Buffer> &buffer =
+	    (m_frame_buffers[frame] = m_atomic_buffer.load(std::memory_order_acquire));
+	if (!buffer) {
 		if (std::all_of(m_frame_buffers, m_frame_buffers + kFrameCount,
 		                [](const std::shared_ptr<myvk::Buffer> &x) -> bool { return x == nullptr; })) {
 			return true;
 		}
 	} else {
-		int32_t pos[] = {(int32_t)chunk_pos.x * (int32_t)Chunk::kSize, (int32_t)chunk_pos.y * (int32_t)Chunk::kSize,
-		                 (int32_t)chunk_pos.z * (int32_t)Chunk::kSize};
-		uint32_t face_count = current_buffer->GetSize() / (4 * sizeof(Vertex) + 6 * sizeof(uint16_t));
-		command_buffer->CmdPushConstants(pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 3 * sizeof(int32_t), pos);
-		command_buffer->CmdBindVertexBuffer(current_buffer, 0);
-		command_buffer->CmdBindIndexBuffer(current_buffer, face_count * (4 * sizeof(Vertex)), VK_INDEX_TYPE_UINT16);
+		uint32_t face_count = buffer->GetSize() / (4 * sizeof(Vertex) + 6 * sizeof(uint16_t));
+		command_buffer->CmdPushConstants(pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 3 * sizeof(int32_t),
+		                                 glm::value_ptr(m_base_pos));
+		command_buffer->CmdBindVertexBuffer(buffer, 0);
+		command_buffer->CmdBindIndexBuffer(buffer, face_count * (4 * sizeof(Vertex)), VK_INDEX_TYPE_UINT16);
 
 		command_buffer->CmdDrawIndexed(face_count * 6, 1, 0, 0, 0);
 	}
