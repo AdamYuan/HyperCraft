@@ -2,6 +2,7 @@
 #define CUBECRAFT3_COMMON_CHUNK_MESH_HPP
 
 #include <client/Config.hpp>
+#include <client/Frustum.hpp>
 
 #include <common/AABB.hpp>
 #include <common/Block.hpp>
@@ -57,7 +58,7 @@ public:
 
 	bool Update(const UpdateInfo &update_info);
 	bool CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-	             const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout,
+	             const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, const Frustum &frustum,
 	             uint32_t frame); // if the mesh can be destroyed, return true
 
 	inline const std::weak_ptr<Chunk> &GetChunkWeakPtr() const { return m_chunk_weak_ptr; }

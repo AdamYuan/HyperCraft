@@ -12,7 +12,7 @@ layout(location = 4) out float vTorchlight;
 layout(location = 5) out flat uint vTexture;
 layout(location = 6) out vec2 vTexcoord;
 
-layout(set = 1, binding = 0) uniform uuCamera { mat4 uProjection, uView; };
+layout(set = 1, binding = 0) uniform uuCamera { mat4 uViewProjection; };
 
 const float kAOCurve[4] = {0.54, 0.7569, 0.87, 1.0};
 const float kSunlightCurve[16] = {0.000000, 0.066667, 0.133333, 0.200000, 0.266667, 0.333333, 0.400000, 0.466667,
@@ -32,7 +32,7 @@ void main() {
 	vPosition.z = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uBaseZ;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
 
-	gl_Position = uProjection * uView * vec4(vPosition, 1.0f);
+	gl_Position = uViewProjection * vec4(vPosition, 1.0f);
 
 	vFace = x5_y5_z5_face3_ao2_sl4_tl4 & 0x7u;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 3u;

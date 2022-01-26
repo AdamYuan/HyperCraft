@@ -69,16 +69,17 @@ void Camera::Control(GLFWwindow *window, float delta) {
 	m_last_mouse_pos = cur_pos;
 }
 
-Camera::UniformData Camera::fetch_uniform_data() const {
-	UniformData data = {};
-	data.m_projection = glm::perspective(m_fov, m_aspect_ratio, 0.1f, 512.0f);
-	data.m_projection[1][1] *= -1;
-	data.m_view = glm::rotate(glm::identity<glm::mat4>(), -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-	data.m_view = glm::rotate(data.m_view, -m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
-	data.m_view = glm::translate(data.m_view, -m_position);
-	return data;
+glm::mat4 Camera::fetch_matrix() const {
+	glm::mat4 ret = glm::perspective(m_fov, m_aspect_ratio, m_z_near, m_z_far);
+	ret[1][1] *= -1;
+	ret = glm::rotate(ret, -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+	ret = glm::rotate(ret, -m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
+	ret = glm::translate(ret, -m_position);
+	return ret;
 }
 
-void Camera::UpdateFrameUniformBuffer(uint32_t current_frame) const {
-	m_uniform_buffers[current_frame]->UpdateData(fetch_uniform_data());
+void Camera::Update(uint32_t current_frame) {
+	glm::mat4 view_projection = fetch_matrix();
+	m_frustum.Update(view_projection);
+	m_uniform_buffers[current_frame]->UpdateData(view_projection);
 }

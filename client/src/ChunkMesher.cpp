@@ -350,8 +350,9 @@ void ChunkMesher::Run() {
 	std::shared_ptr<ChunkMesh> chunk_mesh = m_chunk_ptr->LockMesh();
 	if (!chunk_mesh) {
 		chunk_mesh = ChunkMesh::Create(m_chunk_ptr);
-		chunk_mesh->Update({std::move(vertices), std::move(indices)});
+		chunk_mesh->Update({std::move(vertices), std::move(indices), aabb});
 		chunk_mesh->Register();
 	} else
-		chunk_mesh->Update({std::move(vertices), std::move(indices)});
+		chunk_mesh->Update({std::move(vertices), std::move(indices), aabb});
+	m_chunk_ptr->EnableFlags(Chunk::Flag::kMeshed);
 }

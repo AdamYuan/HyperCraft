@@ -27,5 +27,6 @@ add_library(common_dep STATIC
         sqlite3ext.h
         )
 
+target_compile_definitions(common_dep PUBLIC GLM_FORCE_SWIZZLE)
 target_include_directories(common_dep PUBLIC .)
 target_link_libraries(common_dep PRIVATE ${CMAKE_DL_LIBS} PUBLIC spdlog enet)

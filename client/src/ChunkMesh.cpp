@@ -1,7 +1,10 @@
 #include <client/ChunkMesh.hpp>
 
 #include <client/WorldRenderer.hpp>
+
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/string_cast.hpp>
+
 #include <spdlog/spdlog.h>
 
 bool ChunkMesh::Register() {
@@ -11,8 +14,6 @@ bool ChunkMesh::Register() {
 		chunk = m_chunk_weak_ptr.lock();
 		if (!chunk)
 			return false;
-		// Initialize base position
-		m_base_pos = (glm::i32vec3)chunk->GetPosition() * (int32_t)Chunk::kSize;
 
 		std::shared_ptr<World> world = chunk->LockWorld();
 		if (!world)
@@ -31,6 +32,9 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 		std::shared_ptr<Chunk> chunk = m_chunk_weak_ptr.lock();
 		if (!chunk)
 			return false;
+
+		// Initialize base position
+		m_base_pos = (glm::i32vec3)chunk->GetPosition() * (int32_t)Chunk::kSize;
 
 		std::shared_ptr<World> world = chunk->LockWorld();
 		if (!world)
@@ -77,12 +81,11 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 		m_atomic_buffer.store(buffer, std::memory_order_release);
 	}
 
-	// spdlog::info("Vertex ({} byte) and Index buffer ({} byte) uploaded", m_vertices_staging->GetSize(),
-	//              m_indices_staging->GetSize());
 	return true;
 }
 bool ChunkMesh::CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-                        const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, uint32_t frame) {
+                        const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, const Frustum &frustum,
+                        uint32_t frame) {
 	const std::shared_ptr<myvk::Buffer> &buffer =
 	    (m_frame_buffers[frame] = m_atomic_buffer.load(std::memory_order_acquire));
 	if (!buffer) {
@@ -90,7 +93,7 @@ bool ChunkMesh::CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buff
 		                [](const std::shared_ptr<myvk::Buffer> &x) -> bool { return x == nullptr; })) {
 			return true;
 		}
-	} else {
+	} else if (!frustum.Cull(m_aabb)) {
 		uint32_t face_count = buffer->GetSize() / (4 * sizeof(Vertex) + 6 * sizeof(uint16_t));
 		command_buffer->CmdPushConstants(pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 3 * sizeof(int32_t),
 		                                 glm::value_ptr(m_base_pos));

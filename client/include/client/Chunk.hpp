@@ -137,7 +137,7 @@ public:
 
 	// Flags
 	using Flags = uint16_t;
-	enum Flag : Flags { kGenerated = 1u << 0u, kDecorated = 1u << 1u, kAll = 0xffu };
+	enum Flag : Flags { kGenerated = 1u << 0u, kDecorated = 1u << 1u, kMeshed = 1u << 2u, kAll = 0xffu };
 	Flags GetFlags() const { return m_flags; }
 	bool HaveFlags(Flags flags) const { return (m_flags & flags) == flags; }
 	void EnableFlags(Flags flags) { m_flags |= flags; }

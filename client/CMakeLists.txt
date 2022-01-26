@@ -40,7 +40,9 @@ add_executable(CubeCraft3_client
         src/ChunkGenerator.cpp
         include/client/ChunkGenerator.hpp
         src/ChunkMesh.cpp
-        include/client/ChunkMesh.hpp)
+        include/client/ChunkMesh.hpp
+        include/client/Frustum.hpp
+        )
 
 target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
 target_include_directories(CubeCraft3_client PRIVATE include)

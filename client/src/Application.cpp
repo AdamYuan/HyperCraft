@@ -79,7 +79,7 @@ void Application::draw_frame() {
 	command_buffer->Begin();
 
 	m_canvas.CmdBeginRenderPass(command_buffer, image_index);
-	m_camera->UpdateFrameUniformBuffer(current_frame);
+	m_camera->Update(current_frame);
 	m_world_renderer->CmdDrawPipeline(command_buffer, m_frame_manager.GetSwapchain()->GetExtent(), current_frame);
 	command_buffer->CmdNextSubpass();
 	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
