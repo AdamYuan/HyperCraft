@@ -2,6 +2,7 @@
 #define CUBECRAFT3_CLIENT_CLIENT_BASE_HPP
 
 #include <client/World.hpp>
+#include <client/TerrainBase.hpp>
 
 class ClientBase : public std::enable_shared_from_this<ClientBase> {
 private:
@@ -12,9 +13,9 @@ public:
 		world_ptr->m_client_weak_ptr = weak_from_this();
 		m_world_ptr = world_ptr;
 	}
+	virtual ~ClientBase() = default;
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world_ptr; }
-	virtual void LoadChunk(const ChunkPos3 &chk_pos) = 0;
-	virtual void SetBlock(const ChunkPos3 &chk_pos, uint32_t index, Block block) = 0;
+	virtual bool IsConnected() const = 0;
 };
 
 #endif

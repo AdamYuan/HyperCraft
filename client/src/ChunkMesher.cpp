@@ -209,9 +209,6 @@ AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kS
 						aabb.Merge(
 						    {{x[0], x[1], x[2]}, {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]}});
 
-						// spdlog::info("Face: x={}, y={}, z={}, x'={}, y'={}, z'={}", x[0], x[1], x[2],
-						//              x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]);
-
 						vertices->push_back(v00);
 						vertices->push_back(v01);
 						vertices->push_back(v10);

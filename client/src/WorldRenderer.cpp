@@ -68,8 +68,7 @@ void WorldRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &
 		std::scoped_lock lock{m_chunk_meshes_mutex};
 
 		for (auto i = m_chunk_meshes.begin(); i != m_chunk_meshes.end();) {
-			const std::shared_ptr<ChunkMesh> &chunk_mesh = i->second;
-			if (chunk_mesh->CmdDraw(command_buffer, m_pipeline_layout, m_camera_ptr->GetFrustum(), current_frame))
+			if (i->second->CmdDraw(command_buffer, m_pipeline_layout, m_camera_ptr->GetFrustum(), current_frame))
 				i = m_chunk_meshes.erase(i);
 			else
 				++i;

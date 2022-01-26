@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-std::shared_ptr<ENetServer> ENetServer::Create(const std::shared_ptr<LevelDB> &level_db, uint16_t port) {
+std::shared_ptr<ENetServer> ENetServer::Create(const std::shared_ptr<WorldDatabase> &level_db, uint16_t port) {
 	ENetAddress address;
 	address.host = ENET_HOST_ANY;
 	address.port = port;

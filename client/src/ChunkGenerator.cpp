@@ -18,6 +18,15 @@ void ChunkGenerator::Run() {
 		for (uint32_t i = 0; i < 10; ++i)
 			m_chunk_ptr->SetBlock(gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % Chunk::kSize, gen() % 8);
 	}
+	/* uint32_t b = m_chunk_ptr->GetPosition().x;
+	b += m_chunk_ptr->GetPosition().y;
+	b += m_chunk_ptr->GetPosition().z;
+	for (uint32_t i = 0; i < Chunk::kSize; ++i)
+	    for (uint32_t j = 0; j < Chunk::kSize; ++j)
+	        for (uint32_t k = 0; k < Chunk::kSize; ++k) {
+	            if ((b + i + j + k) % 2 == 0)
+	                m_chunk_ptr->SetBlock(i, j, k, Blocks::kStone);
+	        }*/
 
 	spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,
 	             m_chunk_ptr->GetPosition().z);

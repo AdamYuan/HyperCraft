@@ -10,7 +10,6 @@
 
 #include <chrono>
 #include <memory>
-#include <mutex>
 #include <vector>
 
 class World;
@@ -159,11 +158,8 @@ private:
 	ChunkPos3 m_position;
 
 	std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
-
 	std::weak_ptr<World> m_world_weak_ptr;
-
 	std::weak_ptr<ChunkMesh> m_mesh_weak_ptr;
-	std::mutex m_mesh_mutex; // used in ChunkMesh::Create
 
 	Flags m_flags{};
 };

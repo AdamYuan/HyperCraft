@@ -12,8 +12,8 @@ add_library(CubeCraft3_common STATIC
         include/common/Light.hpp
         include/common/Message.hpp
         include/common/ByteStream.hpp
-        src/LevelDB.cpp
-        include/common/LevelDB.hpp
+        src/WorldDatabase.cpp
+        include/common/WorldDatabase.hpp
         include/common/AABB.hpp
         include/common/Position.hpp
         )

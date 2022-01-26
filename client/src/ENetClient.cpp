@@ -15,7 +15,7 @@ std::shared_ptr<ENetClient> ENetClient::Create(const std::shared_ptr<World> &wor
 }
 
 bool ENetClient::AsyncConnect(const char *host, uint16_t port, uint32_t timeout) {
-	if (Connected() || m_connect_future.valid())
+	if (IsConnected() || m_connect_future.valid())
 		return false;
 	m_connect_future = std::async(&ENetClient::connect, this, std::string{host}, port, timeout);
 	return true;

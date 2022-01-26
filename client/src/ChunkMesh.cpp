@@ -45,7 +45,8 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 	}
 	// if empty, set as nullptr and return
 	if (update_info.indices.empty()) {
-		m_atomic_buffer.store(nullptr, std::memory_order_release);
+		m_updated_buffer.store(nullptr, std::memory_order_release);
+		m_updated.store(true, std::memory_order_release);
 		return true;
 	}
 
@@ -78,7 +79,8 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 		command_buffer->Submit(fence);
 		fence->Wait();
 
-		m_atomic_buffer.store(buffer, std::memory_order_release);
+		m_updated_buffer.store(buffer, std::memory_order_release);
+		m_updated.store(true, std::memory_order_release);
 	}
 
 	return true;
@@ -86,19 +88,21 @@ bool ChunkMesh::Update(const ChunkMesh::UpdateInfo &update_info) {
 bool ChunkMesh::CmdDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
                         const std::shared_ptr<myvk::PipelineLayout> &pipeline_layout, const Frustum &frustum,
                         uint32_t frame) {
-	const std::shared_ptr<myvk::Buffer> &buffer =
-	    (m_frame_buffers[frame] = m_atomic_buffer.load(std::memory_order_acquire));
-	if (!buffer) {
+	if (m_updated.exchange(false, std::memory_order_acq_rel))
+		m_buffer = m_updated_buffer.load(std::memory_order_acquire);
+
+	m_frame_buffers[frame] = m_buffer;
+	if (!m_buffer) {
 		if (std::all_of(m_frame_buffers, m_frame_buffers + kFrameCount,
 		                [](const std::shared_ptr<myvk::Buffer> &x) -> bool { return x == nullptr; })) {
 			return true;
 		}
 	} else if (!frustum.Cull(m_aabb)) {
-		uint32_t face_count = buffer->GetSize() / (4 * sizeof(Vertex) + 6 * sizeof(uint16_t));
+		uint32_t face_count = m_buffer->GetSize() / (4 * sizeof(Vertex) + 6 * sizeof(uint16_t));
 		command_buffer->CmdPushConstants(pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT, 0, 3 * sizeof(int32_t),
 		                                 glm::value_ptr(m_base_pos));
-		command_buffer->CmdBindVertexBuffer(buffer, 0);
-		command_buffer->CmdBindIndexBuffer(buffer, face_count * (4 * sizeof(Vertex)), VK_INDEX_TYPE_UINT16);
+		command_buffer->CmdBindVertexBuffer(m_buffer, 0);
+		command_buffer->CmdBindIndexBuffer(m_buffer, face_count * (4 * sizeof(Vertex)), VK_INDEX_TYPE_UINT16);
 
 		command_buffer->CmdDrawIndexed(face_count * 6, 1, 0, 0, 0);
 	}

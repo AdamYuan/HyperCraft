@@ -33,7 +33,6 @@ add_executable(CubeCraft3_client
         include/client/Canvas.hpp
         src/ENetClient.cpp
         include/client/ENetClient.hpp
-        src/ClientBase.cpp
         include/client/ClientBase.hpp
         src/LocalClient.cpp
         include/client/LocalClient.hpp
@@ -42,6 +41,7 @@ add_executable(CubeCraft3_client
         src/ChunkMesh.cpp
         include/client/ChunkMesh.hpp
         include/client/Frustum.hpp
+        include/client/TerrainBase.hpp
         )
 
 target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)

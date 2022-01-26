@@ -12,9 +12,12 @@
 #include <myvk/Buffer.hpp>
 #include <myvk/CommandBuffer.hpp>
 
+#include <atomic>
 #include <atomic_shared_ptr.hpp>
 
 class Chunk;
+
+static_assert(std::atomic_bool::is_always_lock_free, "std::atomic_bool is required to be always lock free");
 
 class ChunkMesh : public std::enable_shared_from_this<ChunkMesh> {
 public:
@@ -36,16 +39,17 @@ public:
 
 private:
 	// buffers
-	std::shared_ptr<myvk::Buffer> m_frame_buffers[kFrameCount];
+	std::shared_ptr<myvk::Buffer> m_buffer, m_frame_buffers[kFrameCount];
 
 	// updates
-	folly::atomic_shared_ptr<myvk::Buffer> m_atomic_buffer;
+	std::atomic_bool m_updated{false};
+	folly::atomic_shared_ptr<myvk::Buffer> m_updated_buffer;
 
 	// parent chunk
 	std::weak_ptr<Chunk> m_chunk_weak_ptr;
 
 	// misc
-	glm::i32vec3 m_base_pos;
+	glm::i32vec3 m_base_pos{};
 	fAABB m_aabb;
 
 public:

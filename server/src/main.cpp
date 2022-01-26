@@ -1,6 +1,6 @@
 #include <spdlog/spdlog.h>
 
-#include <common/LevelDB.hpp>
+#include <common/WorldDatabase.hpp>
 #include <server/ENetServer.hpp>
 
 constexpr const char *kLevelDBFilename = "level.db";
@@ -9,7 +9,7 @@ constexpr uint16_t kPort = 60000;
 int main() {
 	enet_initialize();
 	spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%l] %v");
-	std::shared_ptr<LevelDB> level_db = LevelDB::Create(kLevelDBFilename);
+	std::shared_ptr<WorldDatabase> level_db = WorldDatabase::Create(kLevelDBFilename);
 	if (!level_db) {
 		spdlog::error("Failed to open sqlite3 database {}", kLevelDBFilename);
 		return EXIT_FAILURE;
