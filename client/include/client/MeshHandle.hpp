@@ -24,6 +24,7 @@ public:
 			allocation_info.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
 
 			allocation_info.alignment = sizeof(Vertex);
+			static_assert((sizeof(Vertex) & (sizeof(Vertex) - 1)) == 0, "sizeof(Vertex) is required to be power of 2");
 			allocation_info.size = vertices.size() * sizeof(Vertex);
 			{
 				std::scoped_lock lock{cluster_ptr->m_vertices_virtual_block_mutex};
@@ -34,6 +35,7 @@ public:
 			}
 
 			allocation_info.alignment = sizeof(Index);
+			static_assert((sizeof(Index) & (sizeof(Index) - 1)) == 0, "sizeof(Index) is required to be power of 2");
 			allocation_info.size = indices.size() * sizeof(Index);
 			{
 				std::scoped_lock lock{cluster_ptr->m_indices_virtual_block_mutex};
