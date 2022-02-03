@@ -1,6 +1,7 @@
 #ifndef CUBECRAFT3_CLIENT_CHUNK_MESHER_HPP
 #define CUBECRAFT3_CLIENT_CHUNK_MESHER_HPP
 
+#include <client/ChunkMesh.hpp>
 #include <client/ChunkWorker.hpp>
 #include <common/AABB.hpp>
 
@@ -56,7 +57,7 @@ private:
 
 	void generate_face_lights(Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
 	AABB<uint_fast8_t> generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
-	                                 std::vector<ChunkMesh::Vertex> *vertices, std::vector<uint16_t> *indices) const;
+	                                 std::vector<ChunkMeshVertex> *vertices, std::vector<uint16_t> *indices) const;
 };
 
 #endif

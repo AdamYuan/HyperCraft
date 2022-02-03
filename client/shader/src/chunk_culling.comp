@@ -1,0 +1,70 @@
+#version 450
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct MeshInfo {
+	uint index_count, first_index, vertex_offset;
+	float aabb_min_x, aabb_min_y, aabb_min_z, aabb_max_x, aabb_max_y, aabb_max_z;
+	int base_pos_x, base_pos_y, base_pos_z;
+};
+struct DrawIndexedIndirectCommand {
+	uint index_count, instance_count, first_index, vertex_offset, first_instance;
+};
+layout(std430, set = 0, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
+layout(std430, set = 0, binding = 1) buffer uuDrawCount { uint uDrawCount; };
+layout(std430, set = 0, binding = 2) writeonly buffer uuDrawCommand { DrawIndexedIndirectCommand uDrawCommand[]; };
+
+layout(push_constant) uniform uuPushConstant { vec4 uFrustum[6]; };
+
+bool cull(uint mesh_id) {
+	vec3 axis;
+
+	float aabb_min_x = uMeshInfo[mesh_id].aabb_min_x;
+	float aabb_min_y = uMeshInfo[mesh_id].aabb_min_y;
+	float aabb_min_z = uMeshInfo[mesh_id].aabb_min_z;
+	float aabb_max_x = uMeshInfo[mesh_id].aabb_max_x;
+	float aabb_max_y = uMeshInfo[mesh_id].aabb_max_y;
+	float aabb_max_z = uMeshInfo[mesh_id].aabb_max_z;
+
+	axis.x = uFrustum[0].x < 0.0 ? aabb_min_x : aabb_max_x;
+	axis.y = uFrustum[0].y < 0.0 ? aabb_min_y : aabb_max_y;
+	axis.z = uFrustum[0].z < 0.0 ? aabb_min_z : aabb_max_z;
+	if (dot(uFrustum[0].xyz, axis) + uFrustum[0].w < 0.0)
+		return true;
+	axis.x = uFrustum[1].x < 0.0 ? aabb_min_x : aabb_max_x;
+	axis.y = uFrustum[1].y < 0.0 ? aabb_min_y : aabb_max_y;
+	axis.z = uFrustum[1].z < 0.0 ? aabb_min_z : aabb_max_z;
+	if (dot(uFrustum[1].xyz, axis) + uFrustum[1].w < 0.0)
+		return true;
+	axis.x = uFrustum[2].x < 0.0 ? aabb_min_x : aabb_max_x;
+	axis.y = uFrustum[2].y < 0.0 ? aabb_min_y : aabb_max_y;
+	axis.z = uFrustum[2].z < 0.0 ? aabb_min_z : aabb_max_z;
+	if (dot(uFrustum[2].xyz, axis) + uFrustum[2].w < 0.0)
+		return true;
+	axis.x = uFrustum[3].x < 0.0 ? aabb_min_x : aabb_max_x;
+	axis.y = uFrustum[3].y < 0.0 ? aabb_min_y : aabb_max_y;
+	axis.z = uFrustum[3].z < 0.0 ? aabb_min_z : aabb_max_z;
+	if (dot(uFrustum[3].xyz, axis) + uFrustum[3].w < 0.0)
+		return true;
+	axis.x = uFrustum[4].x < 0.0 ? aabb_min_x : aabb_max_x;
+	axis.y = uFrustum[4].y < 0.0 ? aabb_min_y : aabb_max_y;
+	axis.z = uFrustum[4].z < 0.0 ? aabb_min_z : aabb_max_z;
+	if (dot(uFrustum[4].xyz, axis) + uFrustum[4].w < 0.0)
+		return true;
+	axis.x = uFrustum[5].x < 0.0 ? aabb_min_x : aabb_max_x;
+	axis.y = uFrustum[5].y < 0.0 ? aabb_min_y : aabb_max_y;
+	axis.z = uFrustum[5].z < 0.0 ? aabb_min_z : aabb_max_z;
+	if (dot(uFrustum[5].xyz, axis) + uFrustum[5].w < 0.0)
+		return true;
+	return false;
+}
+
+void main() {
+	uint mesh_id = gl_GlobalInvocationID.x;
+	if (mesh_id >= uMeshInfo.length() - 1)
+		return;
+	if (cull(mesh_id))
+		return;
+	uint draw_id = atomicAdd(uDrawCount, 1u);
+	uDrawCommand[draw_id] = DrawIndexedIndirectCommand(
+	    uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index, uMeshInfo[mesh_id].vertex_offset, mesh_id);
+}

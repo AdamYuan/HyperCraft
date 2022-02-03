@@ -52,6 +52,10 @@ VkResult Device::create_device(const std::vector<VkDeviceQueueCreateInfo> &queue
 
 VkResult Device::create_allocator() {
 	VmaVulkanFunctions vk_funcs = {
+		/// Required when using VMA_DYNAMIC_VULKAN_FUNCTIONS.
+		vkGetInstanceProcAddr,
+		/// Required when using VMA_DYNAMIC_VULKAN_FUNCTIONS.
+		vkGetDeviceProcAddr,
 		vkGetPhysicalDeviceProperties,
 		vkGetPhysicalDeviceMemoryProperties,
 		vkAllocateMemory,
@@ -70,11 +74,20 @@ VkResult Device::create_allocator() {
 		vkDestroyImage,
 		vkCmdCopyBuffer,
 #if VMA_DEDICATED_ALLOCATION || VMA_VULKAN_VERSION >= 1001000
+		/// Fetch "vkGetBufferMemoryRequirements2" on Vulkan >= 1.1, fetch "vkGetBufferMemoryRequirements2KHR" when
+		/// using
+		/// VK_KHR_dedicated_allocation extension.
 		vkGetBufferMemoryRequirements2KHR,
+		/// Fetch "vkGetImageMemoryRequirements 2" on Vulkan >= 1.1, fetch "vkGetImageMemoryRequirements2KHR" when using
+		/// VK_KHR_dedicated_allocation extension.
 		vkGetImageMemoryRequirements2KHR,
 #endif
 #if VMA_BIND_MEMORY2 || VMA_VULKAN_VERSION >= 1001000
+		/// Fetch "vkBindBufferMemory2" on Vulkan >= 1.1, fetch "vkBindBufferMemory2KHR" when using VK_KHR_bind_memory2
+		/// extension.
 		vkBindBufferMemory2KHR,
+		/// Fetch "vkBindImageMemory2" on Vulkan >= 1.1, fetch "vkBindImageMemory2KHR" when using VK_KHR_bind_memory2
+		/// extension.
 		vkBindImageMemory2KHR,
 #endif
 #if VMA_MEMORY_BUDGET || VMA_VULKAN_VERSION >= 1001000
@@ -83,6 +96,7 @@ VkResult Device::create_allocator() {
 	};
 
 	VmaAllocatorCreateInfo create_info = {};
+	create_info.instance = m_physical_device_ptr->GetInstancePtr()->GetHandle();
 	create_info.device = m_device;
 	create_info.physicalDevice = m_physical_device_ptr->GetHandle();
 	create_info.pVulkanFunctions = &vk_funcs;

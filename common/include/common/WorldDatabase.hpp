@@ -7,9 +7,11 @@
 class WorldDatabase {
 private:
 	sqlite3 *m_db{nullptr};
+	sqlite3_stmt *m_set_property_stmt, *m_get_property_stmt;
 
 public:
-	static std::shared_ptr<WorldDatabase> Create(const char *filename);
+	static std::unique_ptr<WorldDatabase> Create(const char *filename); // TODO: Make it unique_ptr
+	// TODO: Implement Clone() for multithreading use case
 
 	void SetSeed(uint32_t seed);
 	uint32_t GetSeed();

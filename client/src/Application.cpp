@@ -46,7 +46,10 @@ void Application::create_vulkan_base() {
 		spdlog::error("Failed to find extension support!");
 		exit(EXIT_FAILURE);
 	}
-	m_device = myvk::Device::Create(device_create_info);
+	VkPhysicalDeviceVulkan12Features vk12features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+	vk12features.drawIndirectCount = VK_TRUE;
+	m_device = myvk::Device::Create(device_create_info, &vk12features);
+
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);
 
 	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
@@ -75,12 +78,17 @@ void Application::draw_frame() {
 	uint32_t image_index = m_frame_manager.GetCurrentImageIndex();
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
 
+	m_world_renderer->GetChunkRenderer()->PrepareFrame(current_frame);
+	m_camera->Update(current_frame);
+
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager.GetCurrentCommandBuffer();
 	command_buffer->Begin();
 
+	m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer, current_frame);
+
 	m_canvas.CmdBeginRenderPass(command_buffer, image_index);
-	m_camera->Update(current_frame);
-	m_world_renderer->CmdDrawPipeline(command_buffer, m_frame_manager.GetSwapchain()->GetExtent(), current_frame);
+	m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer, m_frame_manager.GetSwapchain()->GetExtent(),
+	                                                      current_frame);
 	command_buffer->CmdNextSubpass();
 	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdEndRenderPass();
@@ -89,6 +97,11 @@ void Application::draw_frame() {
 
 	m_frame_manager.Render();
 }
+
+#include <client/ChunkGenerator.hpp>
+#include <client/ENetClient.hpp>
+#include <client/LocalClient.hpp>
+#include <common/WorldDatabase.hpp>
 
 Application::Application() {
 	glfwInit();
@@ -101,20 +114,16 @@ Application::Application() {
 	m_world = World::Create();
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
+	m_camera->m_speed = 8.0f;
 	m_world_renderer =
 	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_transfer_queue, m_canvas.GetRenderPass(), 0);
+	m_client = LocalClient::Create(m_world, "world.db");
+	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 }
 
-#include <FastNoise/FastNoise.h>
-
-#include <client/ChunkGenerator.hpp>
-
 void Application::Run() {
-	auto fnSimplex = FastNoise::New<FastNoise::Simplex>();
-	std::shared_ptr<ENetClient> client = ENetClient::Create(m_world);
-	client->AsyncConnect("localhost", 60000);
-
 	constexpr int16_t kR = 10;
+	m_camera->m_z_far = kR * Chunk::kSize * 1.8;
 	for (int16_t i = -kR; i <= kR; ++i)
 		for (int16_t j = -kR; j <= kR; ++j)
 			for (int16_t k = -kR; k <= kR; ++k) {
@@ -125,11 +134,6 @@ void Application::Run() {
 			for (int16_t k = -kR; k <= kR; ++k) {
 				m_world->PushWorker(ChunkGenerator::Create(m_world->FindChunk({i, j, k})));
 			}
-	/* for (int16_t i = -kR + 1; i <= kR - 1; ++i)
-	    for (int16_t j = -kR + 1; j <= kR - 1; ++j)
-	        for (int16_t k = -kR + 1; k <= kR - 1; ++k) {
-	            m_world->PushWorker(ChunkMesher::Create(m_world->FindChunk({i, j, k})));
-	        } */
 
 	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
 

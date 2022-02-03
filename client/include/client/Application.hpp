@@ -10,7 +10,7 @@
 #include <client/Camera.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
-#include <client/ENetClient.hpp>
+#include <client/ClientBase.hpp>
 
 class Application {
 private:
@@ -36,6 +36,9 @@ private:
 	std::shared_ptr<GlobalTexture> m_global_texture;
 	std::shared_ptr<Camera> m_camera;
 	std::shared_ptr<World> m_world;
+
+	// game client
+	std::shared_ptr<ClientBase> m_client;
 
 	void create_glfw_window();
 	void create_vulkan_base();

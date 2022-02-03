@@ -13,6 +13,12 @@ layout(location = 5) out flat uint vTexture;
 layout(location = 6) out vec2 vTexcoord;
 
 layout(set = 1, binding = 0) uniform uuCamera { mat4 uViewProjection; };
+struct MeshInfo {
+	uint index_count, first_index, vertex_offset;
+	float aabb_min_x, aabb_min_y, aabb_min_z, aabb_max_x, aabb_max_y, aabb_max_z;
+	int base_pos_x, base_pos_y, base_pos_z;
+};
+layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
 
 const float kAOCurve[4] = {0.54, 0.7569, 0.87, 1.0};
 const float kSunlightCurve[16] = {0.000000, 0.066667, 0.133333, 0.200000, 0.266667, 0.333333, 0.400000, 0.466667,
@@ -20,16 +26,14 @@ const float kSunlightCurve[16] = {0.000000, 0.066667, 0.133333, 0.200000, 0.2666
 const float kTorchlightCurve[16] = {0.000000, 0.100000, 0.200000, 0.300000, 0.400000, 0.500000, 0.600000, 0.700000,
                                     0.800000, 0.900000, 1.000000, 1.100000, 1.200000, 1.300000, 1.400000, 1.500000};
 
-layout(push_constant) uniform uuPushConstant { int uBaseX, uBaseY, uBaseZ; };
-
 void main() {
 	uint x5_y5_z5_face3_ao2_sl4_tl4 = aVertData.x, tex8_u5_v5 = aVertData.y;
 
-	vPosition.x = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uBaseX;
+	vPosition.x = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uMeshInfo[gl_InstanceIndex].base_pos_x;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
-	vPosition.y = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uBaseY;
+	vPosition.y = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uMeshInfo[gl_InstanceIndex].base_pos_y;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
-	vPosition.z = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uBaseZ;
+	vPosition.z = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uMeshInfo[gl_InstanceIndex].base_pos_z;
 	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
 
 	gl_Position = uViewProjection * vec4(vPosition, 1.0f);

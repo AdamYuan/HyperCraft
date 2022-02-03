@@ -16,7 +16,6 @@ const vec3 kFaceNormal[6] = {vec3(1, 0, 0),  vec3(-1, 0, 0), vec3(0, 1, 0),
                              vec3(0, -1, 0), vec3(0, 0, 1),  vec3(0, 0, -1)};
 
 void main() {
-	// vec4 tex_color = texture(uTextures[vTexture], vTexcoord);
 	vec4 tex = texture(uBlockTexture, vec3(vTexcoord, vTexture));
 	if (tex.a == 0.0)
 		discard;

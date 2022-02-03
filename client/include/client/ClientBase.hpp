@@ -1,21 +1,21 @@
 #ifndef CUBECRAFT3_CLIENT_CLIENT_BASE_HPP
 #define CUBECRAFT3_CLIENT_CLIENT_BASE_HPP
 
-#include <client/World.hpp>
 #include <client/TerrainBase.hpp>
+#include <client/World.hpp>
 
-class ClientBase : public std::enable_shared_from_this<ClientBase> {
-private:
+#include <spdlog/spdlog.h>
+
+class ClientBase {
+protected:
 	std::shared_ptr<World> m_world_ptr;
+	std::unique_ptr<TerrainBase> m_terrain;
 
 public:
-	inline explicit ClientBase(const std::shared_ptr<World> &world_ptr) {
-		world_ptr->m_client_weak_ptr = weak_from_this();
-		m_world_ptr = world_ptr;
-	}
 	virtual ~ClientBase() = default;
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world_ptr; }
-	virtual bool IsConnected() const = 0;
+	inline const std::unique_ptr<TerrainBase> &GetTerrain() const { return m_terrain; }
+	virtual bool IsConnected() = 0;
 };
 
 #endif

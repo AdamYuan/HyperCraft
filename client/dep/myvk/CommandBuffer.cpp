@@ -101,6 +101,17 @@ VkResult CommandBuffer::Reset(VkCommandBufferResetFlags flags) const {
 	return vkResetCommandBuffer(m_command_buffer, flags);
 }
 
+void CommandBuffer::CmdExecuteCommands(const std::vector<std::shared_ptr<CommandBuffer>> &command_buffers) const {
+	std::vector<VkCommandBuffer> handles(command_buffers.size());
+	for (uint32_t i = 0; i < handles.size(); ++i)
+		handles[i] = command_buffers[i]->GetHandle();
+	vkCmdExecuteCommands(m_command_buffer, handles.size(), handles.data());
+}
+void CommandBuffer::CmdExecuteCommand(const std::shared_ptr<CommandBuffer> &command_buffer) const {
+	VkCommandBuffer handle = command_buffer->GetHandle();
+	vkCmdExecuteCommands(m_command_buffer, 1, &handle);
+}
+
 void CommandBuffer::CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
                                        const std::shared_ptr<Framebuffer> &framebuffer,
                                        const std::vector<VkClearValue> &clear_values, const VkOffset2D &offset,
@@ -184,10 +195,32 @@ void CommandBuffer::CmdDraw(uint32_t vertex_count, uint32_t instance_count, uint
                             uint32_t first_instance) const {
 	vkCmdDraw(m_command_buffer, vertex_count, instance_count, first_vertex, first_instance);
 }
+void CommandBuffer::CmdDrawIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset, uint32_t draw_count,
+                                    uint32_t stride) const {
+	vkCmdDrawIndirect(m_command_buffer, buffer->GetHandle(), offset, draw_count, stride);
+}
+void CommandBuffer::CmdDrawIndirectCount(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset,
+                                         const std::shared_ptr<BufferBase> &count_buffer,
+                                         VkDeviceSize count_buffer_offset, uint32_t max_draw_count,
+                                         uint32_t stride) const {
+	vkCmdDrawIndirectCount(m_command_buffer, buffer->GetHandle(), offset, count_buffer->GetHandle(),
+	                       count_buffer_offset, max_draw_count, stride);
+}
 
 void CommandBuffer::CmdDrawIndexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index,
                                    uint32_t vertex_offset, uint32_t first_instance) const {
 	vkCmdDrawIndexed(m_command_buffer, index_count, instance_count, first_index, vertex_offset, first_instance);
+}
+void CommandBuffer::CmdDrawIndexedIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset,
+                                           uint32_t draw_count, uint32_t stride) const {
+	vkCmdDrawIndexedIndirect(m_command_buffer, buffer->GetHandle(), offset, draw_count, stride);
+}
+void CommandBuffer::CmdDrawIndexedIndirectCount(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset,
+                                                const std::shared_ptr<BufferBase> &count_buffer,
+                                                VkDeviceSize count_buffer_offset, uint32_t max_draw_count,
+                                                uint32_t stride) const {
+	vkCmdDrawIndexedIndirectCount(m_command_buffer, buffer->GetHandle(), offset, count_buffer->GetHandle(),
+	                              count_buffer_offset, max_draw_count, stride);
 }
 
 void CommandBuffer::CmdNextSubpass(VkSubpassContents subpass_contents) const {

@@ -16,12 +16,16 @@ private:
 
 public:
 	static std::shared_ptr<Buffer> Create(const std::shared_ptr<Device> &device, const VkBufferCreateInfo &create_info,
-	                                      VmaMemoryUsage memory_usage,
+	                                      VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_flags,
 	                                      const std::vector<std::shared_ptr<Queue>> &access_queues = {});
 
 	static std::shared_ptr<Buffer> Create(const std::shared_ptr<Device> &device, VkDeviceSize size,
 	                                      VmaMemoryUsage memory_usage, VkBufferUsageFlags buffer_usage,
 	                                      const std::vector<std::shared_ptr<Queue>> &access_queues = {});
+
+	static std::shared_ptr<Buffer> CreateDedicated(const std::shared_ptr<Device> &device, VkDeviceSize size,
+	                                               VmaMemoryUsage memory_usage, VkBufferUsageFlags buffer_usage,
+	                                               const std::vector<std::shared_ptr<Queue>> &access_queues = {});
 
 	static std::shared_ptr<Buffer> CreateStaging(const std::shared_ptr<Device> &device, VkDeviceSize size,
 	                                             const std::vector<std::shared_ptr<Queue>> &access_queues = {});

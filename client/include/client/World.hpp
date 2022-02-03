@@ -26,7 +26,8 @@ private:
 	std::weak_ptr<WorldRenderer> m_world_renderer_weak_ptr;
 	friend class WorldRenderer;
 	std::weak_ptr<ClientBase> m_client_weak_ptr;
-	friend class ClientBase;
+	friend class LocalClient;
+	friend class ENetClient;
 
 	// Chunks
 	std::unordered_map<ChunkPos3, std::shared_ptr<Chunk>> m_chunks;
@@ -42,6 +43,9 @@ private:
 public:
 	inline const std::weak_ptr<WorldRenderer> &GetWorldRendererWeakPtr() const { return m_world_renderer_weak_ptr; }
 	inline std::shared_ptr<WorldRenderer> LockWorldRenderer() const { return m_world_renderer_weak_ptr.lock(); }
+
+	inline const std::weak_ptr<ClientBase> &GetClientWeakPtr() const { return m_client_weak_ptr; }
+	inline std::shared_ptr<ClientBase> LockClient() const { return m_client_weak_ptr.lock(); }
 
 	inline void PushWorker(std::unique_ptr<ChunkWorker> &&worker) { m_chunk_workers.enqueue(std::move(worker)); }
 	std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const {

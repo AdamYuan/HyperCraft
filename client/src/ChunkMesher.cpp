@@ -48,7 +48,7 @@ void ChunkMesher::generate_face_lights(
 }
 
 AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
-                                              std::vector<ChunkMesh::Vertex> *vertices,
+                                              std::vector<ChunkMeshVertex> *vertices,
                                               std::vector<uint16_t> *indices) const {
 	AABB<uint_fast8_t> aabb;
 
@@ -166,16 +166,16 @@ AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kS
 							std::swap(v11v, v10v);
 						}
 
-						ChunkMesh::Vertex v00{uint8_t(x[0]),
-						                      uint8_t(x[1]),
-						                      uint8_t(x[2]),
-						                      quad_face,
-						                      quad_light.m_ao[0],
-						                      quad_light.m_light[0].GetSunlight(),
-						                      quad_light.m_light[0].GetTorchlight(),
-						                      quad_texture.GetID(),
-						                      v00u,
-						                      v00v},
+						ChunkMeshVertex v00{uint8_t(x[0]),
+						                    uint8_t(x[1]),
+						                    uint8_t(x[2]),
+						                    quad_face,
+						                    quad_light.m_ao[0],
+						                    quad_light.m_light[0].GetSunlight(),
+						                    quad_light.m_light[0].GetTorchlight(),
+						                    quad_texture.GetID(),
+						                    v00u,
+						                    v00v},
 						    v01 = {uint8_t(x[0] + du[0]),
 						           uint8_t(x[1] + du[1]),
 						           uint8_t(x[2] + du[2]),
@@ -332,7 +332,7 @@ void ChunkMesher::Run() {
 			return;
 		}
 
-	std::vector<ChunkMesh::Vertex> vertices;
+	std::vector<ChunkMeshVertex> vertices;
 	std::vector<uint16_t> indices;
 	AABB<uint_fast8_t> aabb;
 	{
@@ -344,12 +344,15 @@ void ChunkMesher::Run() {
 	             glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
 	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax()));
 
-	std::shared_ptr<ChunkMesh> chunk_mesh = m_chunk_ptr->LockMesh();
-	if (!chunk_mesh) {
-		chunk_mesh = ChunkMesh::Create(m_chunk_ptr);
-		chunk_mesh->Update({std::move(vertices), std::move(indices), aabb});
-		chunk_mesh->Register();
-	} else
-		chunk_mesh->Update({std::move(vertices), std::move(indices), aabb});
+	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
+	if (!world_ptr)
+		return;
+	std::shared_ptr<WorldRenderer> world_renderer_ptr = world_ptr->LockWorldRenderer();
+	if (!world_renderer_ptr)
+		return;
+
+	glm::i32vec3 base_position = (glm::i32vec3)m_chunk_ptr->GetPosition() * (int32_t)Chunk::kSize;
+	m_chunk_ptr->m_mesh_handle = world_renderer_ptr->GetChunkRenderer()->PushMesh(
+	    vertices, indices, {(fAABB)((i32AABB)aabb + base_position), base_position});
 	m_chunk_ptr->EnableFlags(Chunk::Flag::kMeshed);
 }

@@ -1,7 +1,8 @@
 #include <client/ENetClient.hpp>
 #include <spdlog/spdlog.h>
 
-std::shared_ptr<ENetClient> ENetClient::Create(const std::shared_ptr<World> &world_ptr) {
+std::shared_ptr<ENetClient> ENetClient::Create(const std::shared_ptr<World> &world_ptr, const char *host_str,
+                                               uint16_t port, uint32_t timeout) {
 	ENetHost *host;
 	host = enet_host_create(nullptr /* create a client host */, 1 /* only allow 1 outgoing connection */,
 	                        2 /* allow up 2 channels to be used, 0 and 1 */,
@@ -9,25 +10,19 @@ std::shared_ptr<ENetClient> ENetClient::Create(const std::shared_ptr<World> &wor
 	                        0 /* assume any amount of outgoing bandwidth */);
 	if (host == nullptr)
 		return nullptr;
-	std::shared_ptr<ENetClient> ret = std::make_shared<ENetClient>(world_ptr);
+	std::shared_ptr<ENetClient> ret = std::make_shared<ENetClient>();
+	ret->m_world_ptr = world_ptr;
+	world_ptr->m_client_weak_ptr = ret->weak_from_this();
+
 	ret->m_host = host;
+	ret->m_connect_future = std::async(&ENetClient::connect, ret.get(), std::string{host_str}, port, timeout);
 	return ret;
 }
 
-bool ENetClient::AsyncConnect(const char *host, uint16_t port, uint32_t timeout) {
-	if (IsConnected() || m_connect_future.valid())
-		return false;
-	m_connect_future = std::async(&ENetClient::connect, this, std::string{host}, port, timeout);
-	return true;
-}
-
-bool ENetClient::TryGetConnected() {
-	if (!m_connect_future.valid())
-		return true;
-	if (m_connect_future.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
-		return false;
-	m_peer = m_connect_future.get();
-	return true;
+bool ENetClient::IsConnected() {
+	if (m_connect_future.valid() && m_connect_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+		m_peer = m_connect_future.get();
+	return m_peer;
 }
 
 ENetPeer *ENetClient::connect(std::string &&host, uint16_t port, uint32_t timeout) {

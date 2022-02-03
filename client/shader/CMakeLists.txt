@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 3.15)
 project(CubeCraft3)
 
 set(SHADER_SRC
-        world.vert
-        world.frag
+        chunk.vert
+        chunk.frag
+        chunk_culling.comp
         )
 
 find_program(GLSLC "glslc")

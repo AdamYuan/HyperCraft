@@ -12,11 +12,11 @@ std::shared_ptr<Buffer> Buffer::Create(const std::shared_ptr<Device> &device, Vk
 	create_info.size = size;
 	create_info.usage = buffer_usage;
 
-	return Create(device, create_info, memory_usage, access_queues);
+	return Create(device, create_info, memory_usage, 0, access_queues);
 }
 
 std::shared_ptr<Buffer> Buffer::Create(const std::shared_ptr<Device> &device, const VkBufferCreateInfo &create_info,
-                                       VmaMemoryUsage memory_usage,
+                                       VmaMemoryUsage memory_usage, VmaAllocationCreateFlags allocation_flags,
                                        const std::vector<std::shared_ptr<Queue>> &access_queues) {
 	std::shared_ptr<Buffer> ret = std::make_shared<Buffer>();
 	ret->m_device_ptr = device;
@@ -38,12 +38,24 @@ std::shared_ptr<Buffer> Buffer::Create(const std::shared_ptr<Device> &device, co
 
 	VmaAllocationCreateInfo alloc_create_info = {};
 	alloc_create_info.usage = memory_usage;
+	alloc_create_info.flags = allocation_flags;
 
 	if (vmaCreateBuffer(device->GetAllocatorHandle(), &new_info, &alloc_create_info, &ret->m_buffer, &ret->m_allocation,
 	                    nullptr) != VK_SUCCESS)
 		return nullptr;
 
 	return ret;
+}
+
+std::shared_ptr<Buffer> Buffer::CreateDedicated(const std::shared_ptr<Device> &device, VkDeviceSize size,
+                                                VmaMemoryUsage memory_usage, VkBufferUsageFlags buffer_usage,
+                                                const std::vector<std::shared_ptr<Queue>> &access_queues) {
+	VkBufferCreateInfo create_info = {};
+	create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	create_info.size = size;
+	create_info.usage = buffer_usage;
+
+	return Create(device, create_info, memory_usage, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, access_queues);
 }
 
 std::shared_ptr<Buffer> Buffer::CreateStaging(const std::shared_ptr<Device> &device, VkDeviceSize size,

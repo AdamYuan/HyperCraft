@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 17)
 # Build DLL
 #set(BUILD_SHARED_LIBS ON) 
 
+set(FASTNOISE2_NOISETOOL OFF)
+set(FASTNOISE2_TESTS OFF)
 option(FASTNOISE2_NOISETOOL "Build NoiseTool application" OFF)
 option(FASTNOISE2_TESTS "Build tests" OFF)
 

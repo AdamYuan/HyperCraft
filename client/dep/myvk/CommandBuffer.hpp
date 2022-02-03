@@ -43,6 +43,9 @@ public:
 
 	VkResult End() const;
 
+	void CmdExecuteCommands(const std::vector<std::shared_ptr<CommandBuffer>> &command_buffers) const;
+	void CmdExecuteCommand(const std::shared_ptr<CommandBuffer> &command_buffer) const;
+
 	void CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
 	                        const std::shared_ptr<Framebuffer> &framebuffer,
 	                        const std::vector<VkClearValue> &clear_values, const VkOffset2D &offset,
@@ -92,8 +95,23 @@ public:
 
 	void CmdDraw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) const;
 
+	void CmdDrawIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset, uint32_t draw_count,
+	                     uint32_t stride = sizeof(VkDrawIndirectCommand)) const;
+
+	void CmdDrawIndirectCount(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset,
+	                          const std::shared_ptr<BufferBase> &count_buffer, VkDeviceSize count_buffer_offset,
+	                          uint32_t max_draw_count, uint32_t stride = sizeof(VkDrawIndirectCommand)) const;
+
 	void CmdDrawIndexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset,
 	                    uint32_t first_instance) const;
+
+	void CmdDrawIndexedIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset, uint32_t draw_count,
+	                            uint32_t stride = sizeof(VkDrawIndexedIndirectCommand)) const;
+
+	void CmdDrawIndexedIndirectCount(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset,
+	                                 const std::shared_ptr<BufferBase> &count_buffer, VkDeviceSize count_buffer_offset,
+	                                 uint32_t max_draw_count,
+	                                 uint32_t stride = sizeof(VkDrawIndexedIndirectCommand)) const;
 
 	void CmdNextSubpass(VkSubpassContents subpass_contents = VK_SUBPASS_CONTENTS_INLINE) const;
 

@@ -1,21 +1,21 @@
 #ifndef CUBECRAFT3_CLIENT_TERRAIN_BASE_HPP
 #define CUBECRAFT3_CLIENT_TERRAIN_BASE_HPP
 
+#include <cinttypes>
 #include <memory>
 
 class Chunk;
-class ClientBase;
-
 class TerrainBase {
 private:
-	std::weak_ptr<ClientBase> m_client_weak_ptr;
+	uint32_t m_seed{};
 
 public:
-	virtual void Generate(const std::shared_ptr<Chunk> &chunk) = 0;
+	inline explicit TerrainBase(uint32_t seed) : m_seed{seed} {}
 	virtual ~TerrainBase() = default;
+	inline uint32_t GetSeed() const { return m_seed; }
 
-	inline const std::weak_ptr<ClientBase> &GetClientWeakPtr() const { return m_client_weak_ptr; }
-	inline std::shared_ptr<ClientBase> LockClient() const { return m_client_weak_ptr.lock(); }
+	// chunk: the chunk to be generated; peak: the estimated block peak of the y-axis (used to generate sunlight)
+	virtual void Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t *y_peak) = 0;
 };
 
 #endif

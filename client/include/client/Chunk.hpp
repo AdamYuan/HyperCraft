@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 
 #include <client/ChunkMesh.hpp>
+#include <client/MeshHandle.hpp>
 
 #include <chrono>
 #include <memory>
@@ -130,10 +131,6 @@ public:
 	// World (parent)
 	inline std::shared_ptr<World> LockWorld() const { return m_world_weak_ptr.lock(); }
 
-	// Mesh
-	inline std::shared_ptr<ChunkMesh> LockMesh() const { return m_mesh_weak_ptr.lock(); }
-	friend class WorldRenderer;
-
 	// Flags
 	using Flags = uint16_t;
 	enum Flag : Flags { kGenerated = 1u << 0u, kDecorated = 1u << 1u, kMeshed = 1u << 2u, kAll = 0xffu };
@@ -155,11 +152,12 @@ private:
 	Block m_blocks[kSize * kSize * kSize];
 	Light m_lights[kSize * kSize * kSize];
 
-	ChunkPos3 m_position;
+	ChunkPos3 m_position{};
 
 	std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
 	std::weak_ptr<World> m_world_weak_ptr;
-	std::weak_ptr<ChunkMesh> m_mesh_weak_ptr;
+	std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>> m_mesh_handle;
+	friend class ChunkMesher;
 
 	Flags m_flags{};
 };
