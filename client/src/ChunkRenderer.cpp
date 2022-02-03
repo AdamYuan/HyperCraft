@@ -2,8 +2,9 @@
 #include <spdlog/spdlog.h>
 
 void ChunkRenderer::create_culling_pipeline(const std::shared_ptr<myvk::Device> &device) {
-	m_culling_pipeline_layout = myvk::PipelineLayout::Create(device, {GetDescriptorSetLayout()},
-	                                                         {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Frustum)}});
+	m_culling_pipeline_layout =
+	    myvk::PipelineLayout::Create(device, {m_camera_ptr->GetDescriptorSetLayout(), GetDescriptorSetLayout()},
+	                                 {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Frustum)}});
 	constexpr uint32_t kChunkCullingCompSpv[] = {
 #include <client/shader/chunk_culling.comp.u32>
 	};
@@ -93,8 +94,9 @@ void ChunkRenderer::CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &comm
 	command_buffer->CmdPushConstants(m_culling_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Frustum),
 	                                 &m_camera_ptr->GetFrustum());
 	for (const auto &i : m_prepared_cluster_vector) {
-		command_buffer->CmdBindDescriptorSets({i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
-		                                      m_culling_pipeline);
+		command_buffer->CmdBindDescriptorSets(
+		    {m_camera_ptr->GetFrameDescriptorSet(current_frame), i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
+		    m_culling_pipeline);
 		i.m_cluster_ptr->CmdDispatch(command_buffer, i.m_mesh_count);
 		i.m_cluster_ptr->CmdBarrier(command_buffer, current_frame);
 	}

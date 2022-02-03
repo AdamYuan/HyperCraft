@@ -626,8 +626,6 @@ typedef enum VmaPoolCreateFlagBits
     By using this flag, you can achieve behavior of free-at-once, stack,
     ring buffer, and double stack.
     For details, see documentation chapter \ref linear_algorithm.
-
-    When using this flag, you must specify VmaPoolCreateInfo::maxBlockCount == 1 (or 0 for default).
     */
     VMA_POOL_CREATE_LINEAR_ALGORITHM_BIT = 0x00000004,
 
@@ -1450,7 +1448,7 @@ typedef struct VmaVirtualBlockCreateInfo
 
     /** \brief Use combination of #VmaVirtualBlockCreateFlagBits.
     */
-    VmaVirtualBlockCreateFlagBits flags;
+    VmaVirtualBlockCreateFlags flags;
 
     /** \brief Custom CPU memory allocation callbacks. Optional.
 
@@ -2254,8 +2252,8 @@ separately, using `vkDestroyBuffer()` and vmaFreeMemory().
 If #VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT flag was used,
 VK_KHR_dedicated_allocation extension is used internally to query driver whether
 it requires or prefers the new buffer to have dedicated allocation. If yes,
-and if dedicated allocation is possible (VmaAllocationCreateInfo::pool is null
-and #VMA_ALLOCATION_CREATE_NEVER_ALLOCATE_BIT is not used), it creates dedicated
+and if dedicated allocation is possible
+(#VMA_ALLOCATION_CREATE_NEVER_ALLOCATE_BIT is not used), it creates dedicated
 allocation for this buffer, just like when using
 #VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT.
 
@@ -2533,12 +2531,33 @@ VmaAllocatorCreateInfo::pVulkanFunctions. Other members can be null.
 #endif
 
 /*
-Following headers are used in this CONFIGURATION section only, so feel free to
+Define this macro to include custom header files without having to edit this file directly, e.g.:
+
+    // Inside of "my_vma_configuration_user_includes.h":
+
+    #include "my_custom_assert.h" // for MY_CUSTOM_ASSERT
+    #include "my_custom_min.h" // for my_custom_min
+    #include <algorithm>
+    #include <mutex>
+
+    // Inside a different file, which includes "vk_mem_alloc.h":
+
+    #define VMA_CONFIGURATION_USER_INCLUDES_H "my_vma_configuration_user_includes.h"
+    #define VMA_ASSERT(expr) MY_CUSTOM_ASSERT(expr)
+    #define VMA_MIN(v1, v2)  (my_custom_min(v1, v2))
+    #include "vk_mem_alloc.h"
+    ...
+
+The following headers are used in this CONFIGURATION section only, so feel free to
 remove them if not needed.
 */
-#include <cassert> // for assert
-#include <algorithm> // for min, max
-#include <mutex>
+#if !defined(VMA_CONFIGURATION_USER_INCLUDES_H)
+    #include <cassert> // for assert
+    #include <algorithm> // for min, max
+    #include <mutex>
+#else
+    #include VMA_CONFIGURATION_USER_INCLUDES_H
+#endif
 
 #ifndef VMA_NULL
    // Value used as null pointer. Define it to e.g.: nullptr, NULL, 0, (void*)0.
@@ -2810,7 +2829,7 @@ If providing your own implementation, you need to implement a subset of std::ato
 
 #ifndef VMA_DEBUG_MARGIN
     /**
-    Minimum margin before and after every allocation, in bytes.
+    Minimum margin after every allocation, in bytes.
     Set nonzero for debugging purposes only.
     */
     #define VMA_DEBUG_MARGIN (0)
@@ -2827,7 +2846,7 @@ If providing your own implementation, you need to implement a subset of std::ato
 #ifndef VMA_DEBUG_DETECT_CORRUPTION
     /**
     Define this macro to 1 together with non-zero value of VMA_DEBUG_MARGIN to
-    enable writing magic value to the margin before and after every allocation and
+    enable writing magic value to the margin after every allocation and
     validating it, so that memory corruptions (out-of-bounds writes) are detected.
     */
     #define VMA_DEBUG_DETECT_CORRUPTION (0)
@@ -6048,6 +6067,8 @@ void VmaBlockMetadata::DebugLogAllocation(VkDeviceSize offset, VkDeviceSize size
         VmaAllocation allocation = reinterpret_cast<VmaAllocation>(userData);
 
         userData = allocation->GetUserData();
+
+#if VMA_STATS_STRING_ENABLED
         if (userData != VMA_NULL && allocation->IsUserDataString())
         {
             VMA_DEBUG_LOG("UNFREED ALLOCATION; Offset: %llu; Size: %llu; UserData: %s; Type: %s; Usage: %u",
@@ -6062,6 +6083,20 @@ void VmaBlockMetadata::DebugLogAllocation(VkDeviceSize offset, VkDeviceSize size
                 VMA_SUBALLOCATION_TYPE_NAMES[allocation->GetSuballocationType()],
                 allocation->GetBufferImageUsage());
         }
+#else
+        if (userData != VMA_NULL && allocation->IsUserDataString())
+        {
+            VMA_DEBUG_LOG("UNFREED ALLOCATION; Offset: %llu; Size: %llu; UserData: %s; Type: %u",
+                offset, size, reinterpret_cast<const char*>(userData),
+                (uint32_t)allocation->GetSuballocationType());
+        }
+        else
+        {
+            VMA_DEBUG_LOG("UNFREED ALLOCATION; Offset: %llu; Size: %llu; UserData: %p; Type: %u",
+                offset, size, userData,
+                (uint32_t)allocation->GetSuballocationType());
+        }
+#endif // VMA_STATS_STRING_ENABLED
     }
     
 }
@@ -9891,12 +9926,15 @@ bool VmaBlockMetadata_TLSF::CreateAllocationRequest(
 
     // Round up to the next block
     VkDeviceSize sizeForNextList = allocSize;
-    if (allocSize >= (1 << SECOND_LEVEL_INDEX))
+    VkDeviceSize smallSizeStep = SMALL_BUFFER_SIZE / (IsVirtual() ? 1 << SECOND_LEVEL_INDEX : 4);
+    if (allocSize > SMALL_BUFFER_SIZE)
     {
-        sizeForNextList += (1ULL << (VMA_BITSCAN_MSB(allocSize) - SECOND_LEVEL_INDEX)) - 1;
+        sizeForNextList += (1ULL << (VMA_BITSCAN_MSB(allocSize) - SECOND_LEVEL_INDEX));
     }
+    else if (allocSize > SMALL_BUFFER_SIZE - smallSizeStep)
+        sizeForNextList = SMALL_BUFFER_SIZE + 1;
     else
-        sizeForNextList += 1 << SECOND_LEVEL_INDEX;
+        sizeForNextList += smallSizeStep;
 
     uint32_t nextListIndex = 0;
     uint32_t prevListIndex = 0;
@@ -10246,7 +10284,12 @@ uint32_t VmaBlockMetadata_TLSF::GetListIndex(uint8_t memoryClass, uint16_t secon
 {
     if (memoryClass == 0)
         return secondIndex;
-    return static_cast<uint32_t>(memoryClass - 1) * (1 << SECOND_LEVEL_INDEX) + secondIndex + 4;
+
+    const uint32_t index = static_cast<uint32_t>(memoryClass - 1) * (1 << SECOND_LEVEL_INDEX) + secondIndex;
+    if (IsVirtual())
+        return index + (1 << SECOND_LEVEL_INDEX);
+    else
+        return index + 4;
 }
 
 uint32_t VmaBlockMetadata_TLSF::GetListIndex(VkDeviceSize size) const
@@ -19231,7 +19274,7 @@ By default, allocations are laid out in memory blocks next to each other if poss
 ![Allocations without margin](../gfx/Margins_1.png)
 
 Define macro `VMA_DEBUG_MARGIN` to some non-zero value (e.g. 16) to enforce specified
-number of bytes as a margin before and after every allocation.
+number of bytes as a margin after every allocation.
 
 \code
 #define VMA_DEBUG_MARGIN 16
@@ -19244,9 +19287,6 @@ If your bug goes away after enabling margins, it means it may be caused by memor
 being overwritten outside of allocation boundaries. It is not 100% certain though.
 Change in application behavior may also be caused by different order and distribution
 of allocations across memory blocks after margins are applied.
-
-The margin is applied also before first and after last allocation in a block.
-It may occur only once between two adjacent allocations.
 
 Margins work with all types of memory.
 
@@ -19261,6 +19301,8 @@ Margins appear in [JSON dump](@ref statistics_json_dump) as part of free space.
 
 Note that enabling margins increases memory usage and fragmentation.
 
+Margins do not apply to \ref virtual_allocator.
+
 \section debugging_memory_usage_corruption_detection Corruption detection
 
 You can additionally define macro `VMA_DEBUG_DETECT_CORRUPTION` to 1 to enable validation
@@ -19273,7 +19315,7 @@ of contents of the margins.
 \endcode
 
 When this feature is enabled, number of bytes specified as `VMA_DEBUG_MARGIN`
-(it must be multiply of 4) before and after every allocation is filled with a magic number.
+(it must be multiply of 4) after every allocation is filled with a magic number.
 This idea is also know as "canary".
 Memory is automatically mapped and unmapped if necessary.
 

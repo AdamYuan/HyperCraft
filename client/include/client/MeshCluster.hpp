@@ -80,10 +80,7 @@ private:
 			std::shared_lock read_lock{m_mesh_info_vector_mutex};
 			if (m_mesh_info_vector.empty()) {
 				read_lock.unlock();
-				m_mesh_info_buffer.store(myvk::Buffer::Create(m_transfer_queue->GetDevicePtr(), sizeof(MeshInfo),
-				                                              VMA_MEMORY_USAGE_GPU_ONLY,
-				                                              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT),
-				                         std::memory_order_release);
+				m_mesh_info_buffer.store(nullptr, std::memory_order_release);
 				return;
 			}
 			staging = myvk::Buffer::CreateStaging(m_transfer_queue->GetDevicePtr(), m_mesh_info_vector.begin(),
@@ -92,12 +89,12 @@ private:
 		std::shared_ptr<myvk::CommandPool> command_pool = myvk::CommandPool::Create(m_transfer_queue);
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 		{
-			std::shared_ptr<myvk::Buffer> mesh_info_buffer = myvk::Buffer::Create(
-			    m_transfer_queue->GetDevicePtr(), staging->GetSize() + sizeof(MeshInfo), VMA_MEMORY_USAGE_GPU_ONLY,
-			    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			std::shared_ptr<myvk::Buffer> mesh_info_buffer =
+			    myvk::Buffer::Create(m_transfer_queue->GetDevicePtr(), staging->GetSize(), VMA_MEMORY_USAGE_GPU_ONLY,
+			                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 			command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 			command_buffer->CmdCopy(staging, mesh_info_buffer, {{0, 0, staging->GetSize()}});
-			// TODO: Queue ownership transfer
+			// TODO: Queue ownership transfer (Maybe)
 
 			command_buffer->End();
 
@@ -153,6 +150,7 @@ public:
 		                                  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
 		VmaVirtualBlockCreateInfo virtual_block_create_info = {};
+		// virtual_block_create_info.flags = VMA_VIRTUAL_BLOCK_CREATE_TLSF_ALGORITHM_BIT; // Where the bug comes from
 		virtual_block_create_info.size = vertex_buffer_size;
 		if (vmaCreateVirtualBlock(&virtual_block_create_info, &ret->m_vertices_virtual_block) != VK_SUCCESS)
 			return nullptr;
@@ -169,7 +167,7 @@ public:
 			ret->m_frame_count_ptrs[i] = (uint32_t *)ret->m_frame_count_buffers[i]->Map();
 			ret->m_frame_descriptor_sets[i] =
 			    myvk::DescriptorSet::Create(ret->m_descriptor_pool, descriptor_set_layout);
-			ret->m_frame_descriptor_sets[i]->UpdateStorageBuffer(ret->m_frame_count_buffers[i], 1);
+			ret->m_frame_descriptor_sets[i]->UpdateStorageBuffer(ret->m_frame_count_buffers[i], 2);
 		}
 		return ret;
 	}
@@ -185,16 +183,18 @@ public:
 	}
 	// Return mesh count
 	inline uint32_t PrepareFrame(uint32_t current_frame) {
-		// reset counter
-		*(m_frame_count_ptrs[current_frame]) = 0;
-
-		const std::shared_ptr<myvk::DescriptorSet> &descriptor_set = m_frame_descriptor_sets[current_frame];
-
 		// fetch mesh buffer
 		m_frame_mesh_info_buffers[current_frame] = m_mesh_info_buffer.load(std::memory_order_acquire);
 		const std::shared_ptr<myvk::Buffer> &mesh_info_buffer = m_frame_mesh_info_buffers[current_frame];
+		if (mesh_info_buffer == nullptr)
+			return 0;
+
+		const std::shared_ptr<myvk::DescriptorSet> &descriptor_set = m_frame_descriptor_sets[current_frame];
 		descriptor_set->UpdateStorageBuffer(mesh_info_buffer, 0);
-		uint32_t mesh_count = mesh_info_buffer->GetSize() / sizeof(MeshInfo) - 1;
+		uint32_t mesh_count = mesh_info_buffer->GetSize() / sizeof(MeshInfo);
+
+		// reset counter
+		*(m_frame_count_ptrs[current_frame]) = 0;
 
 		// check indirect and draw_command buffer recreation
 		std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame];
@@ -205,7 +205,7 @@ public:
 			    m_transfer_queue->GetDevicePtr(), desired_drawcmd_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
 			    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
 
-			descriptor_set->UpdateStorageBuffer(draw_command_buffer, 2);
+			descriptor_set->UpdateStorageBuffer(draw_command_buffer, 1);
 		}
 
 		return mesh_count;

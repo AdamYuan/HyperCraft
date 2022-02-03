@@ -26,9 +26,9 @@ public:
 	              // mesh info buffer
 	              {0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1,
 	               VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT},
-	              // count buffer
-	              {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT},
 	              // draw command buffer
+	              {1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT},
+	              // count buffer
 	              {2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT},
 	          })} {}
 
@@ -50,7 +50,8 @@ protected:
 			std::shared_ptr<MeshCluster<Vertex, Index, Info>> cluster = i.lock();
 			if (cluster) {
 				uint32_t mesh_count = cluster->PrepareFrame(current_frame);
-				ret.push_back({std::move(cluster), mesh_count});
+				if (mesh_count)
+					ret.push_back({std::move(cluster), mesh_count});
 			}
 		}
 		return ret;
