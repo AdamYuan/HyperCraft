@@ -2,26 +2,27 @@
 #define CUBECRAFT3_CLIENT_CHUNK_WORKER_HPP
 
 #include <client/Chunk.hpp>
+#include <client/WorkerBase.hpp>
 
-class ChunkWorker {
+class ChunkWorkerBase : public WorkerBase {
 private:
 	std::weak_ptr<Chunk> m_chunk_weak_ptr;
 
 protected:
 	std::shared_ptr<Chunk> m_chunk_ptr;
 	virtual inline bool lock() { return (m_chunk_ptr = m_chunk_weak_ptr.lock()) != nullptr; }
-	void push_worker(std::unique_ptr<ChunkWorker> &&worker) const;
+	void push_worker(std::unique_ptr<ChunkWorkerBase> &&worker) const;
 
 public:
-	virtual void Run() = 0;
-	inline explicit ChunkWorker(const std::weak_ptr<Chunk> &chunk_ptr) : m_chunk_weak_ptr(chunk_ptr) {}
+	inline explicit ChunkWorkerBase(const std::weak_ptr<Chunk> &chunk_ptr) : m_chunk_weak_ptr(chunk_ptr) {}
+	~ChunkWorkerBase() override = default;
 };
 
-class ChunkWorkerS26 : public ChunkWorker {
+class ChunkWorkerS26Base : public ChunkWorkerBase {
 protected:
 	std::shared_ptr<Chunk> m_neighbour_chunk_ptr[26];
 	inline bool lock() override {
-		if (!ChunkWorker::lock())
+		if (!ChunkWorkerBase::lock())
 			return false;
 		for (uint32_t i = 0; i < 26; ++i)
 			if ((m_neighbour_chunk_ptr[i] = m_chunk_ptr->LockNeighbour(i)) == nullptr)
@@ -44,10 +45,14 @@ protected:
 	// TODO: Implement get_block_ref, get_light_ref, set_block, set_light
 
 public:
-	explicit ChunkWorkerS26(const std::weak_ptr<Chunk> &chunk_ptr) : ChunkWorker(chunk_ptr) {}
+	explicit ChunkWorkerS26Base(const std::weak_ptr<Chunk> &chunk_ptr) : ChunkWorkerBase(chunk_ptr) {}
+	~ChunkWorkerS26Base() override = default;
 };
 
-// TODO: Implement this (only 6 neighbours (6 faces of a cube))
-class ChunkWorkerS6 : public ChunkWorker {};
+// TODO: Implement this (only 6 neighbours (6 faces of a cube), for lighting or fluid update)
+class ChunkWorkerS6Base : public ChunkWorkerBase {
+
+	~ChunkWorkerS6Base() override = default;
+};
 
 #endif

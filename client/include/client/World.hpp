@@ -12,7 +12,7 @@
 #include <vector>
 
 #include <client/Chunk.hpp>
-#include <client/ChunkWorker.hpp>
+#include <client/WorkerBase.hpp>
 
 class WorldRenderer;
 class ClientBase;
@@ -33,12 +33,12 @@ private:
 	std::unordered_map<ChunkPos3, std::shared_ptr<Chunk>> m_chunks;
 
 	// Chunk workers
-	std::atomic_bool m_chunk_threads_running{true};
-	moodycamel::BlockingConcurrentQueue<std::unique_ptr<ChunkWorker>> m_chunk_workers;
-	std::vector<std::thread> m_chunk_threads;
+	std::atomic_bool m_worker_threads_running{true};
+	moodycamel::BlockingConcurrentQueue<std::unique_ptr<WorkerBase>> m_workers;
+	std::vector<std::thread> m_worker_threads;
 
-	void launch_chunk_threads();
-	void chunk_thread_func();
+	void launch_worker_threads();
+	void worker_thread_func();
 
 public:
 	inline const std::weak_ptr<WorldRenderer> &GetWorldRendererWeakPtr() const { return m_world_renderer_weak_ptr; }
@@ -47,36 +47,14 @@ public:
 	inline const std::weak_ptr<ClientBase> &GetClientWeakPtr() const { return m_client_weak_ptr; }
 	inline std::shared_ptr<ClientBase> LockClient() const { return m_client_weak_ptr.lock(); }
 
-	inline void PushWorker(std::unique_ptr<ChunkWorker> &&worker) { m_chunk_workers.enqueue(std::move(worker)); }
-	std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const {
-		auto it = m_chunks.find(position);
-		return it == m_chunks.end() ? nullptr : it->second;
-	}
-	std::shared_ptr<Chunk> PushChunk(const ChunkPos3 &position) {
-		{ // If exists, return the existing one
-			const std::shared_ptr<Chunk> &ret = FindChunk(position);
-			if (ret)
-				return ret;
-		}
-		// else, create a new chunk
-		std::shared_ptr<Chunk> ret = Chunk::Create(weak_from_this(), position);
-		m_chunks[position] = ret;
-
-		// assign chunk neighbours
-		for (uint32_t i = 0; i < 26; ++i) {
-			ChunkPos3 dp;
-			Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(dp));
-
-			const std::shared_ptr<Chunk> &nei = FindChunk(position + dp);
-			ret->SetNeighbour(i, nei);
-			if (nei)
-				nei->SetNeighbour(Chunk::CmpXYZ2NeighbourIndex(-dp.x, -dp.y, -dp.z), ret);
-		}
-		return ret;
-	}
+	inline void PushWorker(std::unique_ptr<WorkerBase> &&worker) { m_workers.enqueue(std::move(worker)); }
+	std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const;
+	std::shared_ptr<Chunk> PushChunk(const ChunkPos3 &position);
 	void EraseChunk(const ChunkPos3 &position) { m_chunks.erase(position); }
 
-	World() { launch_chunk_threads(); }
+	void Update(const glm::vec3 &position);
+
+	World() { launch_worker_threads(); }
 	void Join(); // must be called in main thread
 };
 

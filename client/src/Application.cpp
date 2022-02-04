@@ -78,17 +78,19 @@ void Application::draw_frame() {
 	uint32_t image_index = m_frame_manager.GetCurrentImageIndex();
 	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
 
-	m_world_renderer->GetChunkRenderer()->PrepareFrame(current_frame);
 	m_camera->Update(current_frame);
 
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager.GetCurrentCommandBuffer();
 	command_buffer->Begin();
 
+	m_world_renderer->GetChunkRenderer()->BeginFrame(current_frame);
 	m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer, current_frame);
 
 	m_canvas.CmdBeginRenderPass(command_buffer, image_index);
 	m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer, m_frame_manager.GetSwapchain()->GetExtent(),
 	                                                      current_frame);
+	m_world_renderer->GetChunkRenderer()->EndFrame();
+
 	command_buffer->CmdNextSubpass();
 	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
 	command_buffer->CmdEndRenderPass();
@@ -114,7 +116,7 @@ Application::Application() {
 	m_world = World::Create();
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
-	m_camera->m_speed = 8.0f;
+	m_camera->m_speed = 32.0f;
 	m_world_renderer =
 	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_transfer_queue, m_canvas.GetRenderPass(), 0);
 	m_client = LocalClient::Create(m_world, "world.db");
@@ -122,19 +124,8 @@ Application::Application() {
 }
 
 void Application::Run() {
-	constexpr int16_t kR = 10;
+	constexpr int16_t kR = 20;
 	m_camera->m_z_far = kR * Chunk::kSize * 1.8;
-	for (int16_t i = -kR; i <= kR; ++i)
-		for (int16_t j = -kR; j <= kR; ++j)
-			for (int16_t k = -kR; k <= kR; ++k) {
-				m_world->PushChunk({i, j, k});
-			}
-	for (int16_t i = -kR; i <= kR; ++i)
-		for (int16_t j = -kR; j <= kR; ++j)
-			for (int16_t k = -kR; k <= kR; ++k) {
-				m_world->PushWorker(ChunkGenerator::Create(m_world->FindChunk({i, j, k})));
-			}
-
 	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
 
 	while (!glfwWindowShouldClose(m_window)) {
@@ -144,6 +135,8 @@ void Application::Run() {
 		std::chrono::duration<float, std::ratio<1, 1>> delta = cur_time - prev_time;
 		prev_time = cur_time;
 		m_camera->Control(m_window, delta.count());
+
+		m_world->Update(m_camera->m_position);
 
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();

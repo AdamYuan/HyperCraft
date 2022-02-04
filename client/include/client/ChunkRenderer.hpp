@@ -54,10 +54,11 @@ public:
 		return std::make_unique<ChunkRenderer>(texture_ptr, camera_ptr, transfer_queue, render_pass, subpass);
 	}
 
-	void PrepareFrame(uint32_t current_frame);
+	void BeginFrame(uint32_t current_frame);
 	void CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame);
 	void CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, const VkExtent2D &extent,
 	                     uint32_t current_frame);
+	inline void EndFrame() { m_prepared_cluster_vector.clear(); }
 };
 
 #endif

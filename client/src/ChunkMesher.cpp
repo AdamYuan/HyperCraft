@@ -315,9 +315,11 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	}
 }
 
+#include <random>
 void ChunkMesher::Run() {
-	if (!lock())
+	if (!lock()) {
 		return;
+	}
 
 	// if the neighbour chunks are not totally generated, return and move it back
 	if (!m_chunk_ptr->HaveFlags(Chunk::Flag::kGenerated)) {

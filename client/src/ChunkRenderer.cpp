@@ -87,7 +87,7 @@ void ChunkRenderer::create_main_pipeline(const std::shared_ptr<myvk::RenderPass>
         i.m_cluster_ptr->CmdDrawIndirect(draw_command_buffer, current_frame, i.m_mesh_count);
     }
 } */
-void ChunkRenderer::PrepareFrame(uint32_t current_frame) { m_prepared_cluster_vector = PrepareClusters(current_frame); }
+void ChunkRenderer::BeginFrame(uint32_t current_frame) { m_prepared_cluster_vector = PrepareClusters(current_frame); }
 void ChunkRenderer::CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) {
 	// Culling compute pipeline
 	command_buffer->CmdBindPipeline(m_culling_pipeline);

@@ -2,16 +2,17 @@
 #define CUBECRAFT3_CLIENT_CHUNK_MESHER_HPP
 
 #include <client/ChunkMesh.hpp>
-#include <client/ChunkWorker.hpp>
+#include <client/ChunkWorkerBase.hpp>
 #include <common/AABB.hpp>
 
-class ChunkMesher : public ChunkWorkerS26 {
+class ChunkMesher : public ChunkWorkerS26Base {
 public:
-	static inline std::unique_ptr<ChunkWorker> Create(const std::weak_ptr<Chunk> &chunk_ptr) {
+	static inline std::unique_ptr<ChunkMesher> Create(const std::weak_ptr<Chunk> &chunk_ptr) {
 		return std::make_unique<ChunkMesher>(chunk_ptr);
 	}
 
-	explicit ChunkMesher(const std::weak_ptr<Chunk> &chunk_ptr) : ChunkWorkerS26(chunk_ptr) {}
+	explicit ChunkMesher(const std::weak_ptr<Chunk> &chunk_ptr) : ChunkWorkerS26Base(chunk_ptr) {}
+	~ChunkMesher() override = default;
 
 	void Run() override;
 

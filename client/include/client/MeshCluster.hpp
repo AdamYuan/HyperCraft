@@ -14,6 +14,8 @@
 
 #include <client/Config.hpp>
 
+#include <spdlog/spdlog.h>
+
 inline uint32_t group_x_64(uint32_t x) { return (x >> 6u) + (((x & 0x3fu) > 0u) ? 1u : 0u); }
 
 // Used for zero-overhead rendering (with GPU culling)
@@ -150,10 +152,10 @@ public:
 		                                  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
 		VmaVirtualBlockCreateInfo virtual_block_create_info = {};
-		// virtual_block_create_info.flags = VMA_VIRTUAL_BLOCK_CREATE_TLSF_ALGORITHM_BIT; // Where the bug comes from
 		virtual_block_create_info.size = vertex_buffer_size;
 		if (vmaCreateVirtualBlock(&virtual_block_create_info, &ret->m_vertices_virtual_block) != VK_SUCCESS)
 			return nullptr;
+
 		virtual_block_create_info.size = index_buffer_size;
 		if (vmaCreateVirtualBlock(&virtual_block_create_info, &ret->m_indices_virtual_block) != VK_SUCCESS)
 			return nullptr;

@@ -50,8 +50,9 @@ public:
 	}
 
 	~MeshHandle() {
-		if (~m_first_index)
+		if (~m_first_index) {
 			m_cluster_ptr->erase_mesh(m_first_index);
+		}
 		if (m_vertices_allocation) {
 			std::scoped_lock lock{m_cluster_ptr->m_vertices_virtual_block_mutex};
 			vmaVirtualFree(m_cluster_ptr->m_vertices_virtual_block, m_vertices_allocation);
