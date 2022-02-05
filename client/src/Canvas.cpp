@@ -1,16 +1,19 @@
 #include <client/Canvas.hpp>
 
-void Canvas::Initialize(const myvk::FrameManager &frame_manager) {
-	m_framebuffers.resize(frame_manager.GetSwapchain()->GetImageCount());
+std::shared_ptr<Canvas> Canvas::Create(const std::shared_ptr<myvk::FrameManager> &frame_manager_ptr) {
+	std::shared_ptr<Canvas> ret = std::make_shared<Canvas>();
+	ret->m_frame_manager_ptr = frame_manager_ptr;
+	ret->m_framebuffers.resize(frame_manager_ptr->GetSwapchain()->GetImageCount());
 
-	create_depth_buffer(frame_manager);
-	create_render_pass(frame_manager);
-	create_framebuffers(frame_manager);
+	ret->create_depth_buffer();
+	ret->create_render_pass();
+	ret->create_framebuffers();
+	return ret;
 }
 
-void Canvas::Resize(const myvk::FrameManager &frame_manager) {
-	create_depth_buffer(frame_manager);
-	create_framebuffers(frame_manager);
+void Canvas::Resize() {
+	create_depth_buffer();
+	create_framebuffers();
 }
 
 void Canvas::CmdBeginRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t image_index,
@@ -22,16 +25,16 @@ void Canvas::CmdBeginRenderPass(const std::shared_ptr<myvk::CommandBuffer> &comm
 	                                   {color_clear_value, depth_clear_value});
 }
 
-void Canvas::create_depth_buffer(const myvk::FrameManager &frame_manager) {
-	m_depth_image = myvk::Image::CreateTexture2D(frame_manager.GetSwapchain()->GetDevicePtr(),
-	                                             frame_manager.GetSwapchain()->GetExtent(), 1, VK_FORMAT_D32_SFLOAT,
-	                                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+void Canvas::create_depth_buffer() {
+	m_depth_image = myvk::Image::CreateTexture2D(m_frame_manager_ptr->GetSwapchain()->GetDevicePtr(),
+	                                             m_frame_manager_ptr->GetSwapchain()->GetExtent(), 1,
+	                                             VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 	m_depth_image_view = myvk::ImageView::Create(m_depth_image, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void Canvas::create_render_pass(const myvk::FrameManager &frame_manager) {
+void Canvas::create_render_pass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = frame_manager.GetSwapchain()->GetImageFormat();
+	color_attachment.format = m_frame_manager_ptr->GetSwapchain()->GetImageFormat();
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -111,12 +114,12 @@ void Canvas::create_render_pass(const myvk::FrameManager &frame_manager) {
 	render_pass_info.dependencyCount = subpass_dependencies.size();
 	render_pass_info.pDependencies = subpass_dependencies.data();
 
-	m_render_pass = myvk::RenderPass::Create(frame_manager.GetSwapchain()->GetDevicePtr(), render_pass_info);
+	m_render_pass = myvk::RenderPass::Create(m_frame_manager_ptr->GetSwapchain()->GetDevicePtr(), render_pass_info);
 }
 
-void Canvas::create_framebuffers(const myvk::FrameManager &frame_manager) {
+void Canvas::create_framebuffers() {
 	for (uint32_t i = 0; i < m_framebuffers.size(); ++i)
-		m_framebuffers[i] =
-		    myvk::Framebuffer::Create(m_render_pass, {frame_manager.GetSwapchainImageViews()[i], m_depth_image_view},
-		                              frame_manager.GetSwapchain()->GetExtent());
+		m_framebuffers[i] = myvk::Framebuffer::Create(
+		    m_render_pass, {m_frame_manager_ptr->GetSwapchainImageViews()[i], m_depth_image_view},
+		    m_frame_manager_ptr->GetSwapchain()->GetExtent());
 }

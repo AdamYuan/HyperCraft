@@ -19,7 +19,7 @@ layout(std430, set = 1, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMesh
 layout(std430, set = 1, binding = 1) writeonly buffer uuDrawCommand { DrawIndexedIndirectCommand uDrawCommand[]; };
 layout(std430, set = 1, binding = 2) buffer uuDrawCount { uint uDrawCount; };
 
-layout(push_constant) uniform uuPushConstant { vec4 uFrustum[6]; };
+layout(push_constant) uniform uuPushConstant { vec4 uFrustum[5]; };
 
 bool FrustumCull(in const AABB aabb) {
 	vec3 axis;
@@ -48,11 +48,12 @@ bool FrustumCull(in const AABB aabb) {
 	axis.z = uFrustum[4].z < 0.0 ? aabb.min_z : aabb.max_z;
 	if (dot(uFrustum[4].xyz, axis) + uFrustum[4].w < 0.0)
 		return true;
-	axis.x = uFrustum[5].x < 0.0 ? aabb.min_x : aabb.max_x;
+	// ignore far plane culling
+	/* axis.x = uFrustum[5].x < 0.0 ? aabb.min_x : aabb.max_x;
 	axis.y = uFrustum[5].y < 0.0 ? aabb.min_y : aabb.max_y;
 	axis.z = uFrustum[5].z < 0.0 ? aabb.min_z : aabb.max_z;
 	if (dot(uFrustum[5].xyz, axis) + uFrustum[5].w < 0.0)
-		return true;
+	    return true; */
 	return false;
 }
 

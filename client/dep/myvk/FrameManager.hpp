@@ -26,11 +26,14 @@ private:
 
 	std::function<void(const FrameManager &)> m_resize_func;
 
+	void initialize(const std::shared_ptr<Queue> &graphics_queue, const std::shared_ptr<PresentQueue> &present_queue,
+	                bool use_vsync, uint32_t frame_count = 3);
 	void recreate_swapchain();
 
 public:
-	void Initialize(const std::shared_ptr<Queue> &graphics_queue, const std::shared_ptr<PresentQueue> &present_queue,
-	                bool use_vsync, uint32_t frame_count = 3);
+	static std::shared_ptr<FrameManager> Create(const std::shared_ptr<Queue> &graphics_queue,
+	                                            const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
+	                                            uint32_t frame_count = 3);
 
 	void SetResizeFunc(const std::function<void(const FrameManager &)> &resize_func) { m_resize_func = resize_func; }
 	void Resize() { m_resized = true; }

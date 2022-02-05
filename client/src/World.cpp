@@ -5,6 +5,7 @@
 
 #include <client/ChunkEraser.hpp>
 #include <client/ChunkGenerator.hpp>
+#include <client/ChunkMesher.hpp>
 
 void World::launch_worker_threads() {
 	m_worker_threads.resize(std::thread::hardware_concurrency());
@@ -37,31 +38,31 @@ void World::Update(const glm::vec3 &position) {
 		last_chunk_pos = current_chunk_pos;
 		spdlog::info("current_chunk_pos = {}", glm::to_string(current_chunk_pos));
 
+		std::vector<std::unique_ptr<WorkerBase>> new_workers;
+
 		// TODO: Implement a worker to erase chunk
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
 			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR) {
-				PushWorker(ChunkEraser::Create(it->second));
+				new_workers.push_back(ChunkEraser::Create(std::move(it->second)));
 				it = m_chunks.erase(it);
-			} else
+			} else {
+				if (!it->second->HaveFlags(Chunk::Flag::kMeshed))
+					new_workers.push_back(ChunkMesher::Create(it->second));
 				++it;
+			}
 		}
 
-		std::vector<std::shared_ptr<Chunk>> new_chunks;
 		ChunkPos3 dp;
 		for (dp.x = -kR; dp.x <= kR; ++dp.x)
 			for (dp.y = -kR; dp.y <= kR; ++dp.y)
 				for (dp.z = -kR; dp.z <= kR; ++dp.z) {
 					if (glm::length((glm::vec3)dp) < kR) {
 						ChunkPos3 pos = current_chunk_pos + dp;
-						auto chunk = FindChunk(pos);
-						if (!chunk || !chunk->HaveFlags(Chunk::kMeshed)) {
-							new_chunks.push_back(PushChunk(pos));
-						}
+						if (!FindChunk(pos))
+							new_workers.push_back(ChunkGenerator::Create(PushChunk(pos)));
 					}
 				}
-
-		for (const auto &i : new_chunks)
-			PushWorker(ChunkGenerator::Create(i));
+		PushWorkers(std::move(new_workers));
 	}
 }
 

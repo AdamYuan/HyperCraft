@@ -70,7 +70,7 @@ void Camera::Control(GLFWwindow *window, float delta) {
 }
 
 glm::mat4 Camera::fetch_matrix() const {
-	glm::mat4 ret = glm::perspective(m_fov, m_aspect_ratio, m_z_near, m_z_far);
+	glm::mat4 ret = glm::tweakedInfinitePerspective(m_fov, m_aspect_ratio, m_z_near);
 	ret[1][1] *= -1;
 	ret = glm::rotate(ret, -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 	ret = glm::rotate(ret, -m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));

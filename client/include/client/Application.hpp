@@ -8,9 +8,9 @@
 #include <client/Canvas.hpp>
 
 #include <client/Camera.hpp>
+#include <client/ClientBase.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
-#include <client/ClientBase.hpp>
 
 class Application {
 private:
@@ -25,8 +25,8 @@ private:
 	std::shared_ptr<myvk::CommandPool> m_main_command_pool;
 
 	// frame objects
-	myvk::FrameManager m_frame_manager;
-	Canvas m_canvas;
+	std::shared_ptr<myvk::FrameManager> m_frame_manager;
+	std::shared_ptr<Canvas> m_canvas;
 
 	// render pass
 	myvk::ImGuiRenderer m_imgui_renderer;

@@ -14,7 +14,7 @@ protected:
 	void push_worker(std::unique_ptr<ChunkWorkerBase> &&worker) const;
 
 public:
-	inline explicit ChunkWorkerBase(const std::weak_ptr<Chunk> &chunk_ptr) : m_chunk_weak_ptr(chunk_ptr) {}
+	inline explicit ChunkWorkerBase(const std::weak_ptr<Chunk> &chunk_weak_ptr) : m_chunk_weak_ptr(chunk_weak_ptr) {}
 	~ChunkWorkerBase() override = default;
 };
 

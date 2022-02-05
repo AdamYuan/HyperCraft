@@ -48,6 +48,10 @@ public:
 	inline std::shared_ptr<ClientBase> LockClient() const { return m_client_weak_ptr.lock(); }
 
 	inline void PushWorker(std::unique_ptr<WorkerBase> &&worker) { m_workers.enqueue(std::move(worker)); }
+	inline void PushWorkers(std::vector<std::unique_ptr<WorkerBase>> &&workers) {
+		m_workers.enqueue_bulk(std::make_move_iterator(workers.begin()), workers.size());
+	}
+
 	std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const;
 	std::shared_ptr<Chunk> PushChunk(const ChunkPos3 &position);
 	void EraseChunk(const ChunkPos3 &position) { m_chunks.erase(position); }

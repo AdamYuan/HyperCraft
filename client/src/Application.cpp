@@ -22,7 +22,7 @@ void Application::init_imgui() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
-	m_imgui_renderer.Initialize(m_main_command_pool, m_canvas.GetRenderPass(), 1, kFrameCount);
+	m_imgui_renderer.Initialize(m_main_command_pool, m_canvas->GetRenderPass(), 1, kFrameCount);
 }
 
 void Application::create_vulkan_base() {
@@ -61,33 +61,33 @@ void Application::create_vulkan_base() {
 }
 
 void Application::create_frame_object() {
-	m_frame_manager.Initialize(m_main_queue, m_present_queue, false, kFrameCount);
-	m_frame_manager.SetResizeFunc([&](const myvk::FrameManager &frame_manager) { resize(frame_manager); });
-	m_canvas.Initialize(m_frame_manager);
+	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount);
+	m_frame_manager->SetResizeFunc([&](const myvk::FrameManager &frame_manager) { resize(frame_manager); });
+	m_canvas = Canvas::Create(m_frame_manager);
 }
 
 void Application::resize(const myvk::FrameManager &frame_manager) {
 	m_camera->m_aspect_ratio = (float)frame_manager.GetExtent().width / (float)frame_manager.GetExtent().height;
-	m_canvas.Resize(frame_manager);
+	m_canvas->Resize();
 }
 
 void Application::draw_frame() {
-	if (!m_frame_manager.NewFrame())
+	if (!m_frame_manager->NewFrame())
 		return;
 
-	uint32_t image_index = m_frame_manager.GetCurrentImageIndex();
-	uint32_t current_frame = m_frame_manager.GetCurrentFrame();
+	uint32_t image_index = m_frame_manager->GetCurrentImageIndex();
+	uint32_t current_frame = m_frame_manager->GetCurrentFrame();
 
 	m_camera->Update(current_frame);
 
-	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager.GetCurrentCommandBuffer();
+	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
 
 	m_world_renderer->GetChunkRenderer()->BeginFrame(current_frame);
 	m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer, current_frame);
 
-	m_canvas.CmdBeginRenderPass(command_buffer, image_index);
-	m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer, m_frame_manager.GetSwapchain()->GetExtent(),
+	m_canvas->CmdBeginRenderPass(command_buffer, image_index);
+	m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer, m_frame_manager->GetSwapchain()->GetExtent(),
 	                                                      current_frame);
 	m_world_renderer->GetChunkRenderer()->EndFrame();
 
@@ -97,7 +97,7 @@ void Application::draw_frame() {
 
 	command_buffer->End();
 
-	m_frame_manager.Render();
+	m_frame_manager->Render();
 }
 
 #include <client/ChunkGenerator.hpp>
@@ -117,15 +117,12 @@ Application::Application() {
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
 	m_camera->m_speed = 32.0f;
-	m_world_renderer =
-	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_transfer_queue, m_canvas.GetRenderPass(), 0);
+	m_world_renderer = WorldRenderer::Create(m_world, m_global_texture, m_camera, m_canvas, m_transfer_queue, 0);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 }
 
 void Application::Run() {
-	constexpr int16_t kR = 20;
-	m_camera->m_z_far = kR * Chunk::kSize * 1.8;
 	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
 
 	while (!glfwWindowShouldClose(m_window)) {
@@ -151,7 +148,7 @@ void Application::Run() {
 
 		draw_frame();
 	}
-	m_frame_manager.WaitIdle();
+	m_frame_manager->WaitIdle();
 	m_world->Join();
 }
 
@@ -172,5 +169,5 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int scancode, i
 
 void Application::glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
 	auto *app = (Application *)glfwGetWindowUserPointer(window);
-	app->m_frame_manager.Resize();
+	app->m_frame_manager->Resize();
 }

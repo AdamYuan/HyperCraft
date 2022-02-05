@@ -22,7 +22,7 @@ void FrameManager::recreate_swapchain() {
 		m_swapchain_image_views[i] = myvk::ImageView::Create(m_swapchain_images[i]);
 }
 
-void FrameManager::Initialize(const std::shared_ptr<Queue> &graphics_queue,
+void FrameManager::initialize(const std::shared_ptr<Queue> &graphics_queue,
                               const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
                               uint32_t frame_count) {
 	m_swapchain = myvk::Swapchain::Create(graphics_queue, present_queue, use_vsync);
@@ -89,6 +89,13 @@ void FrameManager::Render() {
 void FrameManager::WaitIdle() const {
 	for (const auto &i : m_frame_fences)
 		i->Wait();
+}
+std::shared_ptr<FrameManager> FrameManager::Create(const std::shared_ptr<Queue> &graphics_queue,
+                                                   const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
+                                                   uint32_t frame_count) {
+	std::shared_ptr<FrameManager> ret = std::make_shared<FrameManager>();
+	ret->initialize(graphics_queue, present_queue, use_vsync, frame_count);
+	return ret;
 }
 
 } // namespace myvk

@@ -6,7 +6,7 @@
 
 class Frustum {
 private:
-	glm::vec4 m_planes[6];
+	glm::vec4 m_planes[5];
 
 public:
 	inline void Update(const glm::mat4 &matrix);
@@ -20,13 +20,13 @@ void Frustum::Update(const glm::mat4 &matrix) {
 	m_planes[2] = tmat[3] - tmat[1];
 	m_planes[3] = tmat[3] + tmat[1];
 	m_planes[4] = tmat[3] - tmat[2];
-	m_planes[5] = tmat[3] + tmat[2];
+	// m_planes[5] = tmat[3] + tmat[2];
 	m_planes[0] /= glm::length(m_planes[0].xyz());
 	m_planes[1] /= glm::length(m_planes[1].xyz());
 	m_planes[2] /= glm::length(m_planes[2].xyz());
 	m_planes[3] /= glm::length(m_planes[3].xyz());
 	m_planes[4] /= glm::length(m_planes[4].xyz());
-	m_planes[5] /= glm::length(m_planes[5].xyz());
+	// m_planes[5] /= glm::length(m_planes[5].xyz());
 }
 
 bool Frustum::Cull(const fAABB &aabb) const {

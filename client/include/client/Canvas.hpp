@@ -10,6 +10,8 @@
 
 class Canvas {
 private:
+	std::shared_ptr<myvk::FrameManager> m_frame_manager_ptr;
+
 	std::shared_ptr<myvk::Image> m_depth_image;
 	std::shared_ptr<myvk::ImageView> m_depth_image_view;
 
@@ -17,14 +19,15 @@ private:
 
 	std::vector<std::shared_ptr<myvk::Framebuffer>> m_framebuffers;
 
-	void create_depth_buffer(const myvk::FrameManager &frame_manager);
-	void create_render_pass(const myvk::FrameManager &frame_manager);
-	void create_framebuffers(const myvk::FrameManager &frame_manager);
+	void create_depth_buffer();
+	void create_render_pass();
+	void create_framebuffers();
 
 public:
-	void Initialize(const myvk::FrameManager &frame_manager);
-	void Resize(const myvk::FrameManager &frame_manager);
+	static std::shared_ptr<Canvas> Create(const std::shared_ptr<myvk::FrameManager> &frame_manager_ptr);
+	void Resize();
 
+	inline const std::shared_ptr<myvk::FrameManager> &GetFrameManagerPtr() const { return m_frame_manager_ptr; }
 	inline const std::shared_ptr<myvk::RenderPass> &GetRenderPass() const { return m_render_pass; }
 	inline const std::shared_ptr<myvk::Framebuffer> &GetFramebuffer(uint32_t image_index) const {
 		return m_framebuffers[image_index];

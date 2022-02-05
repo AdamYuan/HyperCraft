@@ -324,13 +324,11 @@ void ChunkMesher::Run() {
 	// if the neighbour chunks are not totally generated, return and move it back
 	if (!m_chunk_ptr->HaveFlags(Chunk::Flag::kGenerated)) {
 		push_worker(ChunkMesher::Create(m_chunk_ptr));
-		spdlog::info("remesh");
 		return;
 	}
 	for (const auto &i : m_neighbour_chunk_ptr)
 		if (!i->HaveFlags(Chunk::Flag::kGenerated)) {
 			push_worker(ChunkMesher::Create(m_chunk_ptr));
-			spdlog::info("remesh");
 			return;
 		}
 
@@ -342,9 +340,9 @@ void ChunkMesher::Run() {
 		generate_face_lights(face_lights);
 		aabb = generate_mesh(face_lights, &vertices, &indices);
 	}
-	spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
+	/* spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
 	             glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
-	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax()));
+	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax())); */
 
 	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
 	if (!world_ptr)

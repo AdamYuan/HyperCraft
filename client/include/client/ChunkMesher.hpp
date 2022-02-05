@@ -7,11 +7,11 @@
 
 class ChunkMesher : public ChunkWorkerS26Base {
 public:
-	static inline std::unique_ptr<ChunkMesher> Create(const std::weak_ptr<Chunk> &chunk_ptr) {
-		return std::make_unique<ChunkMesher>(chunk_ptr);
+	static inline std::unique_ptr<ChunkMesher> Create(const std::weak_ptr<Chunk> &chunk_weak_ptr) {
+		return std::make_unique<ChunkMesher>(chunk_weak_ptr);
 	}
 
-	explicit ChunkMesher(const std::weak_ptr<Chunk> &chunk_ptr) : ChunkWorkerS26Base(chunk_ptr) {}
+	explicit ChunkMesher(const std::weak_ptr<Chunk> &chunk_weak_ptr) : ChunkWorkerS26Base(chunk_weak_ptr) {}
 	~ChunkMesher() override = default;
 
 	void Run() override;
