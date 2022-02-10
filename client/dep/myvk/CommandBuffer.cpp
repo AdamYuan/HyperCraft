@@ -95,6 +95,17 @@ VkResult CommandBuffer::Begin(VkCommandBufferUsageFlags usage) const {
 	return vkBeginCommandBuffer(m_command_buffer, &begin_info);
 }
 
+VkResult CommandBuffer::BeginSecondary(VkCommandBufferUsageFlags usage) const {
+	VkCommandBufferBeginInfo begin_info = {};
+	begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	begin_info.flags = usage;
+
+	VkCommandBufferInheritanceInfo inheritance_info = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO};
+	begin_info.pInheritanceInfo = &inheritance_info;
+
+	return vkBeginCommandBuffer(m_command_buffer, &begin_info);
+}
+
 VkResult CommandBuffer::End() const { return vkEndCommandBuffer(m_command_buffer); }
 
 VkResult CommandBuffer::Reset(VkCommandBufferResetFlags flags) const {
@@ -189,6 +200,13 @@ void CommandBuffer::CmdCopy(const std::shared_ptr<ImageBase> &src, const std::sh
                             const std::vector<VkBufferImageCopy> &regions, VkImageLayout layout) const {
 	vkCmdCopyImageToBuffer(m_command_buffer, src->GetHandle(), layout, dst->GetHandle(), regions.size(),
 	                       regions.data());
+}
+
+void CommandBuffer::CmdCopy(const std::shared_ptr<ImageBase> &src, const std::shared_ptr<ImageBase> &dst,
+                            const std::vector<VkImageCopy> &regions, VkImageLayout src_layout,
+                            VkImageLayout dst_layout) const {
+	vkCmdCopyImage(m_command_buffer, src->GetHandle(), src_layout, dst->GetHandle(), dst_layout, regions.size(),
+	               regions.data());
 }
 
 void CommandBuffer::CmdDraw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex,

@@ -9,6 +9,7 @@
 
 #include <client/Camera.hpp>
 #include <client/ClientBase.hpp>
+#include <client/DepthHierarchy.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
 
@@ -27,6 +28,7 @@ private:
 	// frame objects
 	std::shared_ptr<myvk::FrameManager> m_frame_manager;
 	std::shared_ptr<Canvas> m_canvas;
+	std::shared_ptr<DepthHierarchy> m_depth_hierarchy;
 
 	// render pass
 	myvk::ImGuiRenderer m_imgui_renderer;

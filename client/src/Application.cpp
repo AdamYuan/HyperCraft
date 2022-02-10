@@ -47,7 +47,8 @@ void Application::create_vulkan_base() {
 		exit(EXIT_FAILURE);
 	}
 	VkPhysicalDeviceVulkan12Features vk12features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-	vk12features.drawIndirectCount = VK_TRUE;
+	vk12features.drawIndirectCount = VK_TRUE;   // for vkCmdDrawIndexedIndirectCount
+	vk12features.samplerFilterMinmax = VK_TRUE; // for occlusion culling
 	m_device = myvk::Device::Create(device_create_info, &vk12features);
 
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);
@@ -64,11 +65,13 @@ void Application::create_frame_object() {
 	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount);
 	m_frame_manager->SetResizeFunc([&](const myvk::FrameManager &frame_manager) { resize(frame_manager); });
 	m_canvas = Canvas::Create(m_frame_manager);
+	m_depth_hierarchy = DepthHierarchy::Create(m_canvas);
 }
 
 void Application::resize(const myvk::FrameManager &frame_manager) {
 	m_camera->m_aspect_ratio = (float)frame_manager.GetExtent().width / (float)frame_manager.GetExtent().height;
 	m_canvas->Resize();
+	m_depth_hierarchy->Resize();
 }
 
 void Application::draw_frame() {
@@ -82,19 +85,25 @@ void Application::draw_frame() {
 
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
+	{
+		// Generate draw commands for chunks
+		m_world_renderer->GetChunkRenderer()->PrepareFrame();
+		m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer);
 
-	m_world_renderer->GetChunkRenderer()->BeginFrame(current_frame);
-	m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer, current_frame);
+		m_canvas->CmdBeginRenderPass(command_buffer);
+		{
+			// Subpass 0: chunks
+			m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer);
 
-	m_canvas->CmdBeginRenderPass(command_buffer, image_index);
-	m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer, m_frame_manager->GetSwapchain()->GetExtent(),
-	                                                      current_frame);
-	m_world_renderer->GetChunkRenderer()->EndFrame();
+			// Subpass 1: ImGui
+			command_buffer->CmdNextSubpass();
+			m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
+		}
+		command_buffer->CmdEndRenderPass();
 
-	command_buffer->CmdNextSubpass();
-	m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
-	command_buffer->CmdEndRenderPass();
-
+		// Build depth hierarchy for Hi-Z culling (next frame's)
+		m_depth_hierarchy->CmdBuild(command_buffer);
+	}
 	command_buffer->End();
 
 	m_frame_manager->Render();
@@ -117,7 +126,8 @@ Application::Application() {
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
 	m_camera->m_speed = 32.0f;
-	m_world_renderer = WorldRenderer::Create(m_world, m_global_texture, m_camera, m_canvas, m_transfer_queue, 0);
+	m_world_renderer =
+	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_depth_hierarchy, m_transfer_queue, 0);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 }

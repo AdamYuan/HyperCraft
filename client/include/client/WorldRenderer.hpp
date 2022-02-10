@@ -6,6 +6,7 @@
 #include <client/ChunkMesh.hpp>
 #include <client/ChunkRenderer.hpp>
 #include <client/Config.hpp>
+#include <client/DepthHierarchy.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/World.hpp>
 
@@ -27,27 +28,24 @@ private:
 	std::unique_ptr<ChunkRenderer> m_chunk_renderer;
 
 	// Child
-	std::shared_ptr<GlobalTexture> m_texture_ptr;
-	std::shared_ptr<Camera> m_camera_ptr;
-	std::shared_ptr<Canvas> m_canvas_ptr;
+	// std::shared_ptr<GlobalTexture> m_texture_ptr;
+	// std::shared_ptr<Camera> m_camera_ptr;
+	// std::shared_ptr<Canvas> m_canvas_ptr;
 
 	std::shared_ptr<World> m_world_ptr;
 
 public:
 	inline static std::shared_ptr<WorldRenderer>
 	Create(const std::shared_ptr<World> &world_ptr, const std::shared_ptr<GlobalTexture> &texture_ptr,
-	       const std::shared_ptr<Camera> &camera_ptr, const std::shared_ptr<Canvas> &canvas_ptr,
+	       const std::shared_ptr<Camera> &camera_ptr, const std::shared_ptr<DepthHierarchy> &depth_ptr,
 	       const std::shared_ptr<myvk::Queue> &transfer_queue, uint32_t chunk_subpass) {
 		std::shared_ptr<WorldRenderer> ret = std::make_shared<WorldRenderer>();
 		world_ptr->m_world_renderer_weak_ptr = ret->weak_from_this();
 		ret->m_world_ptr = world_ptr;
-		ret->m_texture_ptr = texture_ptr;
-		ret->m_camera_ptr = camera_ptr;
-		ret->m_canvas_ptr = canvas_ptr;
 		ret->m_transfer_queue = transfer_queue;
 		// Create renderers
 		ret->m_chunk_renderer =
-		    ChunkRenderer::Create(texture_ptr, camera_ptr, canvas_ptr, transfer_queue, chunk_subpass);
+		    ChunkRenderer::Create(texture_ptr, camera_ptr, depth_ptr, transfer_queue, chunk_subpass);
 		return ret;
 	}
 

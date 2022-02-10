@@ -6,6 +6,7 @@
 #include <client/Camera.hpp>
 #include <client/Canvas.hpp>
 #include <client/ChunkMesh.hpp>
+#include <client/DepthHierarchy.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/MeshRendererBase.hpp>
 #include <common/AABB.hpp>
@@ -21,7 +22,7 @@ private:
 	// Child
 	std::shared_ptr<GlobalTexture> m_texture_ptr;
 	std::shared_ptr<Camera> m_camera_ptr;
-	std::shared_ptr<Canvas> m_canvas_ptr;
+	std::shared_ptr<DepthHierarchy> m_depth_ptr; // for Hi-Z Culling
 
 	// Culling pipeline
 	std::shared_ptr<myvk::PipelineLayout> m_culling_pipeline_layout;
@@ -34,33 +35,31 @@ private:
 	void create_main_pipeline(const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass);
 
 	// Frame
-	std::vector<PreparedCluster> m_prepared_cluster_vector;
+	std::vector<PreparedCluster> m_frame_prepared_clusters[kFrameCount];
 
 public:
 	explicit ChunkRenderer(const std::shared_ptr<GlobalTexture> &texture_ptr, const std::shared_ptr<Camera> &camera_ptr,
-	                       const std::shared_ptr<Canvas> &canvas_ptr,
+	                       const std::shared_ptr<DepthHierarchy> &depth_ptr,
 	                       const std::shared_ptr<myvk::Queue> &transfer_queue, uint32_t subpass)
 	    : MeshRendererBase<ChunkMeshVertex, uint16_t, ChunkMeshInfo>(transfer_queue,
 	                                                                 kClusterFaceCount * 4 * sizeof(ChunkMeshVertex),
 	                                                                 kClusterFaceCount * 6 * sizeof(uint16_t)),
-	      m_texture_ptr{texture_ptr}, m_camera_ptr{camera_ptr}, m_canvas_ptr{canvas_ptr} {
+	      m_texture_ptr{texture_ptr}, m_camera_ptr{camera_ptr}, m_depth_ptr{depth_ptr} {
 		create_culling_pipeline(transfer_queue->GetDevicePtr());
-		create_main_pipeline(canvas_ptr->GetRenderPass(), subpass);
+		create_main_pipeline(depth_ptr->GetCanvasPtr()->GetRenderPass(), subpass);
 	}
 
 	inline static std::unique_ptr<ChunkRenderer> Create(const std::shared_ptr<GlobalTexture> &texture_ptr,
 	                                                    const std::shared_ptr<Camera> &camera_ptr,
-	                                                    const std::shared_ptr<Canvas> &canvas_ptr,
+	                                                    const std::shared_ptr<DepthHierarchy> &depth_ptr,
 	                                                    const std::shared_ptr<myvk::Queue> &transfer_queue,
 	                                                    uint32_t subpass) {
-		return std::make_unique<ChunkRenderer>(texture_ptr, camera_ptr, canvas_ptr, transfer_queue, subpass);
+		return std::make_unique<ChunkRenderer>(texture_ptr, camera_ptr, depth_ptr, transfer_queue, subpass);
 	}
 
-	void BeginFrame(uint32_t current_frame);
-	void CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame);
-	void CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, const VkExtent2D &extent,
-	                     uint32_t current_frame);
-	inline void EndFrame() { m_prepared_cluster_vector.clear(); }
+	void PrepareFrame();
+	void CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer);
+	void CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer);
 };
 
 #endif

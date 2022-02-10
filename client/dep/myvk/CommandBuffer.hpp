@@ -40,6 +40,7 @@ public:
 	VkResult Reset(VkCommandBufferResetFlags flags = 0) const;
 
 	VkResult Begin(VkCommandBufferUsageFlags usage = 0) const;
+	VkResult BeginSecondary(VkCommandBufferUsageFlags usage = 0) const;
 
 	VkResult End() const;
 
@@ -92,6 +93,11 @@ public:
 	void CmdCopy(const std::shared_ptr<ImageBase> &src, const std::shared_ptr<BufferBase> &dst,
 	             const std::vector<VkBufferImageCopy> &regions,
 	             VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) const;
+
+	void CmdCopy(const std::shared_ptr<ImageBase> &src, const std::shared_ptr<ImageBase> &dst,
+	             const std::vector<VkImageCopy> &regions,
+	             VkImageLayout src_layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+	             VkImageLayout dst_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) const;
 
 	void CmdDraw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) const;
 

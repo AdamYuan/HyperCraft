@@ -39,7 +39,6 @@ add_executable(CubeCraft3_client
         src/ChunkGenerator.cpp
         include/client/ChunkGenerator.hpp
         include/client/ChunkMesh.hpp
-        include/client/Frustum.hpp
         include/client/TerrainBase.hpp
         src/DefaultTerrain.cpp
         include/client/DefaultTerrain.hpp
@@ -48,7 +47,10 @@ add_executable(CubeCraft3_client
         include/client/MeshRendererBase.hpp
         src/ChunkRenderer.cpp
         include/client/ChunkRenderer.hpp
-        include/client/WorkerBase.hpp include/client/ChunkEraser.hpp)
+        include/client/WorkerBase.hpp
+        include/client/ChunkEraser.hpp
+        src/DepthHierarchy.cpp
+        include/client/DepthHierarchy.hpp)
 
 target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
 target_include_directories(CubeCraft3_client PRIVATE include)

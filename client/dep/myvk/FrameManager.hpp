@@ -11,7 +11,7 @@
 #include <functional>
 
 namespace myvk {
-class FrameManager {
+class FrameManager : public DeviceObjectBase {
 private:
 	bool m_resized{false};
 	uint32_t m_current_frame{0}, m_current_image_index, m_frame_count;
@@ -34,6 +34,8 @@ public:
 	static std::shared_ptr<FrameManager> Create(const std::shared_ptr<Queue> &graphics_queue,
 	                                            const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
 	                                            uint32_t frame_count = 3);
+
+	inline const std::shared_ptr<myvk::Device> &GetDevicePtr() const override { return m_swapchain->GetDevicePtr(); }
 
 	void SetResizeFunc(const std::function<void(const FrameManager &)> &resize_func) { m_resize_func = resize_func; }
 	void Resize() { m_resized = true; }

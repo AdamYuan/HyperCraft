@@ -28,6 +28,10 @@ public:
 	static std::shared_ptr<ImageView> Create(const std::shared_ptr<ImageBase> &image, VkImageViewType view_type,
 	                                         VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT);
 
+	static std::shared_ptr<ImageView> Create(const std::shared_ptr<ImageBase> &image, uint32_t mip_level,
+	                                         VkImageViewType view_type,
+	                                         VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT);
+
 	static std::shared_ptr<ImageView> Create(const std::shared_ptr<SwapchainImage> &swapchain_image);
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_image_ptr->GetDevicePtr(); };

@@ -126,6 +126,10 @@ for user-defined purpose without allocating any real GPU memory.
 extern "C" {
 #endif
 
+#ifndef VULKAN_H_
+    #include <vulkan/vulkan.h>
+#endif
+
 // Define this macro to declare maximum supported Vulkan version in format AAABBBCCC,
 // where AAA = major, BBB = minor, CCC = patch.
 // If you want to use version > 1.0, it still needs to be enabled via VmaAllocatorCreateInfo::vulkanApiVersion.
@@ -169,10 +173,6 @@ extern "C" {
         extern PFN_vkGetPhysicalDeviceMemoryProperties2 vkGetPhysicalDeviceMemoryProperties2;
     #endif // #if VMA_VULKAN_VERSION >= 1001000
 #endif // #if defined(__ANDROID__) && VMA_STATIC_VULKAN_FUNCTIONS && VK_NO_PROTOTYPES
-
-#ifndef VULKAN_H_
-    #include <vulkan/vulkan.h>
-#endif
 
 #if !defined(VK_VERSION_1_2)
     // This one is tricky. Vulkan specification defines this code as available since
@@ -3108,7 +3108,7 @@ static inline uint8_t VmaBitScanLSB(uint32_t mask)
         return static_cast<uint8_t>(pos);
     return UINT8_MAX;
 #elif defined __GNUC__ || defined __clang__
-    return static_cast<uint8_t>(__builtin_ffsl(mask)) - 1U;
+    return static_cast<uint8_t>(__builtin_ffs(mask)) - 1U;
 #else
     uint8_t pos = 0;
     uint32_t bit = 1;
@@ -3130,10 +3130,10 @@ static inline uint8_t VmaBitScanMSB(uint64_t mask)
         return static_cast<uint8_t>(pos);
 #elif defined __GNUC__ || defined __clang__
     if (mask)
-        return static_cast<uint8_t>(__builtin_clzll(mask));
+        return 63 - static_cast<uint8_t>(__builtin_clzll(mask));
 #else
     uint8_t pos = 63;
-    uint64_t bit = 1u << 63;
+    uint64_t bit = 1ULL << 63;
     do
     {
         if (mask & bit)
@@ -3152,10 +3152,10 @@ static inline uint8_t VmaBitScanMSB(uint32_t mask)
         return static_cast<uint8_t>(pos);
 #elif defined __GNUC__ || defined __clang__
     if (mask)
-        return static_cast<uint8_t>(__builtin_clzl(mask));
+        return 31 - static_cast<uint8_t>(__builtin_clz(mask));
 #else
     uint8_t pos = 31;
-    uint32_t bit = 1 << 31;
+    uint32_t bit = 1UL << 31;
     do
     {
         if (mask & bit)
@@ -6961,7 +6961,7 @@ bool VmaBlockMetadata_Generic::CheckAllocation(
     }
 
     // Start from offset equal to beginning of this suballocation.
-    VkDeviceSize offset = suballoc.offset;
+    VkDeviceSize offset = suballoc.offset + (suballocItem == m_Suballocations.cbegin() ? 0 : GetDebugMargin());
 
     // Apply debugMargin from the end of previous alloc.
     if (debugMargin > 0)
@@ -10341,6 +10341,7 @@ void VmaBlockMetadata_TLSF::InsertFreeBlock(Block* block)
     uint8_t memClass = SizeToMemoryClass(block->size);
     uint16_t secondIndex = SizeToSecondIndex(block->size, memClass);
     uint32_t index = GetListIndex(memClass, secondIndex);
+    VMA_ASSERT(index < m_ListsCount);
     block->PrevFree() = VMA_NULL;
     block->NextFree() = m_FreeList[index];
     m_FreeList[index] = block;
@@ -17943,25 +17944,15 @@ To do it properly:
 
 It may be a good idea to create dedicated CPP file just for this purpose.
 
-Note on language: This library is written in C++, but has C-compatible interface.
-Thus you can include and use vk_mem_alloc.h in C or C++ code, but full
-implementation with `VMA_IMPLEMENTATION` macro must be compiled as C++, NOT as C.
-
-Please note that this library includes header `<vulkan/vulkan.h>`, which in turn
+This library includes header `<vulkan/vulkan.h>`, which in turn
 includes `<windows.h>` on Windows. If you need some specific macros defined
 before including these headers (like `WIN32_LEAN_AND_MEAN` or
 `WINVER` for Windows, `VK_USE_PLATFORM_WIN32_KHR` for Vulkan), you must define
 them before every `#include` of this library.
 
-You may need to configure the way you import Vulkan functions.
-
-- By default, VMA assumes you you link statically with Vulkan API. If this is not the case,
-  `#define VMA_STATIC_VULKAN_FUNCTIONS 0` before `#include` of the VMA implementation and use another way.
-- You can `#define VMA_DYNAMIC_VULKAN_FUNCTIONS 1` and pass only pointers to `vkGetInstanceProcAddr` and
-  `vkGetDeviceProcAddr` functions through VmaAllocatorCreateInfo::pVulkanFunctions.
-  All the remaining Vulkan functions will be fetched automatically.
-- Finally, you can provide your own pointers to all Vulkan functions needed by VMA using structure member
-  VmaAllocatorCreateInfo::pVulkanFunctions, if you fetched them in some custom way e.g. using some loader like [Volk](https://github.com/zeux/volk).
+\note This library is written in C++, but has C-compatible interface.
+Thus you can include and use vk_mem_alloc.h in C or C++ code, but full
+implementation with `VMA_IMPLEMENTATION` macro must be compiled as C++, NOT as C.
 
 
 \section quick_start_initialization Initialization
@@ -17972,22 +17963,43 @@ At program startup:
 -# Fill VmaAllocatorCreateInfo structure and create #VmaAllocator object by
    calling vmaCreateAllocator().
 
-\code
-VmaAllocatorCreateInfo allocatorInfo = {};
-allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
-allocatorInfo.physicalDevice = physicalDevice;
-allocatorInfo.device = device;
-allocatorInfo.instance = instance;
-
-VmaAllocator allocator;
-vmaCreateAllocator(&allocatorInfo, &allocator);
-\endcode
-
 Only members `physicalDevice`, `device`, `instance` are required.
 However, you should inform the library which Vulkan version do you use by setting
 VmaAllocatorCreateInfo::vulkanApiVersion and which extensions did you enable
 by setting VmaAllocatorCreateInfo::flags (like #VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT for VK_KHR_buffer_device_address).
 Otherwise, VMA would use only features of Vulkan 1.0 core with no extensions.
+
+You may need to configure importing Vulkan functions. There are 3 ways to do this:
+
+-# **If you link with Vulkan static library** (e.g. "vulkan-1.lib" on Windows):
+   - You don't need to do anything.
+   - VMA will use these, as macro `VMA_STATIC_VULKAN_FUNCTIONS` is defined to 1 by default.
+-# **If you want VMA to fetch pointers to Vulkan functions dynamically** using `vkGetInstanceProcAddr`,
+   `vkGetDeviceProcAddr` (this is the option presented in the example below):
+   - Define `VMA_STATIC_VULKAN_FUNCTIONS` to 0, `VMA_DYNAMIC_VULKAN_FUNCTIONS` to 1.
+   - Provide pointers to these two functions via VmaVulkanFunctions::vkGetInstanceProcAddr,
+     VmaVulkanFunctions::vkGetDeviceProcAddr.
+   - The library will fetch pointers to all other functions it needs internally.
+-# **If you fetch pointers to all Vulkan functions in a custom way**, e.g. using some loader like
+   [Volk](https://github.com/zeux/volk):
+   - Define `VMA_STATIC_VULKAN_FUNCTIONS` and `VMA_DYNAMIC_VULKAN_FUNCTIONS` to 0.
+   - Pass these pointers via structure #VmaVulkanFunctions.
+
+\code
+VmaVulkanFunctions vulkanFunctions = {};
+vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
+VmaAllocatorCreateInfo allocatorCreateInfo = {};
+allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_2;
+allocatorCreateInfo.physicalDevice = physicalDevice;
+allocatorCreateInfo.device = device;
+allocatorCreateInfo.instance = instance;
+allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+VmaAllocator allocator;
+vmaCreateAllocator(&allocatorCreateInfo, &allocator);
+\endcode
 
 
 \section quick_start_resource_allocation Resource allocation
@@ -17997,7 +18009,7 @@ When you want to create a buffer or image:
 -# Fill `VkBufferCreateInfo` / `VkImageCreateInfo` structure.
 -# Fill VmaAllocationCreateInfo structure.
 -# Call vmaCreateBuffer() / vmaCreateImage() to get `VkBuffer`/`VkImage` with memory
-   already allocated and bound to it.
+   already allocated and bound to it, plus #VmaAllocation objects that represents its underlying memory.
 
 \code
 VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };

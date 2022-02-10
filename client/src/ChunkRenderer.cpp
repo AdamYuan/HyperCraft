@@ -2,9 +2,9 @@
 #include <spdlog/spdlog.h>
 
 void ChunkRenderer::create_culling_pipeline(const std::shared_ptr<myvk::Device> &device) {
-	m_culling_pipeline_layout =
-	    myvk::PipelineLayout::Create(device, {m_camera_ptr->GetDescriptorSetLayout(), GetDescriptorSetLayout()},
-	                                 {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Frustum)}});
+	m_culling_pipeline_layout = myvk::PipelineLayout::Create(
+	    device,
+	    {GetDescriptorSetLayout(), m_camera_ptr->GetDescriptorSetLayout(), m_depth_ptr->GetDescriptorSetLayout()}, {});
 	constexpr uint32_t kChunkCullingCompSpv[] = {
 #include <client/shader/chunk_culling.comp.u32>
 	};
@@ -87,22 +87,28 @@ void ChunkRenderer::create_main_pipeline(const std::shared_ptr<myvk::RenderPass>
         i.m_cluster_ptr->CmdDrawIndirect(draw_command_buffer, current_frame, i.m_mesh_count);
     }
 } */
-void ChunkRenderer::BeginFrame(uint32_t current_frame) { m_prepared_cluster_vector = PrepareClusters(current_frame); }
-void ChunkRenderer::CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) {
+void ChunkRenderer::PrepareFrame() {
+	uint32_t current_frame = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame();
+	m_frame_prepared_clusters[current_frame] =
+	    PrepareClusters(m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame());
+}
+
+void ChunkRenderer::CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
+	uint32_t current_frame = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame();
 	// Culling compute pipeline
 	command_buffer->CmdBindPipeline(m_culling_pipeline);
-	command_buffer->CmdPushConstants(m_culling_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Frustum),
-	                                 &m_camera_ptr->GetFrustum());
-	for (const auto &i : m_prepared_cluster_vector) {
-		command_buffer->CmdBindDescriptorSets(
-		    {m_camera_ptr->GetFrameDescriptorSet(current_frame), i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
-		    m_culling_pipeline);
+	for (const auto &i : m_frame_prepared_clusters[current_frame]) {
+		command_buffer->CmdBindDescriptorSets({i.m_cluster_ptr->GetFrameDescriptorSet(current_frame),
+		                                       m_camera_ptr->GetFrameDescriptorSet(current_frame),
+		                                       m_depth_ptr->GetFrameDescriptorSet(current_frame)},
+		                                      m_culling_pipeline);
 		i.m_cluster_ptr->CmdDispatch(command_buffer, i.m_mesh_count);
 		i.m_cluster_ptr->CmdBarrier(command_buffer, current_frame);
 	}
 }
-void ChunkRenderer::CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-                                    const VkExtent2D &extent, uint32_t current_frame) {
+void ChunkRenderer::CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
+	uint32_t current_frame = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame();
+	const VkExtent2D &extent = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetExtent();
 	// Main graphics pipeline
 	command_buffer->CmdBindPipeline(m_main_pipeline);
 	VkRect2D scissor = {};
@@ -114,7 +120,7 @@ void ChunkRenderer::CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &
 	viewport.maxDepth = 1.0f;
 	command_buffer->CmdSetViewport({viewport});
 
-	for (const auto &i : m_prepared_cluster_vector) {
+	for (const auto &i : m_frame_prepared_clusters[current_frame]) {
 		command_buffer->CmdBindDescriptorSets({m_texture_ptr->GetDescriptorSet(),
 		                                       m_camera_ptr->GetFrameDescriptorSet(current_frame),
 		                                       i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},

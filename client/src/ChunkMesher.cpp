@@ -340,9 +340,9 @@ void ChunkMesher::Run() {
 		generate_face_lights(face_lights);
 		aabb = generate_mesh(face_lights, &vertices, &indices);
 	}
-	/* spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
-	             glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
-	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax())); */
+	// spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
+	//            glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
+	//          glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax()));
 
 	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
 	if (!world_ptr)

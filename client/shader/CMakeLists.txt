@@ -5,6 +5,7 @@ set(SHADER_SRC
         chunk.vert
         chunk.frag
         chunk_culling.comp
+        depth_hierarchy.comp
         )
 
 find_program(GLSLC "glslc")

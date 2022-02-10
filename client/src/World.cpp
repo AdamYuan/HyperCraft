@@ -16,8 +16,10 @@ void World::worker_thread_func() {
 	moodycamel::ConsumerToken consumer_token{m_workers};
 	while (m_worker_threads_running.load(std::memory_order_acquire)) {
 		std::unique_ptr<WorkerBase> worker{};
-		if (m_workers.wait_dequeue_timed(consumer_token, worker, std::chrono::milliseconds(10)))
+		if (m_workers.wait_dequeue_timed(consumer_token, worker, std::chrono::milliseconds(10))) {
 			worker->Run();
+			worker = nullptr;
+		}
 	}
 }
 
@@ -34,13 +36,13 @@ void World::Update(const glm::vec3 &position) {
 	glm::i16vec3 current_chunk_pos =
 	    (glm::i16vec3)position / (int16_t)Chunk::kSize - (glm::i16vec3)glm::lessThan(position, {0.0f, 0.0f, 0.0f});
 
+	// if (last_chunk_pos.x == INT16_MAX) {
 	if (current_chunk_pos != last_chunk_pos) {
 		last_chunk_pos = current_chunk_pos;
 		spdlog::info("current_chunk_pos = {}", glm::to_string(current_chunk_pos));
 
 		std::vector<std::unique_ptr<WorkerBase>> new_workers;
 
-		// TODO: Implement a worker to erase chunk
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
 			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR) {
 				new_workers.push_back(ChunkEraser::Create(std::move(it->second)));

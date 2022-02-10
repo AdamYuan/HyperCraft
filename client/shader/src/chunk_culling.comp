@@ -1,4 +1,5 @@
 #version 450
+// #extension GL_EXT_debug_printf : enable
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct AABB {
@@ -13,64 +14,79 @@ struct DrawIndexedIndirectCommand {
 	uint index_count, instance_count, first_index, vertex_offset, first_instance;
 };
 
-layout(set = 0, binding = 0) uniform uuCamera { mat4 uViewProjection; };
+layout(std430, set = 0, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
+layout(std430, set = 0, binding = 1) writeonly buffer uuDrawCommand { DrawIndexedIndirectCommand uDrawCommand[]; };
+layout(std430, set = 0, binding = 2) buffer uuDrawCount { uint uDrawCount; };
 
-layout(std430, set = 1, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
-layout(std430, set = 1, binding = 1) writeonly buffer uuDrawCommand { DrawIndexedIndirectCommand uDrawCommand[]; };
-layout(std430, set = 1, binding = 2) buffer uuDrawCount { uint uDrawCount; };
+layout(set = 1, binding = 0) uniform uuCamera { mat4 uViewProjection; };
 
-layout(push_constant) uniform uuPushConstant { vec4 uFrustum[5]; };
+layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
 
-bool FrustumCull(in const AABB aabb) {
-	vec3 axis;
-	axis.x = uFrustum[0].x < 0.0 ? aabb.min_x : aabb.max_x;
-	axis.y = uFrustum[0].y < 0.0 ? aabb.min_y : aabb.max_y;
-	axis.z = uFrustum[0].z < 0.0 ? aabb.min_z : aabb.max_z;
-	if (dot(uFrustum[0].xyz, axis) + uFrustum[0].w < 0.0)
-		return true;
-	axis.x = uFrustum[1].x < 0.0 ? aabb.min_x : aabb.max_x;
-	axis.y = uFrustum[1].y < 0.0 ? aabb.min_y : aabb.max_y;
-	axis.z = uFrustum[1].z < 0.0 ? aabb.min_z : aabb.max_z;
-	if (dot(uFrustum[1].xyz, axis) + uFrustum[1].w < 0.0)
-		return true;
-	axis.x = uFrustum[2].x < 0.0 ? aabb.min_x : aabb.max_x;
-	axis.y = uFrustum[2].y < 0.0 ? aabb.min_y : aabb.max_y;
-	axis.z = uFrustum[2].z < 0.0 ? aabb.min_z : aabb.max_z;
-	if (dot(uFrustum[2].xyz, axis) + uFrustum[2].w < 0.0)
-		return true;
-	axis.x = uFrustum[3].x < 0.0 ? aabb.min_x : aabb.max_x;
-	axis.y = uFrustum[3].y < 0.0 ? aabb.min_y : aabb.max_y;
-	axis.z = uFrustum[3].z < 0.0 ? aabb.min_z : aabb.max_z;
-	if (dot(uFrustum[3].xyz, axis) + uFrustum[3].w < 0.0)
-		return true;
-	axis.x = uFrustum[4].x < 0.0 ? aabb.min_x : aabb.max_x;
-	axis.y = uFrustum[4].y < 0.0 ? aabb.min_y : aabb.max_y;
-	axis.z = uFrustum[4].z < 0.0 ? aabb.min_z : aabb.max_z;
-	if (dot(uFrustum[4].xyz, axis) + uFrustum[4].w < 0.0)
-		return true;
-	// ignore far plane culling
-	/* axis.x = uFrustum[5].x < 0.0 ? aabb.min_x : aabb.max_x;
-	axis.y = uFrustum[5].y < 0.0 ? aabb.min_y : aabb.max_y;
-	axis.z = uFrustum[5].z < 0.0 ? aabb.min_z : aabb.max_z;
-	if (dot(uFrustum[5].xyz, axis) + uFrustum[5].w < 0.0)
-	    return true; */
-	return false;
+uint GetCullBits(in const vec4 projected) {
+	return (projected.x < -projected.w ? 1u : 0u)    // left
+	       | (projected.x > projected.w ? 2u : 0u)   // right
+	       | (projected.y < -projected.w ? 4u : 0u)  // bottom
+	       | (projected.y > projected.w ? 8u : 0u)   // top
+	       | (projected.z < -projected.w ? 16u : 0u) // near
+	       | (projected.z > projected.w ? 32u : 0u)  // far
+	       | (projected.w > 0.0 ? 64u : 0u)          // valid
+	    ;
 }
 
-void GetScreenAABB(in const AABB aabb, out vec3 screen_min, out vec3 screen_max) {
-	vec3 x = (uViewProjection * vec4(aabb.min_x, aabb.min_y, aabb.min_z, 1.0)).xyz;
-	vec3 y = (uViewProjection * vec4(aabb.max_x, aabb.max_y, aabb.max_z, 1.0)).xyz;
-	screen_min = min(x, y);
-	screen_max = max(x, y);
+void GetClipAABB(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, inout uint cull_bits) {
+	// Get the bounding of a World space AABB in UV-Depth space
+	vec4 projected = uViewProjection * vec4(aabb.min_x, aabb.min_y, aabb.min_z, 1.0);
+	vec3 clip = projected.xyz / projected.w;
+	clip_min = clip_max = clip;
+	cull_bits = GetCullBits(projected);
+
+#define MAINTAIN \
+	clip = projected.xyz / projected.w; \
+	clip_min = min(clip_min, clip); \
+	clip_max = max(clip_max, clip); \
+	cull_bits &= GetCullBits(projected);
+
+	projected = uViewProjection * vec4(aabb.min_x, aabb.min_y, aabb.max_z, 1.0);
+	MAINTAIN
+	projected = uViewProjection * vec4(aabb.min_x, aabb.max_y, aabb.min_z, 1.0);
+	MAINTAIN
+	projected = uViewProjection * vec4(aabb.min_x, aabb.max_y, aabb.max_z, 1.0);
+	MAINTAIN
+	projected = uViewProjection * vec4(aabb.max_x, aabb.min_y, aabb.min_z, 1.0);
+	MAINTAIN
+	projected = uViewProjection * vec4(aabb.max_x, aabb.min_y, aabb.max_z, 1.0);
+	MAINTAIN
+	projected = uViewProjection * vec4(aabb.max_x, aabb.max_y, aabb.min_z, 1.0);
+	MAINTAIN
+	projected = uViewProjection * vec4(aabb.max_x, aabb.max_y, aabb.max_z, 1.0);
+	MAINTAIN
+}
+
+bool FrustumCull(in const uint cull_bits) { return (cull_bits & 63u) != 0; }
+
+bool OcclusionCull(in const vec3 clip_min, in const vec3 clip_max, in const uint cull_bits) {
+	// Occlusion culling
+	if ((cull_bits & 64u) == 0) // if any projected.w <= 0
+		return false;
+	vec2 uv_min = clip_min.xy * 0.5 + 0.5, uv_max = clip_max.xy * 0.5 + 0.5;
+	vec2 uv_size = uv_max.xy - uv_min.xy, tex_size = vec2(textureSize(uDepthHierarchy, 0));
+	float lod = ceil(log2(max(uv_size.x, uv_size.y) * max(tex_size.x, tex_size.y)));
+	float depth = textureLod(uDepthHierarchy, (uv_min + uv_max) * 0.5, lod).r;
+	return depth < clip_min.z;
 }
 
 void main() {
 	uint mesh_id = gl_GlobalInvocationID.x;
 	if (mesh_id >= uMeshInfo.length())
 		return;
-	AABB aabb = uMeshInfo[mesh_id].aabb;
-	if (FrustumCull(aabb))
+
+	vec3 clip_min, clip_max;
+	uint cull_bits;
+	GetClipAABB(uMeshInfo[mesh_id].aabb, clip_min, clip_max, cull_bits);
+
+	if (FrustumCull(cull_bits) || OcclusionCull(clip_min, clip_max, cull_bits))
 		return;
+
 	uint draw_id = atomicAdd(uDrawCount, 1u);
 	uDrawCommand[draw_id] = DrawIndexedIndirectCommand(
 	    uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index, uMeshInfo[mesh_id].vertex_offset, mesh_id);

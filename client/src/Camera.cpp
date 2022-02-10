@@ -14,7 +14,7 @@ std::shared_ptr<Camera> Camera::Create(const std::shared_ptr<myvk::Device> &devi
 		camera_binding.binding = 0;
 		camera_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		camera_binding.descriptorCount = 1;
-		camera_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		camera_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
 
 		ret->m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {camera_binding});
 	}
@@ -78,8 +78,9 @@ glm::mat4 Camera::fetch_matrix() const {
 	return ret;
 }
 
+#include <glm/gtx/string_cast.hpp>
+#include <spdlog/spdlog.h>
 void Camera::Update(uint32_t current_frame) {
 	glm::mat4 view_projection = fetch_matrix();
-	m_frustum.Update(view_projection);
 	m_uniform_buffers[current_frame]->UpdateData(view_projection);
 }

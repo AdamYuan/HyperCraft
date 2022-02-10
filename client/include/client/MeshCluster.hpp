@@ -152,6 +152,7 @@ public:
 		                                  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
 		VmaVirtualBlockCreateInfo virtual_block_create_info = {};
+		virtual_block_create_info.flags = VMA_VIRTUAL_BLOCK_CREATE_TLSF_ALGORITHM_BIT;
 		virtual_block_create_info.size = vertex_buffer_size;
 		if (vmaCreateVirtualBlock(&virtual_block_create_info, &ret->m_vertices_virtual_block) != VK_SUCCESS)
 			return nullptr;

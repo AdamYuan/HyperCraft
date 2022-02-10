@@ -2,7 +2,6 @@
 #define CUBECRAFT3_CLIENT_CAMERA_HPP
 
 #include <client/Config.hpp>
-#include <client/Frustum.hpp>
 
 #include <myvk/Buffer.hpp>
 #include <myvk/DescriptorSet.hpp>
@@ -29,8 +28,6 @@ private:
 	std::shared_ptr<myvk::Buffer> m_uniform_buffers[kFrameCount];
 	std::shared_ptr<myvk::DescriptorSet> m_descriptor_sets[kFrameCount];
 
-	Frustum m_frustum;
-
 	struct UniformData {
 		glm::mat4 m_view_projection;
 	};
@@ -43,7 +40,6 @@ public:
 	void Control(GLFWwindow *window, float delta);
 	void Update(uint32_t current_frame);
 
-	const Frustum &GetFrustum() const { return m_frustum; }
 	const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const { return m_descriptor_set_layout; }
 	const std::shared_ptr<myvk::DescriptorSet> &GetFrameDescriptorSet(uint32_t current_frame) const {
 		return m_descriptor_sets[current_frame];

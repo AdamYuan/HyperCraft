@@ -31,6 +31,11 @@ std::shared_ptr<ImageView> ImageView::Create(const std::shared_ptr<ImageBase> &i
 	              image->GetArrayLayers());
 }
 
+std::shared_ptr<ImageView> ImageView::Create(const std::shared_ptr<ImageBase> &image, uint32_t mip_level,
+                                             VkImageViewType view_type, VkImageAspectFlags aspect_mask) {
+	return Create(image, view_type, image->GetFormat(), aspect_mask, mip_level, 1, 0, image->GetArrayLayers());
+}
+
 std::shared_ptr<ImageView> ImageView::Create(const std::shared_ptr<ImageBase> &image,
                                              const VkImageViewCreateInfo &create_info) {
 	std::shared_ptr<ImageView> ret = std::make_shared<ImageView>();
