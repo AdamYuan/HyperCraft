@@ -86,6 +86,9 @@ void Application::draw_frame() {
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
 	{
+		// Build depth hierarchy for Hi-Z culling (next frame's)
+		m_depth_hierarchy->CmdBuild(command_buffer);
+
 		// Generate draw commands for chunks
 		m_world_renderer->GetChunkRenderer()->PrepareFrame();
 		m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer);
@@ -100,9 +103,6 @@ void Application::draw_frame() {
 			m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
 		}
 		command_buffer->CmdEndRenderPass();
-
-		// Build depth hierarchy for Hi-Z culling (next frame's)
-		m_depth_hierarchy->CmdBuild(command_buffer);
 	}
 	command_buffer->End();
 

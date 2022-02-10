@@ -132,7 +132,7 @@ void DepthHierarchy::create_build_command_buffers() {
 		                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
 
 		command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
+		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
 		    {// set second lod to be generated
 		     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, 0, 1}, 0, VK_ACCESS_SHADER_WRITE_BIT,
 		                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL)});
@@ -173,16 +173,15 @@ void DepthHierarchy::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &comman
 
 	// preparer depth buffer to be transfer
 	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
 	    {m_canvas_ptr->GetCurrentDepthImage()->GetMemoryBarrier(
-	        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-	        VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-	        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)});
+	        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}, 0, VK_ACCESS_TRANSFER_READ_BIT,
+	        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)});
 
 	// prepare first lod to be transfer
 	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-	    {// set first lod to be transfered
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
+	    {// set first lod to be transfer
 	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
 	                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)});
 

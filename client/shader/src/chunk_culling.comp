@@ -1,5 +1,4 @@
 #version 450
-// #extension GL_EXT_debug_printf : enable
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct AABB {
@@ -27,7 +26,8 @@ uint GetCullBits(in const vec4 projected) {
 	       | (projected.y > projected.w ? 8u : 0u)   // top
 	       | (projected.z < -projected.w ? 16u : 0u) // near
 	       | (projected.z > projected.w ? 32u : 0u)  // far
-	       | (projected.w > 0.0 ? 64u : 0u)          // valid
+	       | (projected.w <= 0.0 ? 64u : 0u)         // invalid
+	       | (projected.w > 0.0 ? 128u : 0u)         // valid
 	    ;
 }
 
@@ -60,11 +60,11 @@ void GetClipInfo(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, i
 	MAINTAIN
 }
 
-bool FrustumCull(in const uint cull_bits) { return (cull_bits & 63u) != 0; }
+bool FrustumCull(in const uint cull_bits) { return (cull_bits & 127u) != 0; }
 
 bool OcclusionCull(in const vec3 clip_min, in const vec3 clip_max, in const uint cull_bits) {
 	// Occlusion culling
-	if ((cull_bits & 64u) == 0) // if any projected.w <= 0
+	if ((cull_bits & 128u) == 0) // if any projected.w <= 0
 		return false;
 	vec2 uv_min = clip_min.xy * 0.5 + 0.5, uv_max = clip_max.xy * 0.5 + 0.5;
 	vec2 uv_size = uv_max.xy - uv_min.xy, tex_size = vec2(textureSize(uDepthHierarchy, 0));
