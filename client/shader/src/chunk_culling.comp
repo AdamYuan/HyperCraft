@@ -17,9 +17,7 @@ struct DrawIndexedIndirectCommand {
 layout(std430, set = 0, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
 layout(std430, set = 0, binding = 1) writeonly buffer uuDrawCommand { DrawIndexedIndirectCommand uDrawCommand[]; };
 layout(std430, set = 0, binding = 2) buffer uuDrawCount { uint uDrawCount; };
-
 layout(set = 1, binding = 0) uniform uuCamera { mat4 uViewProjection; };
-
 layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
 
 uint GetCullBits(in const vec4 projected) {
@@ -33,7 +31,7 @@ uint GetCullBits(in const vec4 projected) {
 	    ;
 }
 
-void GetClipAABB(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, inout uint cull_bits) {
+void GetClipInfo(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, inout uint cull_bits) {
 	// Get the bounding of a World space AABB in UV-Depth space
 	vec4 projected = uViewProjection * vec4(aabb.min_x, aabb.min_y, aabb.min_z, 1.0);
 	vec3 clip = projected.xyz / projected.w;
@@ -82,7 +80,7 @@ void main() {
 
 	vec3 clip_min, clip_max;
 	uint cull_bits;
-	GetClipAABB(uMeshInfo[mesh_id].aabb, clip_min, clip_max, cull_bits);
+	GetClipInfo(uMeshInfo[mesh_id].aabb, clip_min, clip_max, cull_bits);
 
 	if (FrustumCull(cull_bits) || OcclusionCull(clip_min, clip_max, cull_bits))
 		return;
