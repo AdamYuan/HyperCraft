@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 3.0)
 cmake_policy(PUSH)
 cmake_policy(SET CMP0048 NEW) # project(... VERSION ...) support
 
-project(volk VERSION 
+project(volk VERSION
 # VOLK_GENERATE_VERSION
 170
 # VOLK_GENERATE_VERSION
   LANGUAGES C
 )
 
+set(VOLK_PULL_IN_VULKAN OFF)
+set(VOLK_INSTALL OFF)
 # CMake 3.12 changes the default behaviour of option() to leave local variables
 # unchanged if they exist (which we want), but we must work with older CMake versions.
 if(NOT DEFINED VOLK_STATIC_DEFINES)
