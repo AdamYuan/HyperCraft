@@ -124,33 +124,13 @@ void DepthHierarchy::create_build_command_buffers() {
 		                        {{0, 0, 0, {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, {0, 0, 0}, {width, height, 1}}},
 		                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); */
 
-		command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
-		    {// set first lod for sampling
-		     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}, VK_ACCESS_TRANSFER_WRITE_BIT,
-		                                    VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
-
-		command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
-		    {// set second lod to be generated
-		     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, 0, 1}, 0, VK_ACCESS_SHADER_WRITE_BIT,
-		                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL)});
-
 		command_buffer->CmdBindPipeline(m_build_pipeline);
 		for (uint32_t i = 1; i < mip_level; ++i) {
 			width = std::max(width >> 1u, 1u);
 			height = std::max(height >> 1u, 1u);
 			command_buffer->CmdBindDescriptorSets({data.m_build_descriptor_sets[i - 1]}, m_build_pipeline);
 			command_buffer->CmdDispatch(group_x_8(width), group_x_8(height), 1);
-			if (i == mip_level - 1) {
-				command_buffer->CmdPipelineBarrier(
-				    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
-				    {// set current lod for sampling
-				     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, i, 1, 0, 1}, VK_ACCESS_SHADER_WRITE_BIT,
-				                                    VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
-				                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
-			} else {
+			if (i < mip_level - 1) {
 				command_buffer->CmdPipelineBarrier(
 				    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
 				    {// set current lod for sampling
@@ -197,6 +177,34 @@ void DepthHierarchy::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &comman
 	                          {0, 0, 0},
 	                          {width, height, 1}}});
 
+	// preparer depth buffer to be transfer
+	command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, {}, {},
+	    {m_canvas_ptr->GetCurrentDepthImage()->GetMemoryBarrier(
+	        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}, VK_ACCESS_TRANSFER_READ_BIT,
+	        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+	        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)});
+
+	command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
+	    {// set first lod for sampling
+	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}, VK_ACCESS_TRANSFER_WRITE_BIT,
+	                                    VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
+
+	command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
+	    {// set second lod to be generated
+	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, 0, 1}, 0, VK_ACCESS_SHADER_WRITE_BIT,
+	                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL)});
+
 	command_buffer->CmdExecuteCommand(
 	    m_frame_data[m_canvas_ptr->GetFrameManagerPtr()->GetCurrentFrame()].m_command_buffer);
+
+	command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
+	    {// set current lod for sampling
+	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, data.m_image->GetMipLevels() - 1, 1, 0, 1},
+	                                    VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+	                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
 }
