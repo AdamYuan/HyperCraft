@@ -31,8 +31,6 @@ private:
 
 		// std::shared_ptr<myvk::Buffer> m_build_buffer; // tmp buffer for copying depth image
 		// Use a tmp buffer has huge performance impact
-
-		std::shared_ptr<myvk::CommandBuffer> m_command_buffer;
 	};
 	FrameData m_frame_data[kFrameCount];
 
@@ -41,7 +39,6 @@ private:
 	void create_build_descriptors();
 	void create_output_descriptors();
 	void create_build_pipeline();
-	void create_build_command_buffers();
 	// void create_build_buffers();
 
 public:
@@ -58,7 +55,6 @@ public:
 		create_build_descriptors();
 		// create_build_buffers();
 		create_build_pipeline();
-		create_build_command_buffers();
 		create_output_descriptors();
 	}
 
