@@ -12,6 +12,30 @@ private:
 	VmaVirtualAllocation m_vertices_allocation{VK_NULL_HANDLE}, m_indices_allocation{VK_NULL_HANDLE};
 	uint32_t m_first_index{UINT32_MAX}; // used as a key for searching mesh in the cluster
 
+	bool m_finalize{false};
+
+	inline void destroy(bool upload_draw_list) {
+		if (!m_finalize && (~m_first_index)) {
+			if (upload_draw_list)
+				m_cluster_ptr->erase_mesh(m_first_index);
+			else
+				m_cluster_ptr->erase_mesh_without_upload(m_first_index);
+			m_first_index = UINT32_MAX;
+		}
+		if (m_vertices_allocation) {
+			std::scoped_lock lock{m_cluster_ptr->m_vertices_virtual_block_mutex};
+			vmaVirtualFree(m_cluster_ptr->m_vertices_virtual_block, m_vertices_allocation);
+			m_vertices_allocation = VK_NULL_HANDLE;
+		}
+		if (m_indices_allocation) {
+			std::scoped_lock lock{m_cluster_ptr->m_indices_virtual_block_mutex};
+			vmaVirtualFree(m_cluster_ptr->m_indices_virtual_block, m_indices_allocation);
+			m_indices_allocation = VK_NULL_HANDLE;
+		}
+	}
+
+	template <typename, typename, typename> friend class MeshEraser;
+
 public:
 	inline static std::unique_ptr<MeshHandle>
 	Create(const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster_ptr, const std::vector<Vertex> &vertices,
@@ -49,19 +73,9 @@ public:
 		return ret;
 	}
 
-	~MeshHandle() {
-		if (~m_first_index) {
-			m_cluster_ptr->erase_mesh(m_first_index);
-		}
-		if (m_vertices_allocation) {
-			std::scoped_lock lock{m_cluster_ptr->m_vertices_virtual_block_mutex};
-			vmaVirtualFree(m_cluster_ptr->m_vertices_virtual_block, m_vertices_allocation);
-		}
-		if (m_indices_allocation) {
-			std::scoped_lock lock{m_cluster_ptr->m_indices_virtual_block_mutex};
-			vmaVirtualFree(m_cluster_ptr->m_indices_virtual_block, m_indices_allocation);
-		}
-	}
+	inline void SetFinalize() { m_finalize = true; }
+
+	~MeshHandle() { destroy(true); }
 };
 
 #endif

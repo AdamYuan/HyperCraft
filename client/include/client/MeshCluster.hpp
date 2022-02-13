@@ -122,20 +122,22 @@ private:
 		upload_mesh_info_vector();
 		return mesh_info.m_first_index;
 	}
-	inline void erase_mesh(uint32_t first_index) {
-		{
-			std::scoped_lock write_lock{m_mesh_info_vector_mutex};
-			for (auto it = m_mesh_info_vector.begin(); it != m_mesh_info_vector.end(); ++it) {
-				if (it->m_first_index == first_index) {
-					m_mesh_info_vector.erase(it);
-					break;
-				}
-			}
+	inline void erase_mesh_without_upload(uint32_t first_index) {
+		std::scoped_lock write_lock{m_mesh_info_vector_mutex};
+		auto it = std::find_if(m_mesh_info_vector.begin(), m_mesh_info_vector.end(),
+		                       [first_index](const MeshInfo &info) { return info.m_first_index == first_index; });
+		if (it != m_mesh_info_vector.end()) {
+			*it = std::move(m_mesh_info_vector.back());
+			m_mesh_info_vector.pop_back();
 		}
+	}
+	inline void erase_mesh(uint32_t first_index) {
+		erase_mesh_without_upload(first_index);
 		upload_mesh_info_vector();
 	}
 
 	template <typename, typename, typename> friend class MeshHandle;
+	template <typename, typename, typename> friend class MeshEraser;
 
 public:
 	inline static std::shared_ptr<MeshCluster>

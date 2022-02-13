@@ -25,9 +25,18 @@ void ChunkGenerator::Run() {
 		return;
 
 	client_ptr->GetTerrain()->Generate(m_chunk_ptr, nullptr);
-	// spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,
-	//               m_chunk_ptr->GetPosition().z);
 
-	m_chunk_ptr->EnableFlags(Chunk::Flag::kGenerated);
-	push_worker(ChunkMesher::Create(m_chunk_ptr));
+	m_chunk_ptr->SetGeneratedFlag();
+	spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,
+	             m_chunk_ptr->GetPosition().z);
+
+	for (uint32_t i = 0; i < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++i)
+		if (m_chunk_ptr->GetBlock(i) != Blocks::kAir) {
+			push_worker(ChunkMesher::Create(m_chunk_ptr));
+			return;
+		}
+
+	// if there are no blocks, avoid meshing
+	m_chunk_ptr->MoveMesh(); // ensure the mesh is removed
+	m_chunk_ptr->SetMeshedFlag();
 }

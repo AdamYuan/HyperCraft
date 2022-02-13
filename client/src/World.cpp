@@ -3,9 +3,9 @@
 #include <glm/gtx/string_cast.hpp>
 #include <spdlog/spdlog.h>
 
-#include <client/ChunkEraser.hpp>
 #include <client/ChunkGenerator.hpp>
 #include <client/ChunkMesher.hpp>
+#include <client/MeshEraser.hpp>
 
 void World::launch_worker_threads() {
 	m_worker_threads.resize(std::thread::hardware_concurrency());
@@ -24,13 +24,17 @@ void World::worker_thread_func() {
 }
 
 void World::Join() {
+	for (const auto &i : m_chunks)
+		i.second->SetMeshFinalize();
 	m_worker_threads_running.store(false, std::memory_order_release);
 	for (auto &i : m_worker_threads)
 		i.join();
 }
 
+#include "WorldLoadingList.inl"
+
 void World::Update(const glm::vec3 &position) {
-	constexpr int16_t kR = 20;
+	constexpr int16_t kR = 15;
 
 	static glm::i16vec3 last_chunk_pos = {INT16_MAX, INT16_MAX, INT16_MAX};
 	glm::i16vec3 current_chunk_pos =
@@ -42,28 +46,31 @@ void World::Update(const glm::vec3 &position) {
 		spdlog::info("current_chunk_pos = {}", glm::to_string(current_chunk_pos));
 
 		std::vector<std::unique_ptr<WorkerBase>> new_workers;
+		std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> erased_meshes;
 
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
-			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR) {
-				new_workers.push_back(ChunkEraser::Create(std::move(it->second)));
+
+			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR + 2) {
+				auto mesh = it->second->MoveMesh();
+				if (mesh)
+					erased_meshes.push_back(std::move(mesh));
 				it = m_chunks.erase(it);
 			} else {
-				if (!it->second->HaveFlags(Chunk::Flag::kMeshed))
+				if (!it->second->IsMeshed())
 					new_workers.push_back(ChunkMesher::Create(it->second));
 				++it;
 			}
 		}
+		if (!erased_meshes.empty())
+			new_workers.push_back(
+			    MeshEraser<ChunkMeshVertex, uint16_t, ChunkMeshInfo>::Create(std::move(erased_meshes)));
 
-		ChunkPos3 dp;
-		for (dp.x = -kR; dp.x <= kR; ++dp.x)
-			for (dp.y = -kR; dp.y <= kR; ++dp.y)
-				for (dp.z = -kR; dp.z <= kR; ++dp.z) {
-					if (glm::length((glm::vec3)dp) < kR) {
-						ChunkPos3 pos = current_chunk_pos + dp;
-						if (!FindChunk(pos))
-							new_workers.push_back(ChunkGenerator::Create(PushChunk(pos)));
-					}
-				}
+		for (const ChunkPos3 *i = kWorldLoadingList; i != kWorldLoadingRadiusEnd[kR]; ++i) {
+			ChunkPos3 pos = current_chunk_pos + *i;
+			if (!FindChunk(pos))
+				new_workers.push_back(ChunkGenerator::Create(PushChunk(pos)));
+		}
+
 		PushWorkers(std::move(new_workers));
 	}
 }

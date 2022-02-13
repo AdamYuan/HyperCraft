@@ -317,17 +317,12 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 
 #include <random>
 void ChunkMesher::Run() {
-	if (!lock()) {
+	if (!lock() || !m_chunk_ptr->IsGenerated())
 		return;
-	}
-
 	// if the neighbour chunks are not totally generated, return and move it back
-	if (!m_chunk_ptr->HaveFlags(Chunk::Flag::kGenerated)) {
-		push_worker(ChunkMesher::Create(m_chunk_ptr));
-		return;
-	}
 	for (const auto &i : m_neighbour_chunk_ptr)
-		if (!i->HaveFlags(Chunk::Flag::kGenerated)) {
+		if (!i->IsGenerated()) {
+			spdlog::info("remesh");
 			push_worker(ChunkMesher::Create(m_chunk_ptr));
 			return;
 		}
@@ -340,10 +335,6 @@ void ChunkMesher::Run() {
 		generate_face_lights(face_lights);
 		aabb = generate_mesh(face_lights, &vertices, &indices);
 	}
-	// spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
-	//            glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
-	//          glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax()));
-
 	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
 	if (!world_ptr)
 		return;
@@ -354,5 +345,8 @@ void ChunkMesher::Run() {
 	glm::i32vec3 base_position = (glm::i32vec3)m_chunk_ptr->GetPosition() * (int32_t)Chunk::kSize;
 	m_chunk_ptr->m_mesh_handle = world_renderer_ptr->GetChunkRenderer()->PushMesh(
 	    vertices, indices, {(fAABB)((i32AABB)aabb + base_position), base_position});
-	m_chunk_ptr->EnableFlags(Chunk::Flag::kMeshed);
+	m_chunk_ptr->SetMeshedFlag();
+	spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
+	             glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
+	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax()));
 }

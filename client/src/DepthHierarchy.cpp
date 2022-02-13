@@ -133,11 +133,11 @@ void DepthHierarchy::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &comman
 	                          {0, 0, 0},
 	                          {width, height, 1}}});
 
-	// preparer depth buffer to be transfer
+	// prevent new depth writing while copying
 	command_buffer->CmdPipelineBarrier(
 	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, {}, {},
 	    {m_canvas_ptr->GetCurrentDepthImage()->GetMemoryBarrier(
-	        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}, VK_ACCESS_TRANSFER_READ_BIT,
+	        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}, 0,
 	        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
 	        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)});
 
@@ -188,7 +188,7 @@ void DepthHierarchy::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &comman
 
 	command_buffer->CmdPipelineBarrier(
 	    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
-	    {// set current lod for sampling
+	    {// set last lod for sampling
 	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, mip_level - 1, 1, 0, 1}, VK_ACCESS_SHADER_WRITE_BIT,
 	                                    VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
 	                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});

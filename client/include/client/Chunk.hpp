@@ -132,13 +132,10 @@ public:
 	inline std::shared_ptr<World> LockWorld() const { return m_world_weak_ptr.lock(); }
 
 	// Flags
-	using Flags = uint16_t;
-	enum Flag : Flags { kGenerated = 1u << 0u, kDecorated = 1u << 1u, kMeshed = 1u << 2u, kAll = 0xffu };
-	Flags GetFlags() const { return m_flags; }
-	bool HaveFlags(Flags flags) const { return (m_flags & flags) == flags; }
-	void EnableFlags(Flags flags) { m_flags |= flags; }
-	void DisableFlags(Flags flags) { m_flags &= (~flags); }
-	void ToggleFlags(Flags flags) { m_flags ^= flags; }
+	bool IsGenerated() const { return m_generated_flag.load(std::memory_order_acquire); }
+	void SetGeneratedFlag() { m_generated_flag.store(true, std::memory_order_release); }
+	bool IsMeshed() const { return m_meshed_flag.load(std::memory_order_acquire); }
+	void SetMeshedFlag() { m_meshed_flag.store(true, std::memory_order_release); }
 
 	// Creation
 	static inline std::shared_ptr<Chunk> Create(const std::weak_ptr<World> &world, const ChunkPos3 &position) {
@@ -146,6 +143,15 @@ public:
 		ret->m_position = position;
 		ret->m_world_weak_ptr = world;
 		return ret;
+	}
+
+	// Mesh Removal
+	inline std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>> &&MoveMesh() {
+		return std::move(m_mesh_handle);
+	}
+	inline void SetMeshFinalize() const {
+		if (m_mesh_handle)
+			m_mesh_handle->SetFinalize();
 	}
 
 private:
@@ -156,10 +162,11 @@ private:
 
 	std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
 	std::weak_ptr<World> m_world_weak_ptr;
+
 	std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>> m_mesh_handle;
 	friend class ChunkMesher;
 
-	Flags m_flags{};
+	std::atomic_bool m_generated_flag{}, m_meshed_flag{};
 };
 
 #endif

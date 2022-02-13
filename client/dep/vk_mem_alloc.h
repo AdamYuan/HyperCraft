@@ -18826,7 +18826,7 @@ for(uint32_t i = 0; i < allocCount; ++i)
 {
     if(allocationsChanged[i])
     {
-        // Destroy buffer that is immutably bound to memory region which is no longer valid.
+        // destroy buffer that is immutably bound to memory region which is no longer valid.
         vkDestroyBuffer(device, buffers[i], nullptr);
 
         // Create new buffer with same parameters.
@@ -18904,7 +18904,7 @@ for(uint32_t i = 0; i < allocCount; ++i)
 {
     if(allocationsChanged[i])
     {
-        // Destroy buffer that is immutably bound to memory region which is no longer valid.
+        // destroy buffer that is immutably bound to memory region which is no longer valid.
         vkDestroyBuffer(device, buffers[i], nullptr);
 
         // Create new buffer with same parameters.

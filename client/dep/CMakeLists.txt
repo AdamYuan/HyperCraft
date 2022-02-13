@@ -3,23 +3,13 @@ project(CubeCraft3)
 
 set(CMAKE_CXX_STANDARD 14)
 
-# Windows' math include does not define constants by default.
-# Set this definition so it does.
-# Also set NOMINMAX so the min and max functions are not overwritten with macros.
-if (CMAKE_SYSTEM_NAME STREQUAL Windows)
-    add_definitions(-D_USE_MATH_DEFINES)
-    add_definitions(-DNOMINMAX)
-ENDIF ()
-
 add_subdirectory(glfw)
-if (CMAKE_SYSTEM_NAME STREQUAL Windows)
-    set(VOLK_STATIC_DEFINES VK_USE_PLATFORM_WIN32_KHR)
-endif ()
-add_subdirectory(volk)
 add_subdirectory(FastNoise2)
 
 add_library(client_dep STATIC
         vk_mem_alloc.cpp
+
+        volk.c
 
         # IMGUI
         imgui/imgui.cpp
@@ -99,5 +89,5 @@ add_library(client_dep STATIC
         )
 
 target_include_directories(client_dep PUBLIC .)
-target_link_libraries(client_dep PUBLIC volk glfw FastNoise)
+target_link_libraries(client_dep PUBLIC glfw FastNoise)
 target_compile_definitions(client_dep PUBLIC VK_NO_PROTOTYPES)

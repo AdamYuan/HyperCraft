@@ -48,7 +48,7 @@ add_executable(CubeCraft3_client
         src/ChunkRenderer.cpp
         include/client/ChunkRenderer.hpp
         include/client/WorkerBase.hpp
-        include/client/ChunkEraser.hpp
+        include/client/MeshEraser.hpp
         src/DepthHierarchy.cpp
         include/client/DepthHierarchy.hpp)
 
