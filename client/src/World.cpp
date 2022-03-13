@@ -45,7 +45,7 @@ void World::Update(const glm::vec3 &position) {
 		last_chunk_pos = current_chunk_pos;
 		spdlog::info("current_chunk_pos = {}", glm::to_string(current_chunk_pos));
 
-		std::vector<std::unique_ptr<WorkerBase>> new_workers;
+		std::vector<std::unique_ptr<WorkerBase>> new_workers, new_nei_workers;
 		std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> erased_meshes;
 
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
@@ -57,7 +57,7 @@ void World::Update(const glm::vec3 &position) {
 				it = m_chunks.erase(it);
 			} else {
 				if (!it->second->IsMeshed())
-					new_workers.push_back(ChunkMesher::Create(it->second));
+					new_nei_workers.push_back(ChunkMesher::Create(it->second));
 				++it;
 			}
 		}
@@ -72,6 +72,7 @@ void World::Update(const glm::vec3 &position) {
 		}
 
 		PushWorkers(std::move(new_workers));
+		PushWorkers(std::move(new_nei_workers));
 	}
 }
 

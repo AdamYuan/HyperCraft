@@ -322,7 +322,7 @@ void ChunkMesher::Run() {
 	// if the neighbour chunks are not totally generated, return and move it back
 	for (const auto &i : m_neighbour_chunk_ptr)
 		if (!i->IsGenerated()) {
-			spdlog::info("remesh");
+			// spdlog::info("remesh");
 			push_worker(ChunkMesher::Create(m_chunk_ptr));
 			return;
 		}
@@ -346,7 +346,7 @@ void ChunkMesher::Run() {
 	m_chunk_ptr->m_mesh_handle = world_renderer_ptr->GetChunkRenderer()->PushMesh(
 	    vertices, indices, {(fAABB)((i32AABB)aabb + base_position), base_position});
 	m_chunk_ptr->SetMeshedFlag();
-	spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
+	/* spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
 	             glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
-	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax()));
+	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax())); */
 }

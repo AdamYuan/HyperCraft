@@ -16,7 +16,7 @@ add_library(CubeCraft3_common STATIC
         include/common/WorldDatabase.hpp
         include/common/AABB.hpp
         include/common/Position.hpp
-        )
+        include/common/Biome.hpp include/common/Size.hpp)
 
 include(TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)

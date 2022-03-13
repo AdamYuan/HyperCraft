@@ -37,7 +37,22 @@ public:
 };
 
 struct BlockTextures {
-	enum ID : BlockTexID { kNone = 0, kStone, kDirt, kGrassTop, kGrassSide, kSand, kLogTop, kLogSide, kPlank, kGlass };
+	enum ID : BlockTexID {
+		kNone = 0,
+		kStone,
+		kDirt,
+		kGrassTop,
+		kGrassSide,
+		kSand,
+		kLogTop,
+		kLogSide,
+		kPlank,
+		kGlass,
+		kSnow,
+		kBlueIce,
+		kSandstone,
+		kWater
+	};
 	enum ROT : BlockTexRot { kRot0 = 0, kRot90, kRot180, kRot270 };
 };
 
@@ -56,7 +71,20 @@ struct BlockProperty {
 	{ s, s, t, b, s, s }
 
 struct Blocks {
-	enum ID : BlockID { kAir = 0, kStone, kDirt, kGrass, kSand, kLog, kPlank, kGlass };
+	enum ID : BlockID {
+		kAir = 0,
+		kStone,
+		kDirt,
+		kGrass,
+		kSand,
+		kLog,
+		kPlank,
+		kGlass,
+		kSnow,
+		kBlueIce,
+		kSandstone,
+		kWater
+	};
 };
 
 class Block {
@@ -81,9 +109,13 @@ private:
 		     false, false},                                                   //
 		    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
 		    {"Log", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kLogTop, BlockTextures::kLogSide, BlockTextures::kLogTop),
-		     false, false},                                                     //
-		    {"Plank", BLOCK_TEXTURE_SAME(BlockTextures::kPlank), false, false}, //
-		    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},   //
+		     false, false},                                                             //
+		    {"Plank", BLOCK_TEXTURE_SAME(BlockTextures::kPlank), false, false},         //
+		    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
+		    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
+		    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), false, false},    //
+		    {"Sandstone", BLOCK_TEXTURE_SAME(BlockTextures::kSandstone), false, false}, //
+		    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), true, true},           //
 		};
 		return kProperties[m_id];
 	}

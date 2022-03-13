@@ -7,8 +7,8 @@ class FS_T<FastNoise::DomainScale, FS> : public virtual FastNoise::DomainScale, 
 {
     FASTSIMD_DECLARE_FS_TYPES;
     FASTNOISE_IMPL_GEN_T;
-    
-    template<typename... P> 
+
+    template<typename... P>
     FS_INLINE float32v GenT( int32v seed, P... pos ) const
     {
         return this->GetSourceValue( mSource, seed, (pos * float32v( mScale ))... );
@@ -20,8 +20,8 @@ class FS_T<FastNoise::DomainOffset, FS> : public virtual FastNoise::DomainOffset
 {
     FASTSIMD_DECLARE_FS_TYPES;
     FASTNOISE_IMPL_GEN_T;
-    
-    template<typename... P> 
+
+    template<typename... P>
     FS_INLINE float32v GenT( int32v seed, P... pos ) const
     {
         return [this, seed]( std::remove_reference_t<P>... sourcePos, std::remove_reference_t<P>... offset )
@@ -89,7 +89,7 @@ class FS_T<FastNoise::Remap, FS> : public virtual FastNoise::Remap, public FS_T<
     FS_INLINE float32v GenT( int32v seed, P... pos ) const
     {
         float32v source = this->GetSourceValue( mSource, seed, pos... );
-            
+
         return float32v( mToMin ) + (( source - float32v( mFromMin ) ) / float32v( mFromMax - mFromMin ) * float32v( mToMax - mToMin ));
     }
 };
@@ -104,7 +104,7 @@ class FS_T<FastNoise::ConvertRGBA8, FS> : public virtual FastNoise::ConvertRGBA8
     FS_INLINE float32v GenT( int32v seed, P... pos ) const
     {
         float32v source = this->GetSourceValue( mSource, seed, pos... );
-        
+
         source = FS_Min_f32( source, float32v( mMax ));
         source = FS_Max_f32( source, float32v( mMin ));
         source -= float32v( mMin );

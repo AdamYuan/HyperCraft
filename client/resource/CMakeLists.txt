@@ -11,6 +11,10 @@ set(BLOCK_TEXTURE_NAME
         log_side.png
         plank.png
         glass.png
+        snow.png
+        blue_ice.png
+        sandstone.png
+        water.png
         )
 
 set(BLOCK_TEXTURE_PATH)
