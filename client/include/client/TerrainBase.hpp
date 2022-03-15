@@ -31,12 +31,9 @@ private:
 	std::unordered_map<KEY, std::weak_ptr<T>> m_cache_map;
 	std::shared_mutex m_cache_map_mutex;
 
-	std::function<void(const KEY &, T *)> m_generator;
-
 public:
-	explicit TerrainCache(const std::function<void(const KEY &, T *)> &generator) : m_generator{generator} {}
-
-	std::shared_ptr<T> Acquire(const KEY &key) {
+	template <typename GEN>
+	auto Acquire(const KEY &key, GEN generator) -> decltype(generator(KEY{}, (T *){}), std::shared_ptr<const T>{}) {
 		{ // try to acquire it first
 			std::shared_lock cache_read_lock{m_cache_map_mutex};
 			auto it = m_cache_map.find(key);
@@ -49,7 +46,7 @@ public:
 
 		// if not, generate it
 		std::shared_ptr<T> generated = std::make_shared<T>();
-		m_generator(key, generated.get());
+		generator(key, generated.get());
 		// spdlog::info("cache generated");
 
 		{

@@ -1,4 +1,5 @@
 set(CMAKE_CXX_STANDARD 17)
+cmake_policy(SET CMP0069 NEW)
 
 set(install_targets ${install_targets} FastNoise PARENT_SCOPE)
 
@@ -62,7 +63,7 @@ add_library(FastNoise
 
 add_library(FastNoise2 ALIAS FastNoise)
 
-target_include_directories(FastNoise PUBLIC 
+target_include_directories(FastNoise PUBLIC
     $<BUILD_INTERFACE:${FastNoise2_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
@@ -78,7 +79,7 @@ set_target_properties(FastNoise PROPERTIES
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     target_compile_options(FastNoise PRIVATE /GL- /GS- /fp:fast /wd4251)
-    
+
     if(CMAKE_SIZEOF_VOID_P EQUAL 4)
         set_source_files_properties(FastSIMD/FastSIMD_Level_Scalar.cpp PROPERTIES COMPILE_FLAGS "/arch:SSE")
         set_source_files_properties(FastSIMD/FastSIMD_Level_SSE2.cpp PROPERTIES COMPILE_FLAGS "/arch:SSE2")
@@ -94,7 +95,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}"
     if(MSVC)
         target_compile_options(FastNoise PRIVATE /GL- /GS- /fp:fast)
     else()
-        target_compile_options(FastNoise PRIVATE -ffast-math -fno-stack-protector)        
+        target_compile_options(FastNoise PRIVATE -ffast-math -fno-stack-protector)
     endif()
 
     if(CMAKE_SIZEOF_VOID_P EQUAL 4 OR "${CMAKE_CXX_FLAGS}" MATCHES "-m32")

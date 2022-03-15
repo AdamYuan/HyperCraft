@@ -41,17 +41,41 @@ struct BlockTextures {
 		kNone = 0,
 		kStone,
 		kDirt,
-		kGrassTop,
-		kGrassSide,
+		kGrassPlainTop,
+		kGrassPlainSide,
+		kGrassSavannaTop,
+		kGrassSavannaSide,
+		kGrassTropicalTop,
+		kGrassTropicalSide,
+		kGrassBorealTop,
+		kGrassBorealSide,
 		kSand,
-		kLogTop,
-		kLogSide,
-		kPlank,
 		kGlass,
 		kSnow,
 		kBlueIce,
 		kSandstone,
-		kWater
+		kWater,
+
+		// TREE
+		kAcaciaLeaves,
+		kAcaciaLog,
+		kAcaciaLogTop,
+		kAcaciaPlank,
+
+		kJungleLeaves,
+		kJungleLog,
+		kJungleLogTop,
+		kJunglePlank,
+
+		kOakLeaves,
+		kOakLog,
+		kOakLogTop,
+		kOakPlank,
+
+		kSpruceLeaves,
+		kSpruceLog,
+		kSpruceLogTop,
+		kSprucePlank,
 	};
 	enum ROT : BlockTexRot { kRot0 = 0, kRot90, kRot180, kRot270 };
 };
@@ -60,15 +84,25 @@ using BlockID = uint8_t;
 using BlockMeta = uint8_t;
 
 struct BlockProperty {
-	const char *m_name;
-	BlockTexture m_textures[6];
-	bool m_transparent, m_light_pass;
+	const char *m_name{"Unnamed"};
+	BlockTexture m_textures[6]{};
+	bool m_transparent{false}, m_light_pass{false};
+	// META path #1: array to properties
+	const BlockProperty *m_meta_property_array{nullptr};
+	BlockMeta m_meta_property_array_count{};
+	// META path #2: function pointer
+	const BlockProperty *(*m_meta_property_func)(BlockMeta meta){nullptr};
 };
 
 #define BLOCK_TEXTURE_SAME(x) \
 	{ x, x, x, x, x, x }
 #define BLOCK_TEXTURE_BOT_SIDE_TOP(b, s, t) \
 	{ s, s, t, b, s, s }
+#define BLOCK_PROPERTY_ARRAY_SIZE(array) (sizeof(array) / sizeof(BlockProperty))
+#define BLOCK_PROPERTY_META_ARRAY(generic_name, meta_prop_array) \
+	{ generic_name, {}, {}, {}, meta_prop_array, sizeof(meta_prop_array) / sizeof(BlockProperty) }
+#define BLOCK_PROPERTY_META_FUNCTION(generic_name, meta_prop_func) \
+	{ generic_name, {}, {}, {}, nullptr, 0, meta_prop_func }
 
 struct Blocks {
 	enum ID : BlockID {
@@ -77,13 +111,25 @@ struct Blocks {
 		kDirt,
 		kGrass,
 		kSand,
-		kLog,
-		kPlank,
 		kGlass,
 		kSnow,
 		kBlueIce,
 		kSandstone,
-		kWater
+		kWater,
+
+		// TREE
+		kLeaves,
+		kLog,
+		kPlank
+	};
+};
+
+struct BlockMetas {
+	struct Tree {
+		enum : BlockMeta { kOak = 0, kAcacia, kJungle, kSpruce };
+	};
+	struct Grass {
+		enum : BlockMeta { kPlain = 0, kSavanna, kTropical, kBoreal };
 	};
 };
 
@@ -99,25 +145,85 @@ private:
 #endif
 		};
 	};
-	inline constexpr BlockProperty GetGenericProperty() const {
-		constexpr BlockProperty kProperties[] = {
-		    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},      //
-		    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false}, //
-		    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},   //
-		    {"Grass",
-		     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassSide, BlockTextures::kGrassTop),
-		     false, false},                                                   //
-		    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
-		    {"Log", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kLogTop, BlockTextures::kLogSide, BlockTextures::kLogTop),
-		     false, false},                                                             //
-		    {"Plank", BLOCK_TEXTURE_SAME(BlockTextures::kPlank), false, false},         //
-		    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
-		    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
-		    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), false, false},    //
-		    {"Sandstone", BLOCK_TEXTURE_SAME(BlockTextures::kSandstone), false, false}, //
-		    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), true, true},           //
-		};
-		return kProperties[m_id];
+
+	inline static constexpr BlockProperty kGrassProperties[] = {
+	    {"Grass",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassPlainSide,
+	                                BlockTextures::kGrassPlainTop),
+	     false, false}, //
+	    {"Grass",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassSavannaSide,
+	                                BlockTextures::kGrassSavannaTop),
+	     false, false}, //
+	    {"Grass",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassTropicalSide,
+	                                BlockTextures::kGrassTropicalTop),
+	     false, false}, //
+	    {"Grass",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassBorealSide,
+	                                BlockTextures::kGrassBorealTop),
+	     false, false}, //
+	};
+	inline static constexpr BlockProperty kLeavesProperties[] = {
+	    {"Oak Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kOakLeaves), true, false},       //
+	    {"Acacia Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaLeaves), true, false}, //
+	    {"Jungle Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kJungleLeaves), true, false}, //
+	    {"Spruce Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kSpruceLeaves), true, false}, //
+	};
+
+	inline static constexpr BlockProperty kLogProperties[] = {
+	    {"Oak Log",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kOakLogTop, BlockTextures::kOakLog, BlockTextures::kOakLogTop),
+	     false, false}, //
+	    {"Acacia Log",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kAcaciaLogTop, BlockTextures::kAcaciaLog,
+	                                BlockTextures::kAcaciaLogTop),
+	     false, false}, //
+	    {"Jungle Log",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kJungleLogTop, BlockTextures::kJungleLog,
+	                                BlockTextures::kJungleLogTop),
+	     false, false}, //
+	    {"Spruce Log",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kSpruceLogTop, BlockTextures::kSpruceLog,
+	                                BlockTextures::kSpruceLogTop),
+	     false, false}, //
+	};
+	inline static constexpr const BlockProperty *get_log_property(BlockMeta meta) {
+		// TODO: deal with log rotation
+		return kLogProperties + (meta < BLOCK_PROPERTY_ARRAY_SIZE(kLogProperties) ? meta : 0);
+	}
+
+	inline static constexpr BlockProperty kPlankProperties[] = {
+	    {"Oak Plank", BLOCK_TEXTURE_SAME(BlockTextures::kOakPlank), false, false},       //
+	    {"Acacia Plank", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaPlank), false, false}, //
+	    {"Jungle Plank", BLOCK_TEXTURE_SAME(BlockTextures::kJunglePlank), false, false}, //
+	    {"Spruce Plank", BLOCK_TEXTURE_SAME(BlockTextures::kSprucePlank), false, false}, //
+	};
+
+	inline static constexpr BlockProperty kProperties[] = {
+	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},      //
+	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false}, //
+	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},   //
+	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
+	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false},           //
+	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
+	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
+	    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), false, false},    //
+	    {"Sandstone", BLOCK_TEXTURE_SAME(BlockTextures::kSandstone), false, false}, //
+	    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), true, true},           //
+	    BLOCK_PROPERTY_META_ARRAY("Leaves", kLeavesProperties),
+	    BLOCK_PROPERTY_META_FUNCTION("Log", get_log_property),
+	    BLOCK_PROPERTY_META_ARRAY("Plank", kPlankProperties),
+	};
+
+	inline constexpr const BlockProperty *get_generic_property() const { return kProperties + m_id; }
+	inline constexpr const BlockProperty *get_property() const {
+		return get_generic_property()->m_meta_property_func
+		           ? get_generic_property()->m_meta_property_func(m_meta)
+		           : (get_generic_property()->m_meta_property_array
+		                  ? get_generic_property()->m_meta_property_array +
+		                        (m_meta < get_generic_property()->m_meta_property_array_count ? m_meta : 0)
+		                  : get_generic_property());
 	}
 
 public:
@@ -133,19 +239,17 @@ public:
 	inline constexpr uint16_t GetData() const { return m_data; }
 	inline void SetData(uint16_t data) { m_data = data; }
 
-	inline constexpr const char *GetName() const { return GetGenericProperty().m_name; }
-	inline constexpr BlockTexture GetTexture(BlockFace face) const { return GetGenericProperty().m_textures[face]; }
-	inline constexpr bool GetTransparent() const { return GetGenericProperty().m_transparent; }
-	inline constexpr bool GetLightPass() const { return GetGenericProperty().m_light_pass; }
+	inline constexpr const char *GetGenericName() const { return get_generic_property()->m_name; }
+	inline constexpr const char *GetName() const { return get_property()->m_name; }
+	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->m_textures[face]; }
+	inline constexpr bool GetTransparent() const { return get_property()->m_transparent; }
+	inline constexpr bool GetLightPass() const { return get_property()->m_light_pass; }
 
 	inline constexpr bool ShowFace(Block neighbour) const {
-		if (GetID() == Blocks::kAir)
+		if (GetID() == Blocks::kAir || GetID() == neighbour.GetID())
 			return false;
 		if (!GetTransparent() && !neighbour.GetTransparent())
 			return false;
-		if (GetTransparent() && neighbour.GetTransparent() && GetID() != neighbour.GetID() &&
-		    neighbour.GetID() == Blocks::kGlass)
-			return true;
 		return !(GetTransparent() && neighbour.GetID() != Blocks::kAir);
 	}
 
@@ -155,5 +259,8 @@ public:
 
 #undef BLOCK_TEXTURE_SAME
 #undef BLOCK_TEXTURE_BOT_SIDE_TOP
+#undef BLOCK_PROPERTY_ARRAY_SIZE
+#undef BLOCK_PROPERTY_META_ARRAY
+#undef BLOCK_PROPERTY_META_FUNCTION
 
 #endif

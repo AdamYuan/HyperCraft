@@ -2,19 +2,19 @@
 
 #include <client/Chunk.hpp>
 #include <climits>
+#include <glm/gtc/type_ptr.hpp>
 #include <random>
 
 void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t *y_peak) {
 #if 1
-	std::shared_ptr<XZInfo> xz_info = m_xz_cache.Acquire(chunk_ptr->GetPosition().xz());
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x + 1, chunk_ptr->GetPosition().z + 1});
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x + 1, chunk_ptr->GetPosition().z});
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x + 1, chunk_ptr->GetPosition().z - 1});
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x, chunk_ptr->GetPosition().z + 1});
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x, chunk_ptr->GetPosition().z - 1});
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x - 1, chunk_ptr->GetPosition().z + 1});
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x - 1, chunk_ptr->GetPosition().z});
-	m_xz_cache.Acquire({chunk_ptr->GetPosition().x - 1, chunk_ptr->GetPosition().z - 1});
+	std::shared_ptr<const XZInfo> xz_info = m_xz_cache.Acquire(
+	    chunk_ptr->GetPosition().xz(), [this](const ChunkPos2 &pos, XZInfo *info) { generate_xz_info(pos, info); });
+	std::shared_ptr<const CombinedXZInfo> combined_xz_info = m_combined_xz_cache.Acquire(
+	    chunk_ptr->GetPosition().xz(), [&xz_info, this](const ChunkPos2 &pos, CombinedXZInfo *combined_info) {
+		    generate_combined_xz_info(pos, xz_info, combined_info);
+	    });
+	combined_xz_info->decoration.PopToChunk(chunk_ptr);
+
 	for (uint32_t y = 0; y < Chunk::kSize; ++y) {
 		uint32_t noise_index = 0;
 		for (uint32_t z = 0; z < Chunk::kSize; ++z) {
@@ -22,19 +22,20 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 				int32_t height = xz_info->height_map[noise_index],
 				        cur_height = chunk_ptr->GetPosition().y * (int)Chunk::kSize + (int)y;
 				Biome biome = xz_info->biome_map[noise_index];
-				auto meta = uint32_t((xz_info->meta[noise_index] + 1.0f) * 1024.0f);
+				auto meta = uint32_t((xz_info->meta[noise_index] + 1.0f) * 1009.0f);
 
 				switch (biome) {
 				case Biomes::kOcean: {
-					int32_t sand_height = -int32_t(meta % 4u);
-					chunk_ptr->SetBlock(x, y, z,
-					                    cur_height <= height
-					                        ? (cur_height >= sand_height ? Blocks::kSand : Blocks::kStone)
-					                        : (cur_height <= 0 ? Blocks::kWater : Blocks::kAir));
+					if (cur_height <= height) {
+						int32_t sand_height = -int32_t(meta % 4u);
+						chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? Blocks::kSand : Blocks::kStone));
+					} else if (cur_height <= 0) {
+						chunk_ptr->SetBlock(x, y, z, Blocks::kWater);
+					}
 				} break;
 				case Biomes::kPlain:
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, Blocks::kGrass);
+						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrass, BlockMetas::Grass::kPlain});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 4u) - 1;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -42,7 +43,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 					break;
 				case Biomes::kSavanna:
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, Blocks::kDirt);
+						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrass, BlockMetas::Grass::kSavanna});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -50,10 +51,10 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 					break;
 				case Biomes::kMountain: {
 					if (cur_height <= height) {
-						if ((meta % (height + 40)) == 0) {
+						if ((meta % (height + 64)) == 0) {
 							int32_t dirt_height = height - int32_t(meta % 3u);
 							chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
-						} else if ((meta % (std::max(60 - height, 1))) == 0) {
+						} else if ((meta % (std::max(128 - height, 1))) == 0) {
 							int32_t snow_height = height - int32_t(meta % 2u);
 							chunk_ptr->SetBlock(x, y, z, cur_height >= snow_height ? Blocks::kSnow : Blocks::kStone);
 						} else
@@ -62,10 +63,10 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 				} break;
 				case Biomes::kSnowMountain: {
 					if (cur_height <= height) {
-						if ((meta % (std::max(60 - height, 1))) == 0) {
+						if ((meta % (std::max(200 - height, 1))) == 0) {
 							int32_t ice_height = height - int32_t(meta % 2u);
 							chunk_ptr->SetBlock(x, y, z, cur_height >= ice_height ? Blocks::kBlueIce : Blocks::kStone);
-						} else if ((meta % (std::max(30 - height, 1))) == 0) {
+						} else if ((meta % (std::max(64 - height, 1))) == 0) {
 							int32_t snow_height = height - int32_t(meta % 2u);
 							chunk_ptr->SetBlock(x, y, z, cur_height >= snow_height ? Blocks::kSnow : Blocks::kStone);
 						} else
@@ -84,12 +85,34 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 						}
 					}
 				} break;
-				case Biomes::kForest:
-				case Biomes::kRainForest:
-				case Biomes::kBorealForest: {
-					bool tree = (meta % 50u) == 0u;
+				case Biomes::kForest: {
+					bool tree = (meta % 53u) == 0u;
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, tree ? Blocks::kLog : Blocks::kGrass);
+						chunk_ptr->SetBlock(x, y, z,
+						                    tree ? Block{Blocks::kLog, BlockMetas::Tree::kOak}
+						                         : Block{Blocks::kGrass, BlockMetas::Grass::kPlain});
+					} else if (cur_height < height) {
+						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
+						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+					}
+				} break;
+				case Biomes::kTropicalForest: {
+					bool tree = (meta % 53u) == 0u;
+					if (cur_height == height) {
+						chunk_ptr->SetBlock(x, y, z,
+						                    tree ? Block{Blocks::kLog, BlockMetas::Tree::kJungle}
+						                         : Block{Blocks::kGrass, BlockMetas::Grass::kTropical});
+					} else if (cur_height < height) {
+						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
+						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+					}
+				} break;
+				case Biomes::kBorealForest: {
+					bool tree = (meta % 53u) == 0u;
+					if (cur_height == height) {
+						chunk_ptr->SetBlock(x, y, z,
+						                    tree ? Block{Blocks::kLog, BlockMetas::Tree::kSpruce}
+						                         : Block{Blocks::kGrass, BlockMetas::Grass::kBoreal});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -102,23 +125,23 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 		}
 	}
 
-	if (chunk_ptr->GetPosition().y * (int)kChunkSize <= xz_info->max_height) {
-		// Generate a 16 x 16 x 16 area of noise
-		float cave_noise_output[Chunk::kSize * Chunk::kSize * Chunk::kSize];
-		m_cave_noise->GenUniformGrid3D(cave_noise_output, chunk_ptr->GetPosition().x * (int)Chunk::kSize,
-		                               chunk_ptr->GetPosition().y * (int)Chunk::kSize,
-		                               chunk_ptr->GetPosition().z * (int)Chunk::kSize, Chunk::kSize, Chunk::kSize,
-		                               Chunk::kSize, 0.016f, (int)GetSeed());
+	/*if (chunk_ptr->GetPosition().y * (int)kChunkSize <= xz_info->max_height) {
+	    // Generate a 16 x 16 x 16 area of noise
+	    float cave_noise_output[Chunk::kSize * Chunk::kSize * Chunk::kSize];
+	    m_cave_noise->GenUniformGrid3D(cave_noise_output, chunk_ptr->GetPosition().x * (int)Chunk::kSize,
+	                                   chunk_ptr->GetPosition().y * (int)Chunk::kSize,
+	                                   chunk_ptr->GetPosition().z * (int)Chunk::kSize, Chunk::kSize, Chunk::kSize,
+	                                   Chunk::kSize, kCaveNoiseFrequency, (int)GetSeed());
 
-		for (uint32_t z = 0, noise_index = 0; z < Chunk::kSize; ++z) {
-			for (uint32_t y = 0; y < Chunk::kSize; ++y) {
-				for (uint32_t x = 0; x < Chunk::kSize; ++x, ++noise_index) {
-					if (cave_noise_output[noise_index] >= 0 && chunk_ptr->GetBlock(x, y, z) != Blocks::kWater)
-						chunk_ptr->SetBlock(x, y, z, Blocks::kAir);
-				}
-			}
-		}
-	}
+	    for (uint32_t z = 0, noise_index = 0; z < Chunk::kSize; ++z) {
+	        for (uint32_t y = 0; y < Chunk::kSize; ++y) {
+	            for (uint32_t x = 0; x < Chunk::kSize; ++x, ++noise_index) {
+	                if (cave_noise_output[noise_index] >= 0.0f && chunk_ptr->GetBlock(x, y, z) != Blocks::kWater)
+	                    chunk_ptr->SetBlock(x, y, z, Blocks::kAir);
+	            }
+	        }
+	    }
+	} */
 #else
 	std::mt19937 gen(chunk_ptr->GetPosition().x ^ chunk_ptr->GetPosition().y ^ chunk_ptr->GetPosition().z);
 	if (chunk_ptr->GetPosition().y <= 0) {
@@ -137,62 +160,78 @@ void DefaultTerrain::initialize_biome_noise() {
 	m_biome_temperature_noise->SetSource(m_biome_precipitation_noise);
 	m_biome_temperature_noise->SetOffset(100007);
 
-	m_biome_bias_remap_x = FastNoise::New<FastNoise::Remap>();
-	m_biome_bias_remap_x->SetRemap(-1.0f, 1.0f, -0.5f, 0.5f);
-	m_biome_bias_remap_x->SetSource(m_biome_precipitation_noise);
+	m_biome_bias_x_remap = FastNoise::New<FastNoise::Remap>();
+	m_biome_bias_x_remap->SetRemap(-1.0, 1.0, -0.5, 0.5);
+	m_biome_bias_x_remap->SetSource(m_biome_precipitation_noise);
 
-	m_biome_bias_remap_y = FastNoise::New<FastNoise::Remap>();
-	m_biome_bias_remap_y->SetRemap(-1.0f, 1.0f, -0.5f, 0.5f);
-	m_biome_bias_remap_y->SetSource(m_biome_temperature_noise);
+	m_biome_bias_y_remap = FastNoise::New<FastNoise::Remap>();
+	m_biome_bias_y_remap->SetRemap(-1.0, 1.0, -0.5, 0.5);
+	m_biome_bias_y_remap->SetSource(m_biome_temperature_noise);
 
 	m_biome_bias_x = FastNoise::New<FastNoise::FractalFBm>();
 	m_biome_bias_x->SetGain(0.5f);
 	m_biome_bias_x->SetLacunarity(3.0f);
 	m_biome_bias_x->SetOctaveCount(5);
 	m_biome_bias_x->SetWeightedStrength(0);
-	m_biome_bias_x->SetSource(m_biome_bias_remap_x);
+	m_biome_bias_x->SetSource(m_biome_bias_x_remap);
 
 	m_biome_bias_y = FastNoise::New<FastNoise::FractalFBm>();
 	m_biome_bias_y->SetGain(0.5f);
 	m_biome_bias_y->SetLacunarity(3.0f);
 	m_biome_bias_y->SetOctaveCount(5);
 	m_biome_bias_y->SetWeightedStrength(0);
-	m_biome_bias_y->SetSource(m_biome_bias_remap_y);
+	m_biome_bias_y->SetSource(m_biome_bias_y_remap);
 
-	/* m_biome_precipitation_cellular_lookup = FastNoise::New<FastNoise::CellularLookup>();
-	m_biome_precipitation_cellular_lookup->SetLookupFrequency(0.1f);
-	m_biome_precipitation_cellular_lookup->SetDistanceFunction(FastNoise::DistanceFunction::EuclideanSquared);
-	m_biome_precipitation_cellular_lookup->SetJitterModifier(0.75f);
-	m_biome_precipitation_cellular_lookup->SetLookup(m_biome_precipitation_noise);
+	m_biome_precipitation_cell_lookup = FastNoise::New<FastNoise::CellularLookup>();
+	m_biome_precipitation_cell_lookup->SetLookupFrequency(kBiomeCellLookupFrequency);
+	m_biome_precipitation_cell_lookup->SetDistanceFunction(FastNoise::DistanceFunction::EuclideanSquared);
+	m_biome_precipitation_cell_lookup->SetJitterModifier(0.75f);
+	m_biome_precipitation_cell_lookup->SetLookup(m_biome_precipitation_noise);
 
-	m_biome_temperature_cellular_lookup = FastNoise::New<FastNoise::CellularLookup>();
-	m_biome_temperature_cellular_lookup->SetLookupFrequency(0.1f);
-	m_biome_temperature_cellular_lookup->SetDistanceFunction(FastNoise::DistanceFunction::EuclideanSquared);
-	m_biome_temperature_cellular_lookup->SetJitterModifier(0.75f);
-	m_biome_temperature_cellular_lookup->SetLookup(m_biome_temperature_noise); */
+	m_biome_temperature_cell_lookup = FastNoise::New<FastNoise::CellularLookup>();
+	m_biome_temperature_cell_lookup->SetLookupFrequency(kBiomeCellLookupFrequency);
+	m_biome_temperature_cell_lookup->SetDistanceFunction(FastNoise::DistanceFunction::EuclideanSquared);
+	m_biome_temperature_cell_lookup->SetJitterModifier(0.75f);
+	m_biome_temperature_cell_lookup->SetLookup(m_biome_temperature_noise);
 
-	m_biome_precipitation = FastNoise::New<FastNoise::DomainOffset>();
-	m_biome_precipitation->SetOffset<FastNoise::Dim::X>(m_biome_bias_x);
-	m_biome_precipitation->SetOffset<FastNoise::Dim::Y>(m_biome_bias_y);
-	m_biome_precipitation->SetSource(m_biome_precipitation_noise);
+	m_biome_precipitation_cell_offset = FastNoise::New<FastNoise::DomainOffset>();
+	m_biome_precipitation_cell_offset->SetOffset<FastNoise::Dim::X>(m_biome_bias_x);
+	m_biome_precipitation_cell_offset->SetOffset<FastNoise::Dim::Y>(m_biome_bias_y);
+	m_biome_precipitation_cell_offset->SetSource(m_biome_precipitation_cell_lookup);
 
-	m_biome_temperature = FastNoise::New<FastNoise::DomainOffset>();
-	m_biome_temperature->SetOffset<FastNoise::Dim::X>(m_biome_bias_x);
-	m_biome_temperature->SetOffset<FastNoise::Dim::Y>(m_biome_bias_y);
-	m_biome_temperature->SetSource(m_biome_temperature_noise);
+	m_biome_temperature_cell_offset = FastNoise::New<FastNoise::DomainOffset>();
+	m_biome_temperature_cell_offset->SetOffset<FastNoise::Dim::X>(m_biome_bias_x);
+	m_biome_temperature_cell_offset->SetOffset<FastNoise::Dim::Y>(m_biome_bias_y);
+	m_biome_temperature_cell_offset->SetSource(m_biome_temperature_cell_lookup);
+
+	m_biome_precipitation_cell_cache = FastNoise::New<FastNoise::GeneratorCache>();
+	m_biome_precipitation_cell_cache->SetSource(m_biome_precipitation_cell_offset);
+
+	m_biome_temperature_cell_cache = FastNoise::New<FastNoise::GeneratorCache>();
+	m_biome_temperature_cell_cache->SetSource(m_biome_temperature_cell_offset);
+
+	m_biome_precipitation_offset = FastNoise::New<FastNoise::DomainOffset>();
+	m_biome_precipitation_offset->SetOffset<FastNoise::Dim::X>(m_biome_bias_x);
+	m_biome_precipitation_offset->SetOffset<FastNoise::Dim::Y>(m_biome_bias_y);
+	m_biome_precipitation_offset->SetSource(m_biome_precipitation_noise);
+
+	m_biome_temperature_offset = FastNoise::New<FastNoise::DomainOffset>();
+	m_biome_temperature_offset->SetOffset<FastNoise::Dim::X>(m_biome_bias_x);
+	m_biome_temperature_offset->SetOffset<FastNoise::Dim::Y>(m_biome_bias_y);
+	m_biome_temperature_offset->SetSource(m_biome_temperature_noise);
 
 	m_biome_precipitation_cache = FastNoise::New<FastNoise::GeneratorCache>();
-	m_biome_precipitation_cache->SetSource(m_biome_precipitation);
+	m_biome_precipitation_cache->SetSource(m_biome_precipitation_offset);
 
 	m_biome_temperature_cache = FastNoise::New<FastNoise::GeneratorCache>();
-	m_biome_temperature_cache->SetSource(m_biome_temperature);
+	m_biome_temperature_cache->SetSource(m_biome_temperature_offset);
 }
 
 void DefaultTerrain::initialize_height_noise() {
 	m_height_noise = FastNoise::New<FastNoise::FractalFBm>();
 	m_height_noise->SetGain(0.5f);
-	m_height_noise->SetLacunarity(2.5f);
-	m_height_noise->SetOctaveCount(5);
+	m_height_noise->SetLacunarity(2.0f);
+	m_height_noise->SetOctaveCount(6);
 	m_height_noise->SetWeightedStrength(0);
 	m_height_noise->SetSource(m_biome_precipitation_noise);
 
@@ -214,29 +253,94 @@ void DefaultTerrain::initialize_meta_noise() {
 }
 
 void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
+	int32_t base_x = (int32_t)pos.x * (int32_t)Chunk::kSize, base_z = (int32_t)pos.y * (int32_t)Chunk::kSize,
+	        cell_offset = (int32_t)(kBiomeCellLookupFrequency / kBiomeNoiseFrequency);
+
 	// Generate a 16 x 16 x 16 area of noise
 	float biome_temperature_output[Chunk::kSize * Chunk::kSize],
-	    biome_precipitation_output[Chunk::kSize * Chunk::kSize], height_output[Chunk::kSize * Chunk::kSize];
-	m_biome_precipitation_cache->GenUniformGrid2D(biome_precipitation_output, (int)pos.x * (int)Chunk::kSize,
-	                                              (int)pos.y * (int)Chunk::kSize, Chunk::kSize, Chunk::kSize,
-	                                              kBiomeNoiseFrequency, (int)GetSeed());
-
-	m_biome_temperature_cache->GenUniformGrid2D(biome_temperature_output, (int)pos.x * (int)Chunk::kSize,
-	                                            (int)pos.y * (int)Chunk::kSize, Chunk::kSize, Chunk::kSize,
+	    biome_precipitation_output[Chunk::kSize * Chunk::kSize],
+	    biome_temperature_cell_output[Chunk::kSize * Chunk::kSize],
+	    biome_precipitation_cell_output[Chunk::kSize * Chunk::kSize], height_output[Chunk::kSize * Chunk::kSize];
+	m_biome_precipitation_cache->GenUniformGrid2D(biome_precipitation_output, base_x, base_z, Chunk::kSize,
+	                                              Chunk::kSize, kBiomeNoiseFrequency, (int)GetSeed());
+	m_biome_temperature_cache->GenUniformGrid2D(biome_temperature_output, base_x, base_z, Chunk::kSize, Chunk::kSize,
 	                                            kBiomeNoiseFrequency, (int)GetSeed());
+	m_biome_precipitation_cell_cache->GenUniformGrid2D(
+	    biome_precipitation_cell_output, base_x + cell_offset, base_z - cell_offset, Chunk::kSize, Chunk::kSize,
+	    kBiomeNoiseFrequency / kBiomeCellLookupFrequency, (int)GetSeed());
+	m_biome_temperature_cell_cache->GenUniformGrid2D(biome_temperature_cell_output, base_x + cell_offset,
+	                                                 base_z - cell_offset, Chunk::kSize, Chunk::kSize,
+	                                                 kBiomeNoiseFrequency / kBiomeCellLookupFrequency, (int)GetSeed());
+	m_height_cache->GenUniformGrid2D(height_output, base_x, base_z, Chunk::kSize, Chunk::kSize, kHeightNoiseFrequency,
+	                                 (int)GetSeed());
+	m_meta_cache->GenUniformGrid2D(info->meta, base_x, base_z, Chunk::kSize, Chunk::kSize, 1.0f, (int)GetSeed());
 
-	m_height_cache->GenUniformGrid2D(height_output, (int)pos.x * (int)Chunk::kSize, (int)pos.y * (int)Chunk::kSize,
-	                                 Chunk::kSize, Chunk::kSize, kHeightNoiseFrequency, (int)GetSeed());
-
-	m_meta_cache->GenUniformGrid2D(info->meta, (int)pos.x * (int)Chunk::kSize, (int)pos.y * (int)Chunk::kSize,
-	                               Chunk::kSize, Chunk::kSize, 1.0f, (int)GetSeed());
-
+	std::vector<float> surface_x_vec, surface_y_vec, surface_z_vec;
 	info->max_height = INT32_MIN;
-	for (uint32_t noise_index = 0; noise_index < Chunk::kSize * Chunk::kSize; ++noise_index) {
-		info->height_map[noise_index] = get_height(biome_precipitation_output[noise_index],
-		                                           biome_temperature_output[noise_index], height_output[noise_index]);
-		info->max_height = std::max(info->max_height, info->height_map[noise_index]);
-		info->biome_map[noise_index] = get_biome(biome_precipitation_output[noise_index],
-		                                         biome_temperature_output[noise_index], height_output[noise_index]);
+	for (uint32_t index = 0, x, z; index < kChunkSize * kChunkSize; ++index) {
+		x = index % kChunkSize;
+		z = index / kChunkSize;
+
+		info->height_map[index] =
+		    get_height(biome_precipitation_output[index], biome_temperature_output[index], height_output[index]);
+		info->max_height = std::max(info->max_height, info->height_map[index]);
+		info->biome_map[index] = get_biome(biome_precipitation_cell_output[index], biome_temperature_cell_output[index],
+		                                   height_output[index]);
+
+		surface_x_vec.push_back(float(x));
+		surface_z_vec.push_back(float(z));
+		surface_y_vec.push_back(float(info->height_map[index]));
+	}
+
+	float surface_cave_output[kChunkSize * kChunkSize];
+	m_cave_noise->GenPositionArray3D(surface_cave_output, kChunkSize * kChunkSize, surface_x_vec.data(),
+	                                 surface_y_vec.data(), surface_z_vec.data(), (float)base_x, 0.0f, (float)base_z,
+	                                 (int)GetSeed());
+
+	for (uint32_t index = 0, x, z; index < kChunkSize * kChunkSize; ++index) {
+		info->is_ground[index] = surface_cave_output[index] < 0.0f;
+		x = index % kChunkSize;
+		z = index / kChunkSize;
+
+		// generate trees
+		switch (info->biome_map[index]) {
+		case Biomes::kForest:
+			break;
+		case Biomes::kBorealForest:
+			break;
+		case Biomes::kTropicalForest:
+			break;
+		default:
+			break;
+		}
+	}
+
+	for (int32_t x = -2; x <= 2; ++x)
+		for (int32_t z = -2; z <= 2; ++z)
+			info->decorations.SetBlock(x, 20, z, {Blocks::kLog, BlockMetas::Tree::kAcacia});
+}
+
+void DefaultTerrain::generate_combined_xz_info(const ChunkPos2 &pos,
+                                               const std::shared_ptr<const XZInfo> &center_xz_info,
+                                               DefaultTerrain::CombinedXZInfo *combined_info) {
+	combined_info->decoration = center_xz_info->decorations.GetInfo(cmp_xz_to_neighbour_index(0, 0));
+	auto xz_generator = [this](const ChunkPos2 &pos, XZInfo *info) { generate_xz_info(pos, info); };
+	for (uint32_t i = 0; i < 8; ++i) {
+		ChunkPos2 dp;
+		neighbour_index_to_cmp_xz(i, glm::value_ptr(dp));
+		combined_info->decoration.Merge(
+		    m_xz_cache.Acquire(pos + dp, xz_generator)->decorations.GetInfo(opposite_xz_neighbour_index(i)));
+	}
+}
+
+void DefaultTerrain::DecorationInfo::PopToChunk(const std::shared_ptr<Chunk> &chunk_ptr) const {
+	int32_t base_y = (int32_t)chunk_ptr->GetPosition().y * (int32_t)kChunkSize;
+	if (m_y_max < base_y || m_y_min >= base_y + (int32_t)kChunkSize)
+		return;
+	for (const auto &i : m_blocks) {
+		int32_t y = i.first.y - base_y;
+		if (y < 0 || y >= kChunkSize)
+			continue;
+		chunk_ptr->SetBlock(i.first.x, y, i.first.z, i.second);
 	}
 }

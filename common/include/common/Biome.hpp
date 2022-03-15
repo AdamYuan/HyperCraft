@@ -13,7 +13,7 @@ struct Biomes {
 		kSnowMountain,
 		kDesert,
 		kForest,
-		kRainForest,
+		kTropicalForest,
 		kBorealForest
 	};
 };
