@@ -34,7 +34,7 @@ void World::Join() {
 #include "WorldLoadingList.inl"
 
 void World::Update(const glm::vec3 &position) {
-	constexpr int16_t kR = 15;
+	constexpr int16_t kR = 20;
 
 	static glm::i16vec3 last_chunk_pos = {INT16_MAX, INT16_MAX, INT16_MAX};
 	glm::i16vec3 current_chunk_pos =

@@ -93,7 +93,7 @@ void Application::draw_frame() {
 		m_world_renderer->GetChunkRenderer()->PrepareFrame();
 		m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer);
 
-		m_canvas->CmdBeginRenderPass(command_buffer);
+		m_canvas->CmdBeginRenderPass(command_buffer, {0.7, 0.8, 0.96, 1.0});
 		{
 			// Subpass 0: chunks
 			m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer);

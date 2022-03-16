@@ -23,4 +23,5 @@ void main() {
 	color *= vAO;
 	color *= max(dot(kFaceNormal[vFace], normalize(vec3(10, 5, 3))), 0) * 0.5 + 0.5;
 	oColor = vec4(pow(color, vec3(1.0 / 2.2)), 1.0);
+	// oColor = vec4(color, 1.0);
 }

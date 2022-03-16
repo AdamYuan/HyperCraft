@@ -76,6 +76,11 @@ struct BlockTextures {
 		kSpruceLog,
 		kSpruceLogTop,
 		kSprucePlank,
+
+		kBirchLeaves,
+		kBirchLog,
+		kBirchLogTop,
+		kBirchPlank,
 	};
 	enum ROT : BlockTexRot { kRot0 = 0, kRot90, kRot180, kRot270 };
 };
@@ -126,7 +131,7 @@ struct Blocks {
 
 struct BlockMetas {
 	struct Tree {
-		enum : BlockMeta { kOak = 0, kAcacia, kJungle, kSpruce };
+		enum : BlockMeta { kOak = 0, kAcacia, kJungle, kSpruce, kBirch };
 	};
 	struct Grass {
 		enum : BlockMeta { kPlain = 0, kSavanna, kTropical, kBoreal };
@@ -169,6 +174,7 @@ private:
 	    {"Acacia Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaLeaves), true, false}, //
 	    {"Jungle Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kJungleLeaves), true, false}, //
 	    {"Spruce Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kSpruceLeaves), true, false}, //
+	    {"Birch Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kBirchLeaves), true, false},   //
 	};
 
 	inline static constexpr BlockProperty kLogProperties[] = {
@@ -187,6 +193,9 @@ private:
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kSpruceLogTop, BlockTextures::kSpruceLog,
 	                                BlockTextures::kSpruceLogTop),
 	     false, false}, //
+	    {"Birch Log",
+	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kBirchLogTop, BlockTextures::kBirchLog, BlockTextures::kBirchLogTop),
+	     false, false}, //
 	};
 	inline static constexpr const BlockProperty *get_log_property(BlockMeta meta) {
 		// TODO: deal with log rotation
@@ -198,6 +207,7 @@ private:
 	    {"Acacia Plank", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaPlank), false, false}, //
 	    {"Jungle Plank", BLOCK_TEXTURE_SAME(BlockTextures::kJunglePlank), false, false}, //
 	    {"Spruce Plank", BLOCK_TEXTURE_SAME(BlockTextures::kSprucePlank), false, false}, //
+	    {"Birch Plank", BLOCK_TEXTURE_SAME(BlockTextures::kBirchPlank), false, false},   //
 	};
 
 	inline static constexpr BlockProperty kProperties[] = {
