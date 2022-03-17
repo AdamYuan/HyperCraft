@@ -17,12 +17,12 @@
 class DefaultTerrain : public TerrainBase {
 private:
 	// Biome
-	static constexpr uint32_t kBiomeMapSize = 4, kSampleScale = 1, kOceanSampleScale = 16, kHeightRange = 384;
+	static constexpr uint32_t kBiomeMapSize = 4, kSampleScale = 1, kOceanSampleScale = 16, kHeightRange = 256;
 	static constexpr Biome kBiomeMap[kBiomeMapSize][kBiomeMapSize] = {
 	    // [precipitation][temperature]
-	    {Biomes::kSnowMountain, Biomes::kSavanna, Biomes::kDesert, Biomes::kDesert},
-	    {Biomes::kSnowMountain, Biomes::kSavanna, Biomes::kDesert, Biomes::kDesert},
-	    {Biomes::kMountain, Biomes::kPlain, Biomes::kPlain, Biomes::kForest},
+	    {Biomes::kGlacier, Biomes::kTundra, Biomes::kDesert, Biomes::kDesert},
+	    {Biomes::kGlacier, Biomes::kSavanna, Biomes::kSavanna, Biomes::kDesert},
+	    {Biomes::kTundra, Biomes::kPlain, Biomes::kPlain, Biomes::kForest},
 	    {Biomes::kBorealForest, Biomes::kForest, Biomes::kForest, Biomes::kTropicalForest}};
 
 	inline static constexpr Biome biome_map_scaled(uint32_t x, uint32_t y) {
@@ -48,10 +48,10 @@ private:
 			return cubic(height, -0.05f, 0.0f, 0.15f) + 0.005f;
 		case Biomes::kSavanna:
 			return cubic(height, -0.05f, 0.0f, 0.2f) + 0.005f;
-		case Biomes::kMountain:
-			// return cubic(height, -2.0f, 3.0, 0.0f) + 0.005f;
-		case Biomes::kSnowMountain:
-			return cubic(height, -2.2f, 4.5, 0.3f) + 0.005f;
+		case Biomes::kTundra:
+			return cubic(height, -2.0f, 1.0f, 2.5f) + 0.005f;
+		case Biomes::kGlacier:
+			return cubic(height, -2.0f, 1.0f, 3.0f) + 0.005f;
 		case Biomes::kDesert:
 			return cubic(height, 1.2f, -0.7f, 0.2f) + 0.01f;
 		case Biomes::kForest:
@@ -65,8 +65,8 @@ private:
 	inline static constexpr Biome get_biome(float precipitation, float temperature, float height) {
 		if (height <= 0.0f)
 			return Biomes::kOcean;
-		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale,
-		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale;
+		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale + 0.5f,
+		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale + 0.5f;
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
 		return biome_map_scaled(ix, iy);
 	}

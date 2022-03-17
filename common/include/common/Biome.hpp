@@ -8,9 +8,8 @@ struct Biomes {
 	enum : Biome {
 		kOcean = 0,
 		kPlain,
-		kSavanna,
-		kMountain,
-		kSnowMountain,
+		kSavanna, kTundra,
+		kGlacier,
 		kDesert,
 		kForest,
 		kTropicalForest,

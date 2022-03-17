@@ -45,7 +45,8 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 					}
 					break;
-				case Biomes::kMountain: {
+					//TODO: Better tundra generation
+				case Biomes::kTundra: {
 					if (cur_height <= height) {
 						if ((meta % (height + 64)) == 0) {
 							int32_t dirt_height = height - int32_t(meta % 3u);
@@ -57,17 +58,15 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 							chunk_ptr->SetBlock(x, y, z, Blocks::kStone);
 					}
 				} break;
-				case Biomes::kSnowMountain: {
-					if (cur_height <= height) {
-						if ((meta % (std::max(200 - height, 1))) == 0) {
-							int32_t ice_height = height - int32_t(meta % 2u);
-							chunk_ptr->SetBlock(x, y, z, cur_height >= ice_height ? Blocks::kBlueIce : Blocks::kStone);
-						} else if ((meta % (std::max(64 - height, 1))) == 0) {
-							int32_t snow_height = height - int32_t(meta % 2u);
-							chunk_ptr->SetBlock(x, y, z, cur_height >= snow_height ? Blocks::kSnow : Blocks::kStone);
-						} else
-							chunk_ptr->SetBlock(x, y, z, Blocks::kStone);
-					}
+				case Biomes::kGlacier: {
+					int32_t ice_height = height - int32_t(meta % 8u);
+					bool snow_cover = xz_info->meta[noise_index] % 16;
+					if (cur_height <= height)
+						chunk_ptr->SetBlock(
+						    x, y, z,
+						    cur_height >= ice_height
+						        ? (snow_cover && cur_height == height ? Blocks::kSnow : Blocks::kBlueIce)
+						        : Blocks::kStone);
 				} break;
 				case Biomes::kDesert: {
 					if (cur_height <= height) {
