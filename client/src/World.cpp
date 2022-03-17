@@ -48,7 +48,7 @@ void World::Update(const glm::vec3 &position) {
 
 		std::vector<std::unique_ptr<WorkerBase>> new_workers, new_nei_workers;
 		std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> erased_meshes;
-		erased_meshes.reserve(kR * kR * 5);
+		erased_meshes.reserve(kR * kR * 4);
 
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
 

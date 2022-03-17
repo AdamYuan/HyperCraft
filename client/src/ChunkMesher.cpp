@@ -323,7 +323,6 @@ void ChunkMesher::Run() {
 
 	glm::i32vec3 base_position = (glm::i32vec3)m_chunk_ptr->GetPosition() * (int32_t)Chunk::kSize;
 	// erase previous meshes
-	MeshEraser{m_chunk_ptr->MoveMeshes()}.Run();
 	std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> mesh_handles(meshes.size());
 	// spdlog::info("Chunk {} meshed with {} meshes", glm::to_string(m_chunk_ptr->GetPosition()), meshes.size());
 	for (uint32_t i = 0; i < meshes.size(); ++i) {
@@ -331,6 +330,11 @@ void ChunkMesher::Run() {
 		mesh_handles[i] = world_renderer_ptr->GetChunkRenderer()->PushMesh(
 		    info.vertices, info.indices, {(fAABB)((i32AABB)info.aabb + base_position), base_position});
 	}
-	m_chunk_ptr->SetMeshes(std::move(mesh_handles));
+	{
+		std::scoped_lock lock{m_chunk_ptr->m_mesh_mutex};
+		std::swap(m_chunk_ptr->m_mesh_handles, mesh_handles);
+	}
 	m_chunk_ptr->SetMeshedFlag();
+	if (!mesh_handles.empty())
+		MeshEraser{std::move(mesh_handles)}.Run();
 }

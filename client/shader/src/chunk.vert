@@ -54,10 +54,6 @@ void main() {
 	else
 		vTexcoord = -pos.xy;
 
-	/*if ((vFace & 1u) != 0u) {
-	    vTexcoord = vTexcoord.yx;
-	}*/
-
 	vAO = kAOCurve[tex8_face3_ao2_sl4_tl4 & 0x3u];
 	tex8_face3_ao2_sl4_tl4 >>= 2u;
 
