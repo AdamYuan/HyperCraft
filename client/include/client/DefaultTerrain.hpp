@@ -49,9 +49,9 @@ private:
 		case Biomes::kSavanna:
 			return cubic(height, -0.05f, 0.0f, 0.2f) + 0.005f;
 		case Biomes::kMountain:
-			return cubic(height, -2.0f, 3.0, 0.0f) + 0.005f;
+			// return cubic(height, -2.0f, 3.0, 0.0f) + 0.005f;
 		case Biomes::kSnowMountain:
-			return cubic(height, -2.2f, 3.2, 0.3f) + 0.005f;
+			return cubic(height, -2.2f, 4.5, 0.3f) + 0.005f;
 		case Biomes::kDesert:
 			return cubic(height, 1.2f, -0.7f, 0.2f) + 0.01f;
 		case Biomes::kForest:
@@ -95,7 +95,7 @@ private:
 	}
 
 	// Noise generators
-	static constexpr float kBiomeNoiseFrequency = 0.002f, kBiomeCellLookupFrequency = 0.1f,
+	static constexpr float kBiomeNoiseFrequency = 0.01f, kBiomeCellLookupFrequency = 0.1f,
 	                       kHeightNoiseFrequency = 0.001f, kCaveNoiseFrequency = 0.016f;
 
 	FastNoise::SmartNode<FastNoise::Perlin> m_biome_precipitation_noise;

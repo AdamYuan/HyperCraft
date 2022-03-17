@@ -37,7 +37,7 @@ public:
 			cluster_set.insert(std::move(i->m_cluster_ptr));
 		}
 		for (auto &i : cluster_set) {
-			spdlog::info("erase and upload");
+			// spdlog::info("erase and upload");
 			i->upload_mesh_info_vector();
 		}
 	}

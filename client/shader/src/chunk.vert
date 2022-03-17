@@ -47,12 +47,7 @@ void main() {
 	vFace = tex8_face3_ao2_sl4_tl4 & 0x7u;
 	tex8_face3_ao2_sl4_tl4 >>= 3u;
 
-	if ((vFace & 0x6u) == 0u)
-		vTexcoord = -pos.zy;
-	else if ((vFace & 0x6u) == 0x2u)
-		vTexcoord = pos.xz;
-	else
-		vTexcoord = -pos.xy;
+	vTexcoord = (vFace & 0x6u) == 0u ? -pos.zy : ((vFace & 0x6u) == 0x2u ? pos.xz : -pos.xy);
 
 	vAO = kAOCurve[tex8_face3_ao2_sl4_tl4 & 0x3u];
 	tex8_face3_ao2_sl4_tl4 >>= 2u;
