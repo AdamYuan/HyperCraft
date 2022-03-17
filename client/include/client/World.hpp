@@ -58,6 +58,8 @@ public:
 
 	void Update(const glm::vec3 &position);
 
+	size_t GetApproxWorkerCount() const { return m_workers.size_approx(); }
+
 	World() { launch_worker_threads(); }
 	void Join(); // must be called in main thread
 };

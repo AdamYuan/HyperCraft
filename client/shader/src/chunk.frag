@@ -2,7 +2,7 @@
 
 layout(set = 0, binding = 0) uniform sampler2DArray uBlockTexture;
 
-layout(location = 0) in vec3 vPosition;
+// layout(location = 0) in vec3 vPosition;
 layout(location = 1) in flat uint vFace;
 layout(location = 2) in float vAO;
 layout(location = 3) in float vSunlight;

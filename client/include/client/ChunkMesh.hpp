@@ -6,13 +6,13 @@
 #include <common/Light.hpp>
 
 struct ChunkMeshVertex { // Compressed mesh vertex for chunk
+	static constexpr uint32_t kUnitBitOffset = 4u;
 	// x, y, z, face, AO, sunlight, torchlight; resource, u, v
-	uint32_t x5_y5_z5_face3_ao2_sl4_tl4, tex8_u5_v5;
-	ChunkMeshVertex(uint8_t x, uint8_t y, uint8_t z, BlockFace face, uint8_t ao, LightLvl sunlight, LightLvl torchlight,
-	                BlockTexID tex, uint8_t u, uint8_t v)
-	    : x5_y5_z5_face3_ao2_sl4_tl4(x | (y << 5u) | (z << 10u) | (face << 15u) | (ao << 18u) | (sunlight << 20u) |
-	                                 (torchlight << 24u)),
-	      tex8_u5_v5((tex - 1u) | (u << 8u) | (v << 13u)) {}
+	uint32_t x10_y10_z10, tex8_face3_ao2_sl4_tl4;
+	ChunkMeshVertex(uint32_t x10, uint32_t y10, uint32_t z10, BlockFace face, uint8_t ao, LightLvl sunlight,
+	                LightLvl torchlight, BlockTexID tex)
+	    : x10_y10_z10(x10 | (y10 << 10u) | (z10 << 20u)),
+	      tex8_face3_ao2_sl4_tl4((tex - 1u) | (face << 8u) | (ao << 11u) | (sunlight << 13u) | (torchlight << 17u)) {}
 };
 
 struct ChunkMeshInfo {

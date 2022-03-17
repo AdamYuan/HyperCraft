@@ -16,6 +16,7 @@ void World::worker_thread_func() {
 	moodycamel::ConsumerToken consumer_token{m_workers};
 	while (m_worker_threads_running.load(std::memory_order_acquire)) {
 		std::unique_ptr<WorkerBase> worker{};
+
 		if (m_workers.wait_dequeue_timed(consumer_token, worker, std::chrono::milliseconds(10))) {
 			worker->Run();
 			worker = nullptr;
@@ -34,7 +35,7 @@ void World::Join() {
 #include "WorldLoadingList.inl"
 
 void World::Update(const glm::vec3 &position) {
-	constexpr int16_t kR = 20;
+	constexpr int16_t kR = 10;
 
 	static glm::i16vec3 last_chunk_pos = {INT16_MAX, INT16_MAX, INT16_MAX};
 	glm::i16vec3 current_chunk_pos =
@@ -47,13 +48,15 @@ void World::Update(const glm::vec3 &position) {
 
 		std::vector<std::unique_ptr<WorkerBase>> new_workers, new_nei_workers;
 		std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> erased_meshes;
+		erased_meshes.reserve(kR * kR * 5);
 
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
 
 			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR + 2) {
-				auto mesh = it->second->MoveMesh();
-				if (mesh)
-					erased_meshes.push_back(std::move(mesh));
+				auto meshes = it->second->MoveMeshes();
+				if (!meshes.empty())
+					erased_meshes.insert(erased_meshes.end(), std::make_move_iterator(meshes.begin()),
+					                     std::make_move_iterator(meshes.end()));
 				it = m_chunks.erase(it);
 			} else {
 				if (!it->second->IsMeshed())

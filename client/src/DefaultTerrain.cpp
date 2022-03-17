@@ -299,30 +299,30 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		case Biomes::kForest: {
 			if (rand % 100 == 0) {
 				if (rand_gen() % 7 == 0)
-					info->decorations.GenBirchTree(rand_gen, x, y + 1, z);
+					info->decorations.GenBirchTree(rand_gen, x, y, z);
 				else
-					info->decorations.GenOakTree(rand_gen, x, y + 1, z);
+					info->decorations.GenOakTree(rand_gen, x, y, z);
 			}
 		} break;
 		case Biomes::kBorealForest: {
 			if (rand % 120 == 0)
-				info->decorations.GenSpruceTree(rand_gen, x, y + 1, z);
+				info->decorations.GenSpruceTree(rand_gen, x, y, z);
 		} break;
 		case Biomes::kTropicalForest: {
 			if (rand % 80 == 0)
-				info->decorations.GenJungleTree(rand_gen, x, y + 1, z);
+				info->decorations.GenJungleTree(rand_gen, x, y, z);
 		} break;
 		case Biomes::kPlain: {
 			if (rand % 1000 == 0) {
 				if (rand_gen() % 5 == 0)
-					info->decorations.GenBirchTree(rand_gen, x, y + 1, z);
+					info->decorations.GenBirchTree(rand_gen, x, y, z);
 				else
-					info->decorations.GenOakTree(rand_gen, x, y + 1, z);
+					info->decorations.GenOakTree(rand_gen, x, y, z);
 			}
 		} break;
 		case Biomes::kSavanna: {
 			if (rand % 1200 == 0)
-				info->decorations.GenAcaciaTree(rand_gen, x, y + 1, z);
+				info->decorations.GenAcaciaTree(rand_gen, x, y, z);
 		} break;
 		default:
 			break;

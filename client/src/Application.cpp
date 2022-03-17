@@ -152,6 +152,7 @@ void Application::Run() {
 		ImGui::Text("fps: %f", ImGui::GetIO().Framerate);
 		ImGui::Text("frame time: %.1f ms", delta.count() * 1000.0f);
 		ImGui::Text("cam: %f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
+		ImGui::Text("workers (approx): %zu", m_world->GetApproxWorkerCount());
 		ImGui::End();
 
 		ImGui::Render();

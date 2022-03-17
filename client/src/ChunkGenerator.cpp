@@ -37,6 +37,6 @@ void ChunkGenerator::Run() {
 		}
 
 	// if there are no blocks, avoid meshing
-	m_chunk_ptr->MoveMesh(); // ensure the mesh is removed
+	m_chunk_ptr->SetMeshes({}); // ensure the mesh is removed
 	m_chunk_ptr->SetMeshedFlag();
 }

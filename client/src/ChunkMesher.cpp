@@ -1,5 +1,6 @@
 #include <client/ChunkMesher.hpp>
 
+#include <client/MeshEraser.hpp>
 #include <client/WorldRenderer.hpp>
 
 #include <bitset>
@@ -47,12 +48,13 @@ void ChunkMesher::generate_face_lights(
 	}
 }
 
-AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
-                                              std::vector<ChunkMeshVertex> *vertices,
-                                              std::vector<uint16_t> *indices) const {
-	AABB<uint_fast8_t> aabb;
+std::vector<ChunkMesher::MeshGenInfo>
+ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
+	std::vector<MeshGenInfo> ret;
 
-	uint32_t cur_vertex = 0;
+	MeshGenInfo opaque_mesh_info, transparent_mesh_info;
+	opaque_mesh_info.transparent = false;
+	transparent_mesh_info.transparent = true;
 
 	for (uint_fast8_t axis = 0; axis < 3; ++axis) {
 		const uint_fast8_t u = (axis + 1) % 3;
@@ -135,84 +137,60 @@ AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kS
 							du[u] = width;
 						}
 
-						uint8_t                   // resource uvs
-						    v00u = du[u] + dv[u], //
-						    v00v = du[v] + dv[v], // v00: u, v
-						    v01u = dv[u],         //
-						    v01v = dv[v],         // v01: u, v
-						    v10u = 0,             //
-						    v10v = 0,             // v10: u, v
-						    v11u = du[u],         //
-						    v11v = du[v];         // v11: u, v
-
 						// TODO: process resource rotation
 						// if (quad_texture.GetRotation() == )
 
-						// face specified UV transforms
 						BlockFace quad_face = ((axis << 1) | quad_face_inv);
-						if (quad_face == BlockFaces::kLeft) {
-							std::swap(v00u, v01v);
-							std::swap(v00v, v01u);
-							std::swap(v11u, v10v);
-							std::swap(v11v, v10u);
-						} else if (quad_face == BlockFaces::kRight) {
-							std::swap(v11u, v11v);
-							std::swap(v01u, v01v);
-							std::swap(v00u, v00v);
-						} else if (quad_face == BlockFaces::kFront) {
-							std::swap(v00u, v01u);
-							std::swap(v00v, v01v);
-							std::swap(v11u, v10u);
-							std::swap(v11v, v10v);
-						}
-
-						ChunkMeshVertex v00{uint8_t(x[0]),
-						                    uint8_t(x[1]),
-						                    uint8_t(x[2]),
+						ChunkMeshVertex v00{uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
+						                    uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
+						                    uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset,
 						                    quad_face,
 						                    quad_light.m_ao[0],
 						                    quad_light.m_light[0].GetSunlight(),
 						                    quad_light.m_light[0].GetTorchlight(),
-						                    quad_texture.GetID(),
-						                    v00u,
-						                    v00v},
-						    v01 = {uint8_t(x[0] + du[0]),
-						           uint8_t(x[1] + du[1]),
-						           uint8_t(x[2] + du[2]),
+						                    quad_texture.GetID()},
+						    v01 = {uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
+						           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
+						           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
 						           quad_light.m_ao[1],
 						           quad_light.m_light[1].GetSunlight(),
 						           quad_light.m_light[1].GetTorchlight(),
-						           quad_texture.GetID(),
-						           v01u,
-						           v01v},
-						    v10 = {uint8_t(x[0] + du[0] + dv[0]),
-						           uint8_t(x[1] + du[1] + dv[1]),
-						           uint8_t(x[2] + du[2] + dv[2]),
+						           quad_texture.GetID()},
+						    v10 = {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+						           uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+						           uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
 						           quad_light.m_ao[2],
 						           quad_light.m_light[2].GetSunlight(),
 						           quad_light.m_light[2].GetTorchlight(),
-						           quad_texture.GetID(),
-						           v10u,
-						           v10v},
-						    v11 = {uint8_t(x[0] + dv[0]),
-						           uint8_t(x[1] + dv[1]),
-						           uint8_t(x[2] + dv[2]),
+						           quad_texture.GetID()},
+						    v11 = {uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+						           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+						           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
 						           quad_light.m_ao[3],
 						           quad_light.m_light[3].GetSunlight(),
 						           quad_light.m_light[3].GetTorchlight(),
-						           quad_texture.GetID(),
-						           v11u,
-						           v11v};
-						aabb.Merge(
+						           quad_texture.GetID()};
+
+						MeshGenInfo &info = opaque_mesh_info;
+						// TODO: switch it when transparent
+						// if indices would exceed, restart
+						uint16_t cur_vertex = info.vertices.size();
+						if (cur_vertex + 4 > UINT16_MAX) {
+							bool trans = info.transparent;
+							ret.push_back(std::move(info));
+							info = MeshGenInfo{};
+							info.transparent = trans;
+						}
+						info.aabb.Merge(
 						    {{x[0], x[1], x[2]}, {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]}});
 
-						vertices->push_back(v00);
-						vertices->push_back(v01);
-						vertices->push_back(v10);
-						vertices->push_back(v11);
+						info.vertices.push_back(v00);
+						info.vertices.push_back(v01);
+						info.vertices.push_back(v10);
+						info.vertices.push_back(v11);
 
 						if (quad_light.GetFlip()) {
 							// 11--------10
@@ -220,28 +198,27 @@ AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kS
 							//|    /    |
 							//| /       |
 							// 00--------01
-							indices->push_back(cur_vertex);
-							indices->push_back(cur_vertex + 1);
-							indices->push_back(cur_vertex + 2);
+							info.indices.push_back(cur_vertex);
+							info.indices.push_back(cur_vertex + 1);
+							info.indices.push_back(cur_vertex + 2);
 
-							indices->push_back(cur_vertex);
-							indices->push_back(cur_vertex + 2);
-							indices->push_back(cur_vertex + 3);
+							info.indices.push_back(cur_vertex);
+							info.indices.push_back(cur_vertex + 2);
+							info.indices.push_back(cur_vertex + 3);
 						} else {
 							// 11--------10
 							//| \       |
 							//|    \    |
 							//|       \ |
 							// 00--------01
-							indices->push_back(cur_vertex + 1);
-							indices->push_back(cur_vertex + 2);
-							indices->push_back(cur_vertex + 3);
+							info.indices.push_back(cur_vertex + 1);
+							info.indices.push_back(cur_vertex + 2);
+							info.indices.push_back(cur_vertex + 3);
 
-							indices->push_back(cur_vertex);
-							indices->push_back(cur_vertex + 1);
-							indices->push_back(cur_vertex + 3);
+							info.indices.push_back(cur_vertex);
+							info.indices.push_back(cur_vertex + 1);
+							info.indices.push_back(cur_vertex + 3);
 						}
-						cur_vertex += 4;
 
 						for (uint_fast8_t b = 0; b < width; ++b)
 							for (uint_fast8_t a = 0; a < height; ++a)
@@ -258,7 +235,11 @@ AABB<uint_fast8_t> ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kS
 			}
 		}
 	}
-	return aabb;
+	if (!opaque_mesh_info.vertices.empty())
+		ret.push_back(std::move(opaque_mesh_info));
+	if (!transparent_mesh_info.vertices.empty())
+		ret.push_back(std::move(transparent_mesh_info));
+	return ret;
 }
 
 void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_blocks[27],
@@ -327,13 +308,11 @@ void ChunkMesher::Run() {
 			return;
 		}
 
-	std::vector<ChunkMeshVertex> vertices;
-	std::vector<uint16_t> indices;
-	AABB<uint_fast8_t> aabb;
+	std::vector<MeshGenInfo> meshes;
 	{
 		Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6];
 		generate_face_lights(face_lights);
-		aabb = generate_mesh(face_lights, &vertices, &indices);
+		meshes = generate_mesh(face_lights);
 	}
 	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
 	if (!world_ptr)
@@ -343,10 +322,15 @@ void ChunkMesher::Run() {
 		return;
 
 	glm::i32vec3 base_position = (glm::i32vec3)m_chunk_ptr->GetPosition() * (int32_t)Chunk::kSize;
-	m_chunk_ptr->m_mesh_handle = world_renderer_ptr->GetChunkRenderer()->PushMesh(
-	    vertices, indices, {(fAABB)((i32AABB)aabb + base_position), base_position});
+	// erase previous meshes
+	MeshEraser{m_chunk_ptr->MoveMeshes()}.Run();
+	std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> mesh_handles(meshes.size());
+	// spdlog::info("Chunk {} meshed with {} meshes", glm::to_string(m_chunk_ptr->GetPosition()), meshes.size());
+	for (uint32_t i = 0; i < meshes.size(); ++i) {
+		auto &info = meshes[i];
+		mesh_handles[i] = world_renderer_ptr->GetChunkRenderer()->PushMesh(
+		    info.vertices, info.indices, {(fAABB)((i32AABB)info.aabb + base_position), base_position});
+	}
+	m_chunk_ptr->SetMeshes(std::move(mesh_handles));
 	m_chunk_ptr->SetMeshedFlag();
-	/* spdlog::info("Chunk {} meshed with {} vertices and {} indices, aabb: ({}, {})",
-	             glm::to_string(m_chunk_ptr->GetPosition()), vertices.size(), indices.size(),
-	             glm::to_string(aabb.GetMin()), glm::to_string(aabb.GetMax())); */
 }

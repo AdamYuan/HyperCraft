@@ -4,7 +4,7 @@ out gl_PerVertex { vec4 gl_Position; };
 
 layout(location = 0) in uvec2 aVertData;
 
-layout(location = 0) out vec3 vPosition;
+// layout(location = 0) out vec3 vPosition;
 layout(location = 1) out flat uint vFace;
 layout(location = 2) out float vAO;
 layout(location = 3) out float vSunlight;
@@ -27,31 +27,41 @@ const float kTorchlightCurve[16] = {0.000000, 0.100000, 0.200000, 0.300000, 0.40
                                     0.800000, 0.900000, 1.000000, 1.100000, 1.200000, 1.300000, 1.400000, 1.500000};
 
 void main() {
-	uint x5_y5_z5_face3_ao2_sl4_tl4 = aVertData.x, tex8_u5_v5 = aVertData.y;
+	uint x10_y10_z10 = aVertData.x, tex8_face3_ao2_sl4_tl4 = aVertData.y;
 
-	vPosition.x = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uMeshInfo[gl_InstanceIndex].base_pos_x;
-	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
-	vPosition.y = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uMeshInfo[gl_InstanceIndex].base_pos_y;
-	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
-	vPosition.z = int(x5_y5_z5_face3_ao2_sl4_tl4 & 0x1fu) + uMeshInfo[gl_InstanceIndex].base_pos_z;
-	x5_y5_z5_face3_ao2_sl4_tl4 >>= 5u;
+	vec3 pos;
+	pos.x = int(x10_y10_z10 & 0x3ffu) * 0.0625;
+	x10_y10_z10 >>= 10u;
+	pos.y = int(x10_y10_z10 & 0x3ffu) * 0.0625;
+	x10_y10_z10 >>= 10u;
+	pos.z = int(x10_y10_z10 & 0x3ffu) * 0.0625;
 
-	gl_Position = uViewProjection * vec4(vPosition, 1.0f);
+	gl_Position = uViewProjection * vec4(pos + vec3(uMeshInfo[gl_InstanceIndex].base_pos_x, //
+	                                                uMeshInfo[gl_InstanceIndex].base_pos_y, //
+	                                                uMeshInfo[gl_InstanceIndex].base_pos_z),
+	                                     1.0f);
 
-	vFace = x5_y5_z5_face3_ao2_sl4_tl4 & 0x7u;
-	x5_y5_z5_face3_ao2_sl4_tl4 >>= 3u;
+	vTexture = tex8_face3_ao2_sl4_tl4 & 0xffu;
+	tex8_face3_ao2_sl4_tl4 >>= 8u;
 
-	vAO = kAOCurve[x5_y5_z5_face3_ao2_sl4_tl4 & 0x3u];
-	x5_y5_z5_face3_ao2_sl4_tl4 >>= 2u;
+	vFace = tex8_face3_ao2_sl4_tl4 & 0x7u;
+	tex8_face3_ao2_sl4_tl4 >>= 3u;
 
-	vSunlight = kSunlightCurve[x5_y5_z5_face3_ao2_sl4_tl4 & 0xfu];
-	x5_y5_z5_face3_ao2_sl4_tl4 >>= 4u;
-	vTorchlight = kTorchlightCurve[x5_y5_z5_face3_ao2_sl4_tl4 & 0xfu];
+	if ((vFace & 0x6u) == 0u)
+		vTexcoord = -pos.zy;
+	else if ((vFace & 0x6u) == 0x2u)
+		vTexcoord = pos.xz;
+	else
+		vTexcoord = -pos.xy;
 
-	vTexture = tex8_u5_v5 & 0xffu;
-	tex8_u5_v5 >>= 8u;
+	/*if ((vFace & 1u) != 0u) {
+	    vTexcoord = vTexcoord.yx;
+	}*/
 
-	vTexcoord.x = tex8_u5_v5 & 0x1fu;
-	tex8_u5_v5 >>= 5u;
-	vTexcoord.y = tex8_u5_v5 & 0x1fu;
+	vAO = kAOCurve[tex8_face3_ao2_sl4_tl4 & 0x3u];
+	tex8_face3_ao2_sl4_tl4 >>= 2u;
+
+	vSunlight = kSunlightCurve[tex8_face3_ao2_sl4_tl4 & 0xfu];
+	tex8_face3_ao2_sl4_tl4 >>= 4u;
+	vTorchlight = kTorchlightCurve[tex8_face3_ao2_sl4_tl4 & 0xfu];
 }

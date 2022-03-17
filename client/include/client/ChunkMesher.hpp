@@ -56,9 +56,17 @@ private:
 		}
 	};
 
+	struct MeshGenInfo {
+		std::vector<ChunkMeshVertex> vertices;
+		std::vector<uint16_t> indices;
+		AABB<uint_fast8_t> aabb{};
+		bool transparent;
+	};
+
 	void generate_face_lights(Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
-	AABB<uint_fast8_t> generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6],
-	                                 std::vector<ChunkMeshVertex> *vertices, std::vector<uint16_t> *indices) const;
+
+	std::vector<MeshGenInfo>
+	generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
 };
 
 #endif

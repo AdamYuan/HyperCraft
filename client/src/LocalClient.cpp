@@ -10,9 +10,9 @@ std::shared_ptr<LocalClient> LocalClient::Create(const std::shared_ptr<World> &w
 
 	if (!(ret->m_world_database = WorldDatabase::Create(database_filename)))
 		return nullptr;
-	// if (!(ret->m_terrain = DefaultTerrain::Create(12314524)))
-	//	return nullptr;
-	if (!(ret->m_terrain = DefaultTerrain::Create(0)))
+	if (!(ret->m_terrain = DefaultTerrain::Create(12314524)))
 		return nullptr;
+	// if (!(ret->m_terrain = DefaultTerrain::Create(0)))
+	//	return nullptr;
 	return ret;
 }

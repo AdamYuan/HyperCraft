@@ -17,7 +17,7 @@
 class DefaultTerrain : public TerrainBase {
 private:
 	// Biome
-	static constexpr uint32_t kBiomeMapSize = 4, kSampleScale = 1, kOceanSampleScale = 16, kHeightRange = 256;
+	static constexpr uint32_t kBiomeMapSize = 4, kSampleScale = 1, kOceanSampleScale = 16, kHeightRange = 384;
 	static constexpr Biome kBiomeMap[kBiomeMapSize][kBiomeMapSize] = {
 	    // [precipitation][temperature]
 	    {Biomes::kSnowMountain, Biomes::kSavanna, Biomes::kDesert, Biomes::kDesert},
@@ -290,8 +290,7 @@ private:
 
 				for (uint32_t b = 0; b < 2; ++b) {
 					float a = float(rng() % 20) / 10 * 3.14;
-					glm::i32vec3 d = {int32_t((float)r * std::cos(a)), -int32_t(rng() % 2),
-					                  int32_t((float)r * std::sin(a))};
+					glm::i32vec3 d = {int32_t((float)r * std::cos(a)), -r / 2, int32_t((float)r * std::sin(a))};
 					if (d.x || d.z)
 						set_block_line(x, y + trunk_height - i - 1, z, d.x, d.y, d.z,
 						               {Blocks::kLog, BlockMetas::Tree::kSpruce});
@@ -341,11 +340,11 @@ private:
 
 		template <typename RNG>
 		inline auto GenAcaciaTree(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
-			int32_t trunk_height = rng() % 3 + 2;
+			int32_t trunk_height = rng() % 4 + 4;
 			for (int32_t i = 0; i < trunk_height; ++i)
 				SetBlock(x, i + y, z, {Blocks::kLog, BlockMetas::Tree::kAcacia});
 
-			uint32_t branch_count = rng() % 3 + 2;
+			uint32_t branch_count = rng() % 4 + 2;
 			for (uint32_t i = 0; i < branch_count; ++i) {
 				int32_t branch_height = trunk_height - 1 + rng() % 2, bry = y + branch_height;
 
