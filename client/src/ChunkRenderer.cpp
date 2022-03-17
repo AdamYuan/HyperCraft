@@ -125,6 +125,6 @@ void ChunkRenderer::CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &
 		                                       m_camera_ptr->GetFrameDescriptorSet(current_frame),
 		                                       i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
 		                                      m_main_pipeline);
-		i.m_cluster_ptr->CmdDrawIndirect(command_buffer, current_frame, i.m_mesh_count);
+		i.m_cluster_ptr->CmdDrawIndirect(command_buffer, current_frame, 0, i.m_mesh_count);
 	}
 }

@@ -18,9 +18,17 @@
 
 inline uint32_t group_x_64(uint32_t x) { return (x >> 6u) + (((x & 0x3fu) > 0u) ? 1u : 0u); }
 
+// Descriptor Set Placement
+// #0: Mesh Info
+// #1: DrawCmd Count Buffer [pass1, pass2, ...]
+// #2: DrawCmd Buffer for pass1
+// #3: DrawCmd Buffer for pass2
+// #4: ...
+
 // Used for zero-overhead rendering (with GPU culling)
-template <typename Vertex, typename Index, typename Info> class MeshCluster {
+template <typename Vertex, typename Index, typename Info, uint32_t kPassCount = 1> class MeshCluster {
 	static_assert(sizeof(Index) == 4 || sizeof(Index) == 2 || sizeof(Index) == 1, "sizeof Index must be 1, 2 or 4");
+	static_assert(kPassCount > 0, "pass count must be greater than 0");
 
 private:
 	std::shared_ptr<myvk::Queue> m_transfer_queue;
@@ -41,10 +49,10 @@ private:
 
 	// Indirect command buffers
 	// draw command count for vkDrawIndexedIndirectCount
-	std::shared_ptr<myvk::Buffer> m_frame_count_buffers[kFrameCount];
+	std::shared_ptr<myvk::Buffer> m_frame_draw_count_buffers[kFrameCount];
 	uint32_t *m_frame_count_ptrs[kFrameCount]{}; // mapped pointer of count buffers
-	// indirect draw commands for vkCmdDrawIndexedIndirectCount
-	std::shared_ptr<myvk::Buffer> m_frame_draw_command_buffers[kFrameCount];
+	// indirect draw commands for vkCmdDrawIndexedIndirectCount (separated with an offset for each pass)
+	std::shared_ptr<myvk::Buffer> m_frame_draw_command_buffers[kFrameCount][kPassCount];
 
 	// Descriptors
 	std::shared_ptr<myvk::DescriptorPool> m_descriptor_pool;
@@ -136,8 +144,8 @@ private:
 		upload_mesh_info_vector();
 	}
 
-	template <typename, typename, typename> friend class MeshHandle;
-	template <typename, typename, typename> friend class MeshEraser;
+	template <typename, typename, typename, uint32_t> friend class MeshHandle;
+	template <typename, typename, typename, uint32_t> friend class MeshEraser;
 
 public:
 	inline static std::shared_ptr<MeshCluster>
@@ -163,21 +171,22 @@ public:
 		if (vmaCreateVirtualBlock(&virtual_block_create_info, &ret->m_indices_virtual_block) != VK_SUCCESS)
 			return nullptr;
 
-		ret->m_descriptor_pool = myvk::DescriptorPool::Create(transfer_queue->GetDevicePtr(), kFrameCount,
-		                                                      {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 * kFrameCount}});
+		ret->m_descriptor_pool =
+		    myvk::DescriptorPool::Create(transfer_queue->GetDevicePtr(), kFrameCount,
+		                                 {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, (2 + kPassCount) * kFrameCount}});
 		for (uint32_t i = 0; i < kFrameCount; ++i) {
-			ret->m_frame_count_buffers[i] =
-			    myvk::Buffer::Create(transfer_queue->GetDevicePtr(), sizeof(uint32_t), VMA_MEMORY_USAGE_CPU_TO_GPU,
-			                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
-			ret->m_frame_count_ptrs[i] = (uint32_t *)ret->m_frame_count_buffers[i]->Map();
+			ret->m_frame_draw_count_buffers[i] = myvk::Buffer::Create(
+			    transfer_queue->GetDevicePtr(), sizeof(uint32_t) * kPassCount, VMA_MEMORY_USAGE_CPU_TO_GPU,
+			    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+			ret->m_frame_count_ptrs[i] = (uint32_t *)ret->m_frame_draw_count_buffers[i]->Map();
 			ret->m_frame_descriptor_sets[i] =
 			    myvk::DescriptorSet::Create(ret->m_descriptor_pool, descriptor_set_layout);
-			ret->m_frame_descriptor_sets[i]->UpdateStorageBuffer(ret->m_frame_count_buffers[i], 2);
+			ret->m_frame_descriptor_sets[i]->UpdateStorageBuffer(ret->m_frame_draw_count_buffers[i], 1);
 		}
 		return ret;
 	}
 	~MeshCluster() {
-		for (auto &i : m_frame_count_buffers)
+		for (auto &i : m_frame_draw_count_buffers)
 			i->Unmap();
 		vmaDestroyVirtualBlock(m_vertices_virtual_block);
 		vmaDestroyVirtualBlock(m_indices_virtual_block);
@@ -194,23 +203,24 @@ public:
 		if (mesh_info_buffer == nullptr)
 			return 0;
 
-		const std::shared_ptr<myvk::DescriptorSet> &descriptor_set = m_frame_descriptor_sets[current_frame];
-		descriptor_set->UpdateStorageBuffer(mesh_info_buffer, 0);
 		uint32_t mesh_count = mesh_info_buffer->GetSize() / sizeof(MeshInfo);
 
-		// reset counter
-		*(m_frame_count_ptrs[current_frame]) = 0;
+		const std::shared_ptr<myvk::DescriptorSet> &descriptor_set = m_frame_descriptor_sets[current_frame];
+		descriptor_set->UpdateStorageBuffer(mesh_info_buffer, 0);
+
+		// reset counters
+		std::fill(m_frame_count_ptrs[current_frame], m_frame_count_ptrs[current_frame] + kPassCount, 0u);
 
 		// check indirect and draw_command buffer recreation
-		std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame];
 		VkDeviceSize desired_drawcmd_buffer_size = mesh_count * sizeof(VkDrawIndexedIndirectCommand);
-		if ((draw_command_buffer ? draw_command_buffer->GetSize() : 0) < desired_drawcmd_buffer_size) {
-			// (TRANSFER_DST: reset first slot of count_indirect_buffer to 0 each frame)
-			draw_command_buffer = myvk::Buffer::Create(
-			    m_transfer_queue->GetDevicePtr(), desired_drawcmd_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
-			    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
-
-			descriptor_set->UpdateStorageBuffer(draw_command_buffer, 1);
+		for (uint32_t p = 0; p < kPassCount; ++p) {
+			std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame][p];
+			if ((draw_command_buffer ? draw_command_buffer->GetSize() : 0) < desired_drawcmd_buffer_size) {
+				draw_command_buffer = myvk::Buffer::Create(
+				    m_transfer_queue->GetDevicePtr(), desired_drawcmd_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
+				    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+				descriptor_set->UpdateStorageBuffer(draw_command_buffer, 2 + p);
+			}
 		}
 
 		return mesh_count;
@@ -219,26 +229,37 @@ public:
 		command_buffer->CmdDispatch(group_x_64(mesh_count), 1, 1);
 	}
 	inline void CmdBarrier(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) {
-		const std::shared_ptr<myvk::Buffer> &count_buffer = m_frame_count_buffers[current_frame];
-		const std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame];
+		const std::shared_ptr<myvk::Buffer> &count_buffer = m_frame_draw_count_buffers[current_frame];
+		/*const std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame];
 		command_buffer->CmdPipelineBarrier(
 		    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, {},
 		    {
 		        count_buffer->GetMemoryBarrier(VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
 		        draw_command_buffer->GetMemoryBarrier(VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT),
 		    },
-		    {});
+		    {});*/
+
+		std::vector<VkBufferMemoryBarrier> buffer_memory_barriers = {
+		    count_buffer->GetMemoryBarrier(VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT)};
+		for (uint32_t p = 0; p < kPassCount; ++p) {
+			buffer_memory_barriers.push_back(m_frame_draw_command_buffers[current_frame][p]->GetMemoryBarrier(
+			    VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT));
+		}
+		command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+		                                   {}, buffer_memory_barriers, {});
 	}
 	inline void CmdDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame,
-	                            uint32_t mesh_count) {
-		const std::shared_ptr<myvk::Buffer> &count_buffer = m_frame_count_buffers[current_frame];
-		const std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame];
+	                            uint32_t pass_id, uint32_t mesh_count) {
+		const std::shared_ptr<myvk::Buffer> &count_buffer = m_frame_draw_count_buffers[current_frame];
+		const std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame][pass_id];
 		constexpr VkIndexType kIndexType = sizeof(Index) == 4
 		                                       ? VK_INDEX_TYPE_UINT32
 		                                       : (sizeof(Index) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT8_EXT);
 		command_buffer->CmdBindVertexBuffer(m_vertex_buffer, 0);
 		command_buffer->CmdBindIndexBuffer(m_index_buffer, 0, kIndexType);
-		command_buffer->CmdDrawIndexedIndirectCount(draw_command_buffer, 0, count_buffer, 0, mesh_count);
+		command_buffer->CmdDrawIndexedIndirectCount(draw_command_buffer, 0, count_buffer,
+		                                            pass_id * sizeof(uint32_t), // count buffer offset
+		                                            mesh_count);
 	}
 };
 

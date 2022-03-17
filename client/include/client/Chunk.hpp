@@ -147,12 +147,11 @@ public:
 	}
 
 	// Mesh Removal
-	inline void
-	SetMeshes(std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> &&mesh_handles) {
+	inline void SetMeshes(std::vector<std::unique_ptr<ChunkMeshHandle>> &&mesh_handles) {
 		std::scoped_lock lock{m_mesh_mutex};
 		m_mesh_handles = std::move(mesh_handles);
 	}
-	inline std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> &&MoveMeshes() {
+	inline std::vector<std::unique_ptr<ChunkMeshHandle>> &&MoveMeshes() {
 		std::scoped_lock lock{m_mesh_mutex};
 		return std::move(m_mesh_handles);
 	}
@@ -171,7 +170,7 @@ private:
 	std::weak_ptr<World> m_world_weak_ptr;
 
 	std::mutex m_mesh_mutex;
-	std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> m_mesh_handles;
+	std::vector<std::unique_ptr<ChunkMeshHandle>> m_mesh_handles;
 	friend class ChunkMesher;
 
 	std::atomic_bool m_generated_flag{}, m_meshed_flag{};

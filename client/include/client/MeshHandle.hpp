@@ -6,9 +6,9 @@
 
 #include <client/MeshCluster.hpp>
 
-template <typename Vertex, typename Index, typename Info> class MeshHandle {
+template <typename Vertex, typename Index, typename Info, uint32_t kPassCount = 1> class MeshHandle {
 private:
-	std::shared_ptr<MeshCluster<Vertex, Index, Info>> m_cluster_ptr;
+	std::shared_ptr<MeshCluster<Vertex, Index, Info, kPassCount>> m_cluster_ptr;
 	VmaVirtualAllocation m_vertices_allocation{VK_NULL_HANDLE}, m_indices_allocation{VK_NULL_HANDLE};
 	uint32_t m_first_index{UINT32_MAX}; // used as a key for searching mesh in the cluster
 
@@ -34,12 +34,12 @@ private:
 		}
 	}
 
-	template <typename, typename, typename> friend class MeshEraser;
+	template <typename, typename, typename, uint32_t> friend class MeshEraser;
 
 public:
 	inline static std::unique_ptr<MeshHandle>
-	Create(const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster_ptr, const std::vector<Vertex> &vertices,
-	       const std::vector<Index> &indices, const Info &info) {
+	Create(const std::shared_ptr<MeshCluster<Vertex, Index, Info, kPassCount>> &cluster_ptr,
+	       const std::vector<Vertex> &vertices, const std::vector<Index> &indices, const Info &info) {
 		auto ret = std::make_unique<MeshHandle>();
 		ret->m_cluster_ptr = cluster_ptr;
 		VkDeviceSize vertices_offset, indices_offset;

@@ -17,6 +17,7 @@ struct MeshInfo {
 	uint index_count, first_index, vertex_offset;
 	float aabb_min_x, aabb_min_y, aabb_min_z, aabb_max_x, aabb_max_y, aabb_max_z;
 	int base_pos_x, base_pos_y, base_pos_z;
+	uint transparent;
 };
 layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
 

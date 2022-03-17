@@ -323,12 +323,13 @@ void ChunkMesher::Run() {
 
 	glm::i32vec3 base_position = (glm::i32vec3)m_chunk_ptr->GetPosition() * (int32_t)Chunk::kSize;
 	// erase previous meshes
-	std::vector<std::unique_ptr<MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>>> mesh_handles(meshes.size());
+	std::vector<std::unique_ptr<ChunkMeshHandle>> mesh_handles(meshes.size());
 	// spdlog::info("Chunk {} meshed with {} meshes", glm::to_string(m_chunk_ptr->GetPosition()), meshes.size());
 	for (uint32_t i = 0; i < meshes.size(); ++i) {
 		auto &info = meshes[i];
 		mesh_handles[i] = world_renderer_ptr->GetChunkRenderer()->PushMesh(
-		    info.vertices, info.indices, {(fAABB)((i32AABB)info.aabb + base_position), base_position});
+		    info.vertices, info.indices,
+		    {(fAABB)((i32AABB)info.aabb + base_position), base_position, (uint32_t)info.transparent});
 	}
 	{
 		std::scoped_lock lock{m_chunk_ptr->m_mesh_mutex};

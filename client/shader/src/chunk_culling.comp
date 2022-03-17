@@ -8,14 +8,21 @@ struct MeshInfo {
 	uint index_count, first_index, vertex_offset;
 	AABB aabb;
 	int base_pos_x, base_pos_y, base_pos_z;
+	uint transparent;
 };
 struct DrawIndexedIndirectCommand {
 	uint index_count, instance_count, first_index, vertex_offset, first_instance;
 };
 
 layout(std430, set = 0, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
-layout(std430, set = 0, binding = 1) writeonly buffer uuDrawCommand { DrawIndexedIndirectCommand uDrawCommand[]; };
-layout(std430, set = 0, binding = 2) buffer uuDrawCount { uint uDrawCount; };
+layout(std430, set = 0, binding = 1) buffer uuDrawCount { uint uOpaqueDrawCount, uTransparentDrawCount; };
+layout(std430, set = 0, binding = 2) writeonly buffer uuOpaqueDrawCommand {
+	DrawIndexedIndirectCommand uOpaqueDrawCommand[];
+};
+layout(std430, set = 0, binding = 3) writeonly buffer uuTransparentDrawCommand {
+	DrawIndexedIndirectCommand uTransparentDrawCommand[];
+};
+
 layout(set = 1, binding = 0) uniform uuCamera { mat4 uViewProjection; };
 layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
 
@@ -83,7 +90,15 @@ void main() {
 	if (FrustumCull(cull_bits) || OcclusionCull(clip_min, clip_max, cull_bits))
 		return;
 
-	uint draw_id = atomicAdd(uDrawCount, 1u);
-	uDrawCommand[draw_id] = DrawIndexedIndirectCommand(
-	    uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index, uMeshInfo[mesh_id].vertex_offset, mesh_id);
+	if (uMeshInfo[mesh_id].transparent == 0) {
+		uint opaque_draw_id = atomicAdd(uOpaqueDrawCount, 1u);
+		uOpaqueDrawCommand[opaque_draw_id] =
+		    DrawIndexedIndirectCommand(uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index,
+		                               uMeshInfo[mesh_id].vertex_offset, mesh_id);
+	} else {
+		uint transparent_draw_id = atomicAdd(uTransparentDrawCount, 1u);
+		uTransparentDrawCommand[transparent_draw_id] =
+		    DrawIndexedIndirectCommand(uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index,
+		                               uMeshInfo[mesh_id].vertex_offset, mesh_id);
+	}
 }

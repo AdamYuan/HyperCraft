@@ -15,7 +15,7 @@
 #include <myvk/ComputePipeline.hpp>
 #include <myvk/GraphicsPipeline.hpp>
 
-class ChunkRenderer : public MeshRendererBase<ChunkMeshVertex, uint16_t, ChunkMeshInfo> {
+class ChunkRenderer : public ChunkMeshRendererBase {
 private:
 	inline static constexpr uint32_t kClusterFaceCount = 4 * 1024 * 1024;
 
@@ -41,9 +41,8 @@ public:
 	explicit ChunkRenderer(const std::shared_ptr<GlobalTexture> &texture_ptr, const std::shared_ptr<Camera> &camera_ptr,
 	                       const std::shared_ptr<DepthHierarchy> &depth_ptr,
 	                       const std::shared_ptr<myvk::Queue> &transfer_queue, uint32_t subpass)
-	    : MeshRendererBase<ChunkMeshVertex, uint16_t, ChunkMeshInfo>(transfer_queue,
-	                                                                 kClusterFaceCount * 4 * sizeof(ChunkMeshVertex),
-	                                                                 kClusterFaceCount * 6 * sizeof(uint16_t)),
+	    : ChunkMeshRendererBase(transfer_queue, kClusterFaceCount * 4 * sizeof(ChunkMeshVertex),
+	                            kClusterFaceCount * 6 * sizeof(uint16_t)),
 	      m_texture_ptr{texture_ptr}, m_camera_ptr{camera_ptr}, m_depth_ptr{depth_ptr} {
 		create_culling_pipeline(transfer_queue->GetDevicePtr());
 		create_main_pipeline(depth_ptr->GetCanvasPtr()->GetRenderPass(), subpass);
