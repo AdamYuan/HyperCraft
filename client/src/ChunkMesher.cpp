@@ -174,7 +174,9 @@ ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize 
 						           quad_light.m_light[3].GetTorchlight(),
 						           quad_texture.GetID()};
 
-						MeshGenInfo &info = opaque_mesh_info;
+#include <client/texture/block_texture_transparency.inl>
+						MeshGenInfo &info =
+						    kBlockTextureTransparency[quad_texture.GetID()] ? transparent_mesh_info : opaque_mesh_info;
 						// TODO: switch it when transparent
 						// if indices would exceed, restart
 						uint16_t cur_vertex = info.vertices.size();

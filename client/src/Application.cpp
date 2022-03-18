@@ -26,7 +26,7 @@ void Application::init_imgui() {
 }
 
 void Application::create_vulkan_base() {
-	m_instance = myvk::Instance::CreateWithGlfwExtensions();
+	m_instance = myvk::Instance::CreateWithGlfwExtensions(true);
 	m_surface = myvk::Surface::Create(m_instance, m_window);
 	std::vector<std::shared_ptr<myvk::PhysicalDevice>> physical_devices = myvk::PhysicalDevice::Fetch(m_instance);
 	if (physical_devices.empty()) {

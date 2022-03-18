@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
 	--argc;
 	++argv;
 
-	if (argc != 1)
+	if (argc != 2)
 		return EXIT_FAILURE;
 
 	constexpr auto &names = magic_enum::enum_names<BlockTextures::ID>();
@@ -61,11 +61,13 @@ int main(int argc, char **argv) {
 	std::vector<stbi_uc> combined_texture;
 	int texture_size = -1;
 
+	std::vector<bool> combined_transparency;
+
 	for (const auto &i : names) {
 		if (i == "kNone")
 			continue;
 		std::string str = make_texture_filename(i);
-		std::cout << i << "->" << str << std::endl;
+		std::cout << i << "->" << str;
 
 		int x, y, c;
 		stbi_uc *img = stbi_load(str.c_str(), &x, &y, &c, 4);
@@ -87,6 +89,15 @@ int main(int argc, char **argv) {
 			stbi_image_free(img);
 			return EXIT_FAILURE;
 		}
+		bool transparent = false;
+		for (int p = 0; p < x * x; ++p) {
+			if (img[(p << 2) | 3] != 255) {
+				transparent = true;
+				break;
+			}
+		}
+		combined_transparency.push_back(transparent);
+		std::cout << " transparent: " << transparent << std::endl;
 		std::copy(img, img + x * x * 4, combined_texture.data() + (current_texture++) * x * x * 4);
 	}
 
@@ -100,8 +111,17 @@ int main(int argc, char **argv) {
 
 	printf("PNG size: %f KB\n", context.last_pos / 1024.0f);
 
+	// png content
 	std::ofstream output{argv[0]};
 	output << bytes_to_array("kBlockTexturePng", png_buffer.data(), context.last_pos);
+
+	// transparency
+	output.close();
+	output.open(argv[1]);
+	output << "constexpr bool kBlockTextureTransparency[] = { 1, ";
+	for (bool b : combined_transparency)
+		output << b << ", ";
+	output << "};\n";
 
 	return EXIT_SUCCESS;
 }
