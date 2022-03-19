@@ -3,9 +3,12 @@ project(CubeCraft3)
 
 set(SHADER_SRC
         chunk.vert
-        chunk.frag
+        chunk_opaque.frag
+        chunk_transparent.frag
         chunk_culling.comp
         depth_hierarchy.comp
+        screen.vert
+        screen.frag
         )
 
 find_program(GLSLC "glslc")

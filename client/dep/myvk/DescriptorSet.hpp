@@ -38,6 +38,8 @@ public:
 
 	void UpdateStorageImage(const std::shared_ptr<ImageView> &image_view, uint32_t binding,
 	                        uint32_t array_element = 0) const;
+	void UpdateInputAttachment(const std::shared_ptr<ImageView> &image_view, uint32_t binding,
+	                           uint32_t array_element = 0) const;
 
 	VkDescriptorSet GetHandle() const { return m_descriptor_set; }
 

@@ -4,16 +4,27 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform sampler2D uPreviousLod;
 layout(set = 0, binding = 1, r32f) uniform image2D uCurrentLod;
 
+layout(push_constant) uniform uuPushConstant { uint uIsFirstLod; };
+
 void main() {
 	ivec2 current_size = imageSize(uCurrentLod), current_pos = ivec2(gl_GlobalInvocationID.xy);
 	if (current_pos.x >= current_size.x || current_pos.y >= current_size.y)
 		return;
 	ivec2 previous_size = textureSize(uPreviousLod, 0), previous_base_pos = current_pos << 1;
 
-	float depth = max(max(texelFetch(uPreviousLod, previous_base_pos, 0).r,
-	                      texelFetch(uPreviousLod, previous_base_pos + ivec2(1, 0), 0).r),
-	                  max(texelFetch(uPreviousLod, previous_base_pos + ivec2(1, 1), 0).r,
-	                      texelFetch(uPreviousLod, previous_base_pos + ivec2(0, 1), 0).r));
+	vec4 d4 = vec4(texelFetch(uPreviousLod, previous_base_pos, 0).r,
+	               texelFetch(uPreviousLod, previous_base_pos + ivec2(1, 0), 0).r,
+	               texelFetch(uPreviousLod, previous_base_pos + ivec2(1, 1), 0).r,
+	               texelFetch(uPreviousLod, previous_base_pos + ivec2(0, 1), 0).r);
+	float depth = max(max(d4.x, d4.y), max(d4.z, d4.w));
+	// heuristic to avoid t-junction holes, TODO: use linear depth
+	if (uIsFirstLod == 1u) {
+		uvec4 p = uvec4(lessThan(d4, vec4(depth - 0.001)));
+		if (p.x + p.y + p.z + p.w == 3) {
+			imageStore(uCurrentLod, current_pos, vec4(0.0));
+			return;
+		}
+	}
 
 	// deal with edge cases
 	bool odd_width = (previous_size.x & 1) == 1, odd_height = (previous_size.y & 1) == 1;

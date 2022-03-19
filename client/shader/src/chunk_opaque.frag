@@ -10,18 +10,15 @@ layout(location = 4) in float vTorchlight;
 layout(location = 5) in flat uint vTexture;
 layout(location = 6) in vec2 vTexcoord;
 
-layout(location = 0) out vec4 oColor;
+layout(location = 0) out vec4 oOpaque;
 
 const vec3 kFaceNormal[6] = {vec3(1, 0, 0),  vec3(-1, 0, 0), vec3(0, 1, 0),
                              vec3(0, -1, 0), vec3(0, 0, 1),  vec3(0, 0, -1)};
 
 void main() {
 	vec4 tex = texture(uBlockTexture, vec3(vTexcoord, vTexture));
-	if (tex.a == 0.0)
-		discard;
 	vec3 color = tex.rgb;
 	color *= vAO;
 	color *= max(dot(kFaceNormal[vFace], normalize(vec3(10, 5, 3))), 0) * 0.5 + 0.5;
-	oColor = vec4(pow(color, vec3(1.0 / 2.2)), 1.0);
-	// oColor = vec4(color, 1.0);
+	oOpaque = vec4(color, 1.0);
 }

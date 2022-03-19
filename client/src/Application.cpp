@@ -22,11 +22,11 @@ void Application::init_imgui() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
-	m_imgui_renderer.Initialize(m_main_command_pool, m_canvas->GetRenderPass(), 1, kFrameCount);
+	m_imgui_renderer.Initialize(m_main_command_pool, m_canvas->GetRenderPass(), Canvas::kUISubpass, kFrameCount);
 }
 
 void Application::create_vulkan_base() {
-	m_instance = myvk::Instance::CreateWithGlfwExtensions(true);
+	m_instance = myvk::Instance::CreateWithGlfwExtensions();
 	m_surface = myvk::Surface::Create(m_instance, m_window);
 	std::vector<std::shared_ptr<myvk::PhysicalDevice>> physical_devices = myvk::PhysicalDevice::Fetch(m_instance);
 	if (physical_devices.empty()) {
@@ -72,6 +72,7 @@ void Application::resize(const myvk::FrameManager &frame_manager) {
 	m_camera->m_aspect_ratio = (float)frame_manager.GetExtent().width / (float)frame_manager.GetExtent().height;
 	m_canvas->Resize();
 	m_depth_hierarchy->Resize();
+	m_world_renderer->Resize();
 }
 
 void Application::draw_frame() {
@@ -95,10 +96,18 @@ void Application::draw_frame() {
 
 		m_canvas->CmdBeginRenderPass(command_buffer, {0.7, 0.8, 0.96, 1.0});
 		{
-			// Subpass 0: chunks
-			m_world_renderer->GetChunkRenderer()->CmdDrawIndirect(command_buffer);
+			// Subpass 0: Opaque
+			m_world_renderer->GetChunkRenderer()->CmdOpaqueDrawIndirect(command_buffer);
 
-			// Subpass 1: ImGui
+			// Subpass 1: Transparent
+			command_buffer->CmdNextSubpass();
+			m_world_renderer->GetChunkRenderer()->CmdTransparentDrawIndirect(command_buffer);
+
+			// Subpass 2: Screen
+			command_buffer->CmdNextSubpass();
+			m_world_renderer->CmdScreenDraw(command_buffer);
+
+			// Subpass 3: ImGui
 			command_buffer->CmdNextSubpass();
 			m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
 		}
@@ -127,7 +136,8 @@ Application::Application() {
 	m_camera = Camera::Create(m_device);
 	m_camera->m_speed = 32.0f;
 	m_world_renderer =
-	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_depth_hierarchy, m_transfer_queue, 0);
+	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_depth_hierarchy, m_transfer_queue,
+	                          Canvas::kOpaqueSubpass, Canvas::kTransparentSubpass, Canvas::kScreenSubpass);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 }

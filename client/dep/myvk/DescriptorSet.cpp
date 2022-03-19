@@ -110,6 +110,24 @@ void DescriptorSet::UpdateCombinedImageSampler(const std::shared_ptr<Sampler> &s
 	vkUpdateDescriptorSets(GetDevicePtr()->GetHandle(), 1, &write, 0, nullptr);
 }
 
+void DescriptorSet::UpdateInputAttachment(const std::shared_ptr<ImageView> &image_view, uint32_t binding,
+                                          uint32_t array_element) const {
+	VkDescriptorImageInfo info = {};
+	info.imageView = image_view->GetHandle();
+	info.sampler = VK_NULL_HANDLE;
+	info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkWriteDescriptorSet write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+	write.dstSet = m_descriptor_set;
+	write.dstBinding = binding;
+	write.dstArrayElement = array_element;
+	write.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+	write.descriptorCount = 1;
+	write.pImageInfo = &info;
+
+	vkUpdateDescriptorSets(GetDevicePtr()->GetHandle(), 1, &write, 0, nullptr);
+}
+
 void DescriptorSet::UpdateStorageImage(const std::shared_ptr<ImageView> &image_view, uint32_t binding,
                                        uint32_t array_element) const {
 	VkDescriptorImageInfo info = {};

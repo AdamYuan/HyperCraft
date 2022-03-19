@@ -211,8 +211,9 @@ public:
 		// reset counters
 		std::fill(m_frame_count_ptrs[current_frame], m_frame_count_ptrs[current_frame] + kPassCount, 0u);
 
-		// check indirect and draw_command buffer recreation
-		VkDeviceSize desired_drawcmd_buffer_size = mesh_count * sizeof(VkDrawIndexedIndirectCommand);
+		// check draw_command buffer size
+		VkDeviceSize desired_drawcmd_buffer_size =
+		    (2u << glm::findMSB(mesh_count)) * sizeof(VkDrawIndexedIndirectCommand);
 		for (uint32_t p = 0; p < kPassCount; ++p) {
 			std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame][p];
 			if ((draw_command_buffer ? draw_command_buffer->GetSize() : 0) < desired_drawcmd_buffer_size) {
