@@ -20,8 +20,8 @@ jobs:
             os: windows-latest,
             artifact: "windows_mingw_64.7z",
             build_type: "Release",
-            cc: "C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe",
-            cxx: "C:/msys64/mingw64/bin/x86_64-w64-mingw32-g++.exe",
+            cc: "x86_64-w64-mingw32-gcc",
+            cxx: "x86_64-w64-mingw32-g++",
             archiver: "7z a",
             generators: "Ninja"
           }
@@ -32,20 +32,15 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           update: false
-          install: mingw-w64-x86_64-gcc
+          install: mingw-w64-x86_64-gcc cmake ninja
 
       - name: Check msys
         if: startsWith(matrix.config.os, 'windows')
         run: |
           ls C:/msys64/mingw64/bin/
 
-      - name: Install dependencies on windows
-        if: startsWith(matrix.config.os, 'windows')
-        run: |
-          choco install ninja
-
       - name: Configure
-        shell: bash
+        shell: msys2 {0}
         run: |
           mkdir build
           mkdir instdir
@@ -59,11 +54,11 @@ jobs:
             -DCMAKE_INSTALL_PREFIX:PATH=instdir
 
       - name: Build
-        shell: bash
+        shell: msys2 {0}
         run: cmake --build . --config ${{ matrix.config.build_type }}
 
       - name: Install Strip
-        shell: bash
+        shell: msys2 {0}
         run: cmake --install . --strip
 
       - name: Pack
