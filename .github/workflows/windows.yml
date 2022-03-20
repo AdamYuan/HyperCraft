@@ -43,7 +43,6 @@ jobs:
           ls C:/msys64/mingw64/include/
           ls C:/msys64/
           ls C:/msys64/mingw64/
-          C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe --version
 
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
