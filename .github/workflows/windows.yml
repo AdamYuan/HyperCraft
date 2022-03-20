@@ -23,7 +23,7 @@ jobs:
             cc: "x86_64-w64-mingw32-gcc",
             cxx: "x86_64-w64-mingw32-g++",
             archiver: "7z a",
-            generators: "Ninja"
+            generators: "MSYS Makefiles"
           }
 
     steps:
@@ -32,7 +32,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           update: false
-          install: mingw-w64-x86_64-gcc cmake ninja
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake cmake
 
       - name: Check msys
         if: startsWith(matrix.config.os, 'windows')
