@@ -20,8 +20,8 @@ jobs:
             os: windows-latest,
             artifact: "windows_mingw_64.7z",
             build_type: "Release",
-            cc: "x86_64-w64-mingw32-gcc",
-            cxx: "x86_64-w64-mingw32-g++",
+            cc: "C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe",
+            cxx: "C:/msys64/mingw64/bin/x86_64-w64-mingw32-g++.exe",
             archiver: "7z a",
             generators: "Ninja"
           }
