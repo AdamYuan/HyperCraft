@@ -38,6 +38,7 @@ jobs:
         if: startsWith(matrix.config.os, 'windows')
         run: |
           choco install ninja
+          C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe --version
           dir C:/msys64/mingw64/bin/
           dir C:/msys64/
           dir C:/msys64/mingw64/
