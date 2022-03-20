@@ -20,21 +20,14 @@ jobs:
             os: windows-latest,
             artifact: "windows_mingw_64.7z",
             build_type: "Release",
-            cc: "cc",
-            cxx: "c++",
+            cc: "gcc-10",
+            cxx: "g++-10",
             archiver: "7z a",
             generators: "Ninja"
           }
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
-          static: 1
-          cc: 1
 
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
