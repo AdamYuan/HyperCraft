@@ -37,9 +37,12 @@ jobs:
       - name: Check msys
         if: startsWith(matrix.config.os, 'windows')
         run: |
-          dir C:/msys64/mingw64/bin/
-          dir C:/msys64/
-          dir C:/msys64/mingw64/
+          ls C:/msys64/mingw64/bin/
+          ls C:/msys64/mingw64/lib/
+          ls C:/msys64/mingw64/share/
+          ls C:/msys64/mingw64/include/
+          ls C:/msys64/
+          ls C:/msys64/mingw64/
           C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe --version
 
       - name: Install dependencies on windows
