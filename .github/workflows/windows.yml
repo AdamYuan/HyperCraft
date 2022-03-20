@@ -44,7 +44,7 @@ jobs:
         run: |
           mkdir build
           mkdir instdir
-          cmake \
+          mingw-w64-x86_64-cmake \
             -S . \
             -B . \
             -DCMAKE_C_COMPILER="${{ matrix.config.cc }}" \
@@ -55,11 +55,11 @@ jobs:
 
       - name: Build
         shell: msys2 {0}
-        run: cmake --build . --config ${{ matrix.config.build_type }}
+        run: mingw-w64-x86_64-cmake --build . --config ${{ matrix.config.build_type }}
 
       - name: Install Strip
         shell: msys2 {0}
-        run: cmake --install . --strip
+        run: mingw-w64-x86_64-cmake --install . --strip
 
       - name: Pack
         shell: bash
