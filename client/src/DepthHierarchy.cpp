@@ -108,13 +108,6 @@ void DepthHierarchy::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &comman
 	uint32_t width = data.m_image->GetExtent().width, height = data.m_image->GetExtent().height,
 	         mip_level = data.m_image->GetMipLevels();
 
-	// preparer depth buffer to be transfer
-	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-	    {m_canvas_ptr->GetCurrentDepthImage()->GetMemoryBarrier(
-	        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}, 0, VK_ACCESS_TRANSFER_READ_BIT,
-	        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)});
-
 	// prepare first lod to be transfer
 	command_buffer->CmdPipelineBarrier(
 	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},

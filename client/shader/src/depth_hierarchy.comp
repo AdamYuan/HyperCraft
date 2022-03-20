@@ -6,6 +6,11 @@ layout(set = 0, binding = 1, r32f) uniform image2D uCurrentLod;
 
 layout(push_constant) uniform uuPushConstant { uint uIsFirstLod; };
 
+#define Z_NEAR 0.01
+#define Z_FAR 640.0
+float linearize_depth(in const float d) { return Z_NEAR * Z_FAR / (Z_FAR + d * (Z_NEAR - Z_FAR)); }
+vec4 linearize_depth(in const vec4 d) { return Z_NEAR * Z_FAR / (Z_FAR + d * (Z_NEAR - Z_FAR)); }
+
 void main() {
 	ivec2 current_size = imageSize(uCurrentLod), current_pos = ivec2(gl_GlobalInvocationID.xy);
 	if (current_pos.x >= current_size.x || current_pos.y >= current_size.y)
@@ -17,9 +22,9 @@ void main() {
 	               texelFetch(uPreviousLod, previous_base_pos + ivec2(1, 1), 0).r,
 	               texelFetch(uPreviousLod, previous_base_pos + ivec2(0, 1), 0).r);
 	float depth = max(max(d4.x, d4.y), max(d4.z, d4.w));
-	// heuristic to avoid t-junction holes, TODO: use linear depth
+	// heuristic to avoid t-junction holes
 	if (uIsFirstLod == 1u) {
-		uvec4 p = uvec4(lessThan(d4, vec4(depth - 0.001)));
+		uvec4 p = uvec4(lessThan(linearize_depth(d4), vec4(linearize_depth(depth) - 10.0)));
 		if (p.x + p.y + p.z + p.w == 3) {
 			imageStore(uCurrentLod, current_pos, vec4(0.0));
 			return;
