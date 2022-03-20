@@ -20,8 +20,8 @@ jobs:
             os: windows-latest,
             artifact: "windows_mingw_64.7z",
             build_type: "Release",
-            cc: "/mingw64/bin/x86_64-w64-mingw32-gcc.exe",
-            cxx: "/mingw64/bin/x86_64-w64-mingw32-g++.exe",
+            cc: "x86_64-w64-mingw32-gcc",
+            cxx: "x86_64-w64-mingw32-g++",
             archiver: "7z a",
             generators: "Ninja"
           }
@@ -48,8 +48,8 @@ jobs:
           cmake \
             -S . \
             -B . \
-            -DCMAKE_C_COMPILER=${{ matrix.config.cc }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
+            -DCMAKE_C_COMPILER="${{ matrix.config.cc }}" \
+            -DCMAKE_CXX_COMPILER="${{ matrix.config.cxx }}" \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir
