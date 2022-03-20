@@ -1,11 +1,11 @@
 name: Windows
 
-on: 
+on:
   push:
   pull_request:
   release:
-    # tags:
-    # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+  # tags:
+  # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
   build:
@@ -14,8 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: 
-        - {
+        config:
+          - {
             name: "Windows MinGW 64",
             os: windows-latest,
             artifact: "windows_mingw_64.7z",
@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-          
+
       - name: Configure
         shell: bash
         run: |
@@ -37,6 +37,8 @@ jobs:
           cmake \
             -S . \
             -B . \
+            -DCMAKE_C_COMPILER=${{ matrix.config.cc }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir

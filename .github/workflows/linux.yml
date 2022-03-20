@@ -1,11 +1,11 @@
 name: Linux
 
-on: 
+on:
   push:
   pull_request:
   release:
-    # tags:
-    # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+  # tags:
+  # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
 
 jobs:
   build:
@@ -14,8 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: 
-        - {
+        config:
+          - {
             name: "Linux X11 64",
             os: ubuntu-latest,
             artifact: "linux_x11_64.7z",
@@ -33,7 +33,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install ninja-build xorg-dev
-          
+
       - name: Configure
         shell: bash
         run: |
@@ -42,6 +42,8 @@ jobs:
           cmake \
             -S . \
             -B . \
+            -DCMAKE_C_COMPILER=${{ matrix.config.cc }} \
+            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir
