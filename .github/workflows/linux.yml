@@ -20,8 +20,8 @@ jobs:
             os: ubuntu-latest,
             artifact: "linux_x11_64.7z",
             build_type: "Release",
-            cc: "gcc-10",
-            cxx: "g++-10",
+            cc: "gcc-11",
+            cxx: "g++-11",
             archiver: "7z a",
             generators: "Ninja"
           }

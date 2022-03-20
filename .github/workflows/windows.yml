@@ -20,14 +20,20 @@ jobs:
             os: windows-latest,
             artifact: "windows_mingw_64.7z",
             build_type: "Release",
-            cc: "gcc-10",
-            cxx: "g++-10",
+            cc: "/mingw64/bin/x86_64-w64-mingw32-gcc.exe",
+            cxx: "/mingw64/bin/x86_64-w64-mingw32-g++.exe",
             archiver: "7z a",
             generators: "Ninja"
           }
 
     steps:
       - uses: actions/checkout@v2
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
 
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
@@ -79,3 +85,5 @@ jobs:
           asset_path: ./${{ matrix.config.artifact }}
           asset_name: ${{ matrix.config.artifact }}
           asset_content_type: application/x-7z-compressed
+/mingw64/bin/x86_64-w64-mingw32-gcc:
+  exe:
