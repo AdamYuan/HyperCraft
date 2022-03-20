@@ -53,6 +53,7 @@ struct BlockTextures {
 		kGlass,
 		kSnow,
 		kBlueIce,
+		kIce,
 		kSandstone,
 		kWater,
 
@@ -119,6 +120,7 @@ struct Blocks {
 		kGlass,
 		kSnow,
 		kBlueIce,
+		kIce,
 		kSandstone,
 		kWater,
 
@@ -219,6 +221,7 @@ private:
 	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
 	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
 	    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), false, false},    //
+	    {"Ice", BLOCK_TEXTURE_SAME(BlockTextures::kIce), true, false},              //
 	    {"Sandstone", BLOCK_TEXTURE_SAME(BlockTextures::kSandstone), false, false}, //
 	    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), true, true},           //
 	    BLOCK_PROPERTY_META_ARRAY("Leaves", kLeavesProperties),
@@ -260,7 +263,7 @@ public:
 			return false;
 		if (!GetTransparent() && !neighbour.GetTransparent())
 			return false;
-		return !(GetTransparent() && neighbour.GetID() != Blocks::kAir);
+		return !GetTransparent() || neighbour.GetID() == Blocks::kAir || neighbour.GetID() == Blocks::kWater;
 	}
 
 	bool operator==(Block r) const { return m_data == r.m_data; }

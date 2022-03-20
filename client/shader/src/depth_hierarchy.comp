@@ -43,5 +43,5 @@ void main() {
 		depth = max(depth, max(texelFetch(uPreviousLod, previous_base_pos + ivec2(0, 2), 0).r,
 		                       texelFetch(uPreviousLod, previous_base_pos + ivec2(1, 2), 0).r));
 	}
-	imageStore(uCurrentLod, current_pos, vec4(depth));
+	imageStore(uCurrentLod, current_pos, vec4(isnan(depth) ? 1.0 : depth));
 }

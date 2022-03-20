@@ -20,15 +20,26 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 				Biome biome = xz_info->biome_map[noise_index];
 				auto meta = xz_info->meta[noise_index];
 
-				switch (biome) {
-				case Biomes::kOcean: {
-					if (cur_height <= height) {
-						int32_t sand_height = -int32_t(meta % 4u);
-						chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? Blocks::kSand : Blocks::kStone));
-					} else if (cur_height <= 0) {
-						chunk_ptr->SetBlock(x, y, z, Blocks::kWater);
+				if (xz_info->is_ocean[noise_index]) {
+					if (biome == Biomes::kGlacier) {
+						if (cur_height <= height) {
+							int32_t snow_height = -int32_t(meta % 4u);
+							chunk_ptr->SetBlock(x, y, z, (cur_height >= snow_height ? Blocks::kSnow : Blocks::kStone));
+						} else if (cur_height <= 0) {
+							int32_t ice_height = meta % (std::abs(height) + 1) <= 1 ? -int32_t(meta % 3u) : 0;
+							chunk_ptr->SetBlock(x, y, z, cur_height > ice_height ? Blocks::kIce : Blocks::kWater);
+						}
+					} else {
+						if (cur_height <= height) {
+							int32_t sand_height = -int32_t(meta % 4u);
+							chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? Blocks::kSand : Blocks::kStone));
+						} else if (cur_height <= 0) {
+							chunk_ptr->SetBlock(x, y, z, Blocks::kWater);
+						}
 					}
-				} break;
+					continue;
+				}
+				switch (biome) {
 				case Biomes::kPlain:
 					if (cur_height == height) {
 						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrass, BlockMetas::Grass::kPlain});
@@ -45,7 +56,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 					}
 					break;
-					//TODO: Better tundra generation
+					// TODO: Better tundra generation
 				case Biomes::kTundra: {
 					if (cur_height <= height) {
 						if ((meta % (height + 64)) == 0) {
@@ -272,8 +283,9 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		info->height_map[index] =
 		    get_height(biome_precipitation_output[index], biome_temperature_output[index], height_output[index]);
 		info->max_height = std::max(info->max_height, info->height_map[index]);
-		info->biome_map[index] = get_biome(biome_precipitation_cell_output[index], biome_temperature_cell_output[index],
-		                                   height_output[index]);
+		info->biome_map[index] =
+		    get_biome(biome_precipitation_cell_output[index], biome_temperature_cell_output[index]);
+		info->is_ocean[index] = height_output[index] <= 0.0f;
 
 		surface_x_vec.push_back(float(x) * kCaveNoiseFrequency);
 		surface_z_vec.push_back(float(z) * kCaveNoiseFrequency);
@@ -292,7 +304,7 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		info->is_ground[index] = surface_cave_output[index] < 0.0f;
 
 		// if not on ground, skip tree generation
-		if (!info->is_ground[index])
+		if (!info->is_ground[index] || info->is_ocean[index])
 			continue;
 		int32_t x = (int32_t)(index % kChunkSize), z = (int32_t)(index / kChunkSize), y = info->height_map[index];
 		// generate trees

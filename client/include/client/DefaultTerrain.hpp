@@ -62,9 +62,7 @@ private:
 			return 0.0f;
 		}
 	}
-	inline static constexpr Biome get_biome(float precipitation, float temperature, float height) {
-		if (height <= 0.0f)
-			return Biomes::kOcean;
+	inline static constexpr Biome get_biome(float precipitation, float temperature) {
 		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale + 0.5f,
 		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale + 0.5f;
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
@@ -364,7 +362,7 @@ private:
 		int32_t height_map[kChunkSize * kChunkSize]{}, max_height{INT32_MIN};
 		uint16_t meta[kChunkSize * kChunkSize]{};
 		Biome biome_map[kChunkSize * kChunkSize]{};
-		std::bitset<kChunkSize * kChunkSize> is_ground;
+		std::bitset<kChunkSize * kChunkSize> is_ground, is_ocean;
 	};
 	struct CombinedXZInfo {
 		DecorationInfo decoration;
