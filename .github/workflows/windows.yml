@@ -38,11 +38,6 @@ jobs:
         if: startsWith(matrix.config.os, 'windows')
         run: |
           ls C:/msys64/mingw64/bin/
-          ls C:/msys64/mingw64/lib/
-          ls C:/msys64/mingw64/share/
-          ls C:/msys64/mingw64/include/
-          ls C:/msys64/
-          ls C:/msys64/mingw64/
 
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
