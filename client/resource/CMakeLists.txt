@@ -14,7 +14,7 @@ target_link_libraries(client_block_tex_gen PRIVATE CubeCraft3_common_header clie
 add_custom_command(
         OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_png.inl
         OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_transparency.inl
-        COMMAND client_block_tex_gen ../../include/client/texture/block_texture_png.inl ../../include/client/texture/block_texture_transparency.inl
+        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/client_block_tex_gen ../../include/client/texture/block_texture_png.inl ../../include/client/texture/block_texture_transparency.inl
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/texture/block/
         DEPENDS client_block_tex_gen ${BLOCK_TEXTURES}
         )
