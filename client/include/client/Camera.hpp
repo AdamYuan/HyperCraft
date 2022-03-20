@@ -29,7 +29,8 @@ private:
 	std::shared_ptr<myvk::DescriptorSet> m_descriptor_sets[kFrameCount];
 
 	struct UniformData {
-		glm::mat4 m_view_projection;
+		glm::vec4 view_position;
+		glm::mat4 view_projection;
 	};
 	void move_forward(float dist, float dir);
 	glm::mat4 fetch_matrix() const;

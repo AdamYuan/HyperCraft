@@ -23,7 +23,10 @@ layout(std430, set = 0, binding = 3) writeonly buffer uuTransparentDrawCommand {
 	DrawIndexedIndirectCommand uTransparentDrawCommand[];
 };
 
-layout(set = 1, binding = 0) uniform uuCamera { mat4 uViewProjection; };
+layout(set = 1, binding = 0) uniform uuCamera {
+	vec4 uViewPosition;
+	mat4 uViewProjection;
+};
 layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
 
 uint GetCullBits(in const vec4 projected) {
@@ -39,8 +42,11 @@ uint GetCullBits(in const vec4 projected) {
 }
 
 void GetClipInfo(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, inout uint cull_bits) {
+	vec3 bmin = vec3(aabb.min_x, aabb.min_y, aabb.min_z) - uViewPosition.xyz,
+	     bmax = vec3(aabb.max_x, aabb.max_y, aabb.max_z) - uViewPosition.xyz;
+
 	// Get the bounding of a World space AABB in UV-Depth space
-	vec4 projected = uViewProjection * vec4(aabb.min_x, aabb.min_y, aabb.min_z, 1.0);
+	vec4 projected = uViewProjection * vec4(bmin.x, bmin.y, bmin.z, 1.0);
 	vec3 clip = projected.xyz / projected.w;
 	clip_min = clip_max = clip;
 	cull_bits = GetCullBits(projected);
@@ -51,19 +57,19 @@ void GetClipInfo(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, i
 	clip_max = max(clip_max, clip); \
 	cull_bits &= GetCullBits(projected);
 
-	projected = uViewProjection * vec4(aabb.min_x, aabb.min_y, aabb.max_z, 1.0);
+	projected = uViewProjection * vec4(bmin.x, bmin.y, bmax.z, 1.0);
 	MAINTAIN
-	projected = uViewProjection * vec4(aabb.min_x, aabb.max_y, aabb.min_z, 1.0);
+	projected = uViewProjection * vec4(bmin.x, bmax.y, bmin.z, 1.0);
 	MAINTAIN
-	projected = uViewProjection * vec4(aabb.min_x, aabb.max_y, aabb.max_z, 1.0);
+	projected = uViewProjection * vec4(bmin.x, bmax.y, bmax.z, 1.0);
 	MAINTAIN
-	projected = uViewProjection * vec4(aabb.max_x, aabb.min_y, aabb.min_z, 1.0);
+	projected = uViewProjection * vec4(bmax.x, bmin.y, bmin.z, 1.0);
 	MAINTAIN
-	projected = uViewProjection * vec4(aabb.max_x, aabb.min_y, aabb.max_z, 1.0);
+	projected = uViewProjection * vec4(bmax.x, bmin.y, bmax.z, 1.0);
 	MAINTAIN
-	projected = uViewProjection * vec4(aabb.max_x, aabb.max_y, aabb.min_z, 1.0);
+	projected = uViewProjection * vec4(bmax.x, bmax.y, bmin.z, 1.0);
 	MAINTAIN
-	projected = uViewProjection * vec4(aabb.max_x, aabb.max_y, aabb.max_z, 1.0);
+	projected = uViewProjection * vec4(bmax.x, bmax.y, bmax.z, 1.0);
 	MAINTAIN
 }
 

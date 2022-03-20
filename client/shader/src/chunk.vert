@@ -12,7 +12,10 @@ layout(location = 4) out float vTorchlight;
 layout(location = 5) out flat uint vTexture;
 layout(location = 6) out vec2 vTexcoord;
 
-layout(set = 1, binding = 0) uniform uuCamera { mat4 uViewProjection; };
+layout(set = 1, binding = 0) uniform uuCamera {
+	vec4 uViewPosition;
+	mat4 uViewProjection;
+};
 struct MeshInfo {
 	uint index_count, first_index, vertex_offset;
 	float aabb_min_x, aabb_min_y, aabb_min_z, aabb_max_x, aabb_max_y, aabb_max_z;
@@ -36,11 +39,12 @@ void main() {
 	pos.y = int(x10_y10_z10 & 0x3ffu) * 0.0625;
 	x10_y10_z10 >>= 10u;
 	pos.z = int(x10_y10_z10 & 0x3ffu) * 0.0625;
+	vec3 translate = vec3(uMeshInfo[gl_InstanceIndex].base_pos_x, //
+	                      uMeshInfo[gl_InstanceIndex].base_pos_y, //
+	                      uMeshInfo[gl_InstanceIndex].base_pos_z) //
+	                 - uViewPosition.xyz;
 
-	gl_Position = uViewProjection * vec4(pos + vec3(uMeshInfo[gl_InstanceIndex].base_pos_x, //
-	                                                uMeshInfo[gl_InstanceIndex].base_pos_y, //
-	                                                uMeshInfo[gl_InstanceIndex].base_pos_z),
-	                                     1.0f);
+	gl_Position = uViewProjection * vec4(pos + translate, 1.0f);
 
 	vTexture = tex8_face3_ao2_sl4_tl4 & 0xffu;
 	tex8_face3_ao2_sl4_tl4 >>= 8u;

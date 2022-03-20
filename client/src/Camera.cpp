@@ -74,13 +74,11 @@ glm::mat4 Camera::fetch_matrix() const {
 	ret[1][1] *= -1;
 	ret = glm::rotate(ret, -m_pitch, glm::vec3(1.0f, 0.0f, 0.0f));
 	ret = glm::rotate(ret, -m_yaw, glm::vec3(0.0f, 1.0f, 0.0f));
-	ret = glm::translate(ret, -m_position);
+	// ret = glm::translate(ret, -m_position);
 	return ret;
 }
 
-#include <glm/gtx/string_cast.hpp>
-#include <spdlog/spdlog.h>
 void Camera::Update(uint32_t current_frame) {
 	glm::mat4 view_projection = fetch_matrix();
-	m_uniform_buffers[current_frame]->UpdateData(view_projection);
+	m_uniform_buffers[current_frame]->UpdateData((UniformData){glm::vec4(m_position, 0.0), view_projection});
 }
