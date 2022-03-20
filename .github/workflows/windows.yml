@@ -34,14 +34,18 @@ jobs:
           update: false
           install: mingw-w64-x86_64-gcc
 
+      - name: Check msys
+        if: startsWith(matrix.config.os, 'windows')
+        run: |
+          dir C:/msys64/mingw64/bin/
+          dir C:/msys64/
+          dir C:/msys64/mingw64/
+          C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe --version
+
       - name: Install dependencies on windows
         if: startsWith(matrix.config.os, 'windows')
         run: |
           choco install ninja
-          C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe --version
-          dir C:/msys64/mingw64/bin/
-          dir C:/msys64/
-          dir C:/msys64/mingw64/
 
       - name: Configure
         shell: bash
