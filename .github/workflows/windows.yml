@@ -20,8 +20,8 @@ jobs:
             os: windows-latest,
             artifact: "windows_mingw_64.7z",
             build_type: "Release",
-            cc: "C:/msys64/mingw64/bin/x86_64-w64-mingw32-gcc.exe",
-            cxx: "C:/msys64/mingw64/bin/x86_64-w64-mingw32-g++.exe",
+            cc: "C:\msys64\mingw64\bin\x86_64-w64-mingw32-gcc.exe",
+            cxx: "C:\msys64\mingw64\bin\x86_64-w64-mingw32-g++.exe",
             archiver: "7z a",
             generators: "Ninja"
           }
@@ -31,7 +31,7 @@ jobs:
 
       - uses: msys2/setup-msys2@v2
         with:
-          update: true
+          update: false
           install: mingw-w64-x86_64-gcc
 
       - name: Install dependencies on windows
