@@ -29,6 +29,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install dependencies on windows
+        if: startsWith(matrix.config.os, 'windows')
+        run: |
+          choco install ninja
+
       - name: Configure
         shell: bash
         run: |

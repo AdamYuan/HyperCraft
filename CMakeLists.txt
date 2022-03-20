@@ -22,3 +22,5 @@ endif ()
 
 add_subdirectory(client)
 add_subdirectory(server)
+
+install(TARGETS CubeCraft3_client CubeCraft3_server RUNTIME DESTINATION)
