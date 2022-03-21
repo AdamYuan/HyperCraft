@@ -8,16 +8,18 @@ if (NOT TARGET CubeCraft3_common)
 endif ()
 add_subdirectory(dep)
 
-add_executable(client_block_tex_gen generator/block_tex_gen.cpp)
-target_link_libraries(client_block_tex_gen PRIVATE CubeCraft3_common_header client_resource_dep)
+if (NOT CI_BUILD)
+    add_executable(client_block_tex_gen generator/block_tex_gen.cpp)
+    target_link_libraries(client_block_tex_gen PRIVATE CubeCraft3_common_header client_resource_dep)
 
-add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_png.inl
-        OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_transparency.inl
-        COMMAND ${CMAKE_CURRENT_BINARY_DIR}/client_block_tex_gen ../../include/client/texture/block_texture_png.inl ../../include/client/texture/block_texture_transparency.inl
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/texture/block/
-        DEPENDS client_block_tex_gen ${BLOCK_TEXTURES}
-)
+    add_custom_command(
+            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_png.inl
+            OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_transparency.inl
+            COMMAND ${CMAKE_CURRENT_BINARY_DIR}/client_block_tex_gen ../../include/client/texture/block_texture_png.inl ../../include/client/texture/block_texture_transparency.inl
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/texture/block/
+            DEPENDS client_block_tex_gen ${BLOCK_TEXTURES}
+    )
+endif ()
 
 add_library(client_resource INTERFACE
         include/client/texture/block_texture_png.inl
