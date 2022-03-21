@@ -8,9 +8,10 @@ if (NOT TARGET CubeCraft3_common)
 endif ()
 add_subdirectory(dep)
 
-if (NOT CI_BUILD)
+find_package(PNG)
+if (PNG_FOUND)
     add_executable(client_block_tex_gen generator/block_tex_gen.cpp)
-    target_link_libraries(client_block_tex_gen PRIVATE CubeCraft3_common_header client_resource_dep)
+    target_link_libraries(client_block_tex_gen PRIVATE CubeCraft3_common_header client_resource_dep PNG::PNG)
 
     add_custom_command(
             OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_png.inl

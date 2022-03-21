@@ -5,12 +5,13 @@
 #include <magic_enum.hpp>
 
 #include <cctype>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <vector>
 
+#include <png.h>
 #include <stb_image.h>
-#include <stb_image_write.h>
 
 #include "bytes_to_array.hpp"
 
@@ -31,20 +32,48 @@ std::string make_texture_filename(std::string_view x) {
 	return ret;
 }
 
-typedef struct {
-	int last_pos;
-	void *context;
-} custom_stbi_mem_context;
+// copied from https://gist.github.com/dobrokot/10486786#file-write_png_to_memory_with_libpng-cpp-L25
+#define ASSERT_EX(cond, error_message) \
+	do { \
+		if (!(cond)) { \
+			std::cerr << error_message; \
+			exit(1); \
+		} \
+	} while (0)
 
-static void custom_stbi_write_mem(void *context, void *data, int size) {
-	auto *c = (custom_stbi_mem_context *)context;
-	char *dst = (char *)c->context;
-	char *src = (char *)data;
-	int cur_pos = c->last_pos;
-	for (int i = 0; i < size; i++) {
-		dst[cur_pos++] = src[i];
+static void PngWriteCallback(png_structp png_ptr, png_bytep data, png_size_t length) {
+	auto *p = (std::vector<unsigned char> *)png_get_io_ptr(png_ptr);
+	p->insert(p->end(), data, data + length);
+}
+
+struct TPngDestructor {
+	png_struct *p;
+	explicit TPngDestructor(png_struct *p) : p(p) {}
+	~TPngDestructor() {
+		if (p) {
+			png_destroy_write_struct(&p, nullptr);
+		}
 	}
-	c->last_pos = cur_pos;
+};
+
+std::vector<unsigned char> WritePngToMemory(size_t w, size_t h, const unsigned char *data) {
+	png_structp p = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+	ASSERT_EX(p, "png_create_write_struct() failed");
+	TPngDestructor destroyPng(p);
+	png_infop info_ptr = png_create_info_struct(p);
+	ASSERT_EX(info_ptr, "png_create_info_struct() failed");
+	ASSERT_EX(0 == setjmp(png_jmpbuf(p)), "setjmp(png_jmpbuf(p) failed");
+	png_set_IHDR(p, info_ptr, w, h, 8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+	             PNG_FILTER_TYPE_DEFAULT);
+	// png_set_compression_level(p, 1);
+	std::vector<unsigned char> ret;
+	std::vector<unsigned char *> rows(h);
+	for (size_t y = 0; y < h; ++y)
+		rows[y] = (unsigned char *)data + y * w * 4;
+	png_set_rows(p, info_ptr, &rows[0]);
+	png_set_write_fn(p, &ret, PngWriteCallback, nullptr);
+	png_write_png(p, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
+	return ret;
 }
 
 int main(int argc, char **argv) {
@@ -101,19 +130,14 @@ int main(int argc, char **argv) {
 		std::copy(img, img + x * x * 4, combined_texture.data() + (current_texture++) * x * x * 4);
 	}
 
-	std::vector<unsigned char> png_buffer(combined_texture.size());
+	std::vector<unsigned char> png_buffer =
+	    WritePngToMemory(texture_size, texture_size * texture_count, combined_texture.data());
 
-	custom_stbi_mem_context context;
-	context.last_pos = 0;
-	context.context = (void *)png_buffer.data();
-	int result = stbi_write_png_to_func(custom_stbi_write_mem, &context, texture_size, texture_size * texture_count, 4,
-	                                    combined_texture.data(), 0);
-
-	printf("PNG size: %f KB\n", context.last_pos / 1024.0f);
+	printf("PNG size: %f KB\n", png_buffer.size() / 1024.0f);
 
 	// png content
 	std::ofstream output{argv[0]};
-	output << bytes_to_array("kBlockTexturePng", png_buffer.data(), context.last_pos);
+	output << bytes_to_array("kBlockTexturePng", png_buffer.data(), png_buffer.size());
 
 	// transparency
 	output.close();

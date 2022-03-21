@@ -4,7 +4,7 @@ project(CubeCraft3)
 set(CMAKE_CXX_STANDARD 17)
 
 add_library(CubeCraft3_common_header INTERFACE)
-target_include_directories(CubeCraft3_common_header INTERFACE include)
+target_include_directories(CubeCraft3_common_header INTERFACE include dep)
 
 add_library(CubeCraft3_common STATIC
         include/common/Endian.hpp
