@@ -8,6 +8,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
 endif ()
 
 if (MINGW)
+    message ("Use MinGW")
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
 endif ()
 
