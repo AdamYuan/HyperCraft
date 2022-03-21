@@ -17,14 +17,11 @@ add_custom_command(
         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/client_block_tex_gen ../../include/client/texture/block_texture_png.inl ../../include/client/texture/block_texture_transparency.inl
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/texture/block/
         DEPENDS client_block_tex_gen ${BLOCK_TEXTURES}
-        )
-
-add_custom_target(
-        client_resource_inl ALL DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_png.inl
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_transparency.inl
 )
-add_library(client_resource INTERFACE)
-add_dependencies(client_resource client_resource_inl)
+
+add_library(client_resource INTERFACE
+        include/client/texture/block_texture_png.inl
+        include/client/texture/block_texture_transparency.inl
+        )
 target_include_directories(client_resource INTERFACE include)
 target_link_libraries(client_resource INTERFACE client_resource_dep)
