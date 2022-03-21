@@ -23,48 +23,39 @@ public:
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type Index2XYZ(uint32_t idx,
 	                                                                                                  T *xyz) {
-		xyz[0] = idx % kSize;
-		idx /= kSize;
-		xyz[2] = idx % kSize;
-		xyz[1] = idx / kSize;
+		return ChunkIndex2XYZ(idx, xyz);
 	}
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type XYZ2Index(T x, T y,
 	                                                                                                      T z) {
-		return x + (y * kSize + z) * kSize;
+		return ChunkXYZ2Index(x, y, z);
 	}
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, bool>::type
 	IsValidPosition(T x, T y, T z) {
-		return x >= 0 && x < kSize && y >= 0 && y < kSize && z >= 0 && z < kSize;
+		return IsValidChunkPosition(x, y, z);
 	}
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_unsigned<T>::value, bool>::type IsValidPosition(T x, T y,
 	                                                                                                        T z) {
-		return x <= kSize && y <= kSize && z <= kSize;
+		return IsValidChunkPosition(x, y, z);
 	}
 
 	// cmp_{x, y, z} = -1, 0, 1, indicating the neighbour's relative position
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
 	CmpXYZ2NeighbourIndex(T cmp_x, T cmp_y, T cmp_z) {
-		constexpr uint32_t kLookUp[3] = {1, 2, 0};
-		return kLookUp[cmp_x + 1] * 9u + kLookUp[cmp_y + 1] * 3u + kLookUp[cmp_z + 1];
+		return ::CmpXYZ2NeighbourIndex(cmp_x, cmp_y, cmp_z);
 	}
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
 	GetBlockNeighbourIndex(T x, T y, T z) {
-		return CmpXYZ2NeighbourIndex(x < 0 ? -1 : (x >= kSize ? 1 : 0), y < 0 ? -1 : (y >= kSize ? 1 : 0),
-		                             z < 0 ? -1 : (z >= kSize ? 1 : 0));
+		return GetBlockChunkNeighbourIndex(x, y, z);
 	}
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, void>::type
 	NeighbourIndex2CmpXYZ(uint32_t idx, T *cmp_xyz) {
-		constexpr T kRevLookUp[3] = {1, -1, 0};
-		cmp_xyz[2] = kRevLookUp[idx % 3u];
-		idx /= 3u;
-		cmp_xyz[1] = kRevLookUp[idx % 3u];
-		cmp_xyz[0] = kRevLookUp[idx / 3u];
+		return ::NeighbourIndex2CmpXYZ(idx, cmp_xyz);
 	}
 
 	inline const ChunkPos3 &GetPosition() const { return m_position; }

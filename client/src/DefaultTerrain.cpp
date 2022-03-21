@@ -21,26 +21,18 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 				auto meta = xz_info->meta[noise_index];
 
 				if (xz_info->is_ocean[noise_index]) {
-					if (biome == Biomes::kGlacier) {
-						if (cur_height <= height) {
-							int32_t snow_height = -int32_t(meta % 4u);
-							chunk_ptr->SetBlock(x, y, z, (cur_height >= snow_height ? Blocks::kSnow : Blocks::kStone));
-						} else if (cur_height <= 0) {
-							int32_t ice_height = meta % (std::abs(height) + 1) <= 1 ? -int32_t(meta % 3u) : 0;
-							chunk_ptr->SetBlock(x, y, z, cur_height > ice_height ? Blocks::kIce : Blocks::kWater);
-						}
-					} else {
-						Block surface = Blocks::kSand;
-						if (biome == Biomes::kBorealForest || biome == Biomes::kTropicalForest)
-							surface = Blocks::kGravel;
-						else if (biome == Biomes::kTundra)
-							surface = Blocks::kCobblestone;
-						if (cur_height <= height) {
-							int32_t sand_height = -int32_t(meta % 4u);
-							chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? surface : Blocks::kStone));
-						} else if (cur_height <= 0) {
-							chunk_ptr->SetBlock(x, y, z, Blocks::kWater);
-						}
+					Block surface = Blocks::kSand;
+					if (biome == Biomes::kBorealForest || biome == Biomes::kTropicalForest)
+						surface = Blocks::kGravel;
+					else if (biome == Biomes::kTundra)
+						surface = Blocks::kCobblestone;
+					else if (biome == Biomes::kGlacier)
+						surface = Blocks::kSnow;
+					if (cur_height <= height) {
+						int32_t sand_height = -int32_t(meta % 4u);
+						chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? surface : Blocks::kStone));
+					} else if (cur_height <= 0) {
+						chunk_ptr->SetBlock(x, y, z, Blocks::kWater);
 					}
 					continue;
 				}
@@ -150,6 +142,17 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 		    generate_combined_xz_info(pos, xz_info, combined_info);
 	    });
 	combined_xz_info->decoration.PopToChunk(chunk_ptr);
+	// pop light info
+	for (uint32_t y = 0; y < Chunk::kSize; ++y) {
+		uint32_t index = 0;
+		for (uint32_t z = 0; z < Chunk::kSize; ++z) {
+			for (uint32_t x = 0; x < Chunk::kSize; ++x, ++index) {
+				int32_t cur_height = chunk_ptr->GetPosition().y * (int)Chunk::kSize + (int)y;
+				if (cur_height > combined_xz_info->light_map[index])
+					chunk_ptr->SetLight(x, y, z, {15, 0});
+			}
+		}
+	}
 #else
 	// pressure test
 	std::mt19937 gen(chunk_ptr->GetPosition().x ^ chunk_ptr->GetPosition().y ^ chunk_ptr->GetPosition().z);
@@ -302,16 +305,29 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 	                                 surface_y_vec.data(), surface_z_vec.data(), (float)base_x * kCaveNoiseFrequency,
 	                                 0.0f, (float)base_z * kCaveNoiseFrequency, (int)GetSeed());
 
+	// Generate decorations
 	std::minstd_rand rand_gen((uint32_t)cash(pos.x, pos.y));
 	for (uint32_t index = 0; index < kChunkSize * kChunkSize; ++index) {
 		uint16_t rand = rand_gen();
 		info->meta[index] = rand;
 		info->is_ground[index] = surface_cave_output[index] < 0.0f;
 
-		// if not on ground, skip tree generation
-		if (!info->is_ground[index] || info->is_ocean[index])
-			continue;
 		int32_t x = (int32_t)(index % kChunkSize), z = (int32_t)(index / kChunkSize), y = info->height_map[index];
+
+		if (info->is_ocean[index]) {
+			// generate floating ice
+			if (info->biome_map[index] == Biomes::kGlacier) {
+				int32_t ice_height = rand % (std::abs(info->height_map[index]) + 1) <= 1 ? -int32_t(rand % 3u) : 0;
+				for (int32_t i = ice_height + 1; i <= 0; ++i)
+					info->decorations.SetBlock(x, i, z, Blocks::kIce);
+			}
+			// skip other decorations if ocean
+			continue;
+		}
+
+		// if not on ground, skip tree generation
+		if (!info->is_ground[index])
+			continue;
 		// generate trees
 		switch (info->biome_map[index]) {
 		case Biomes::kForest: {
@@ -346,6 +362,33 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 			break;
 		}
 	}
+
+	// Generate light map
+	constexpr uint32_t kTestDepth = 16, kMaxTries = 100;
+	float deep_cave_output[kTestDepth];
+	std::copy(std::begin(info->height_map), std::end(info->height_map), info->light_map);
+	for (uint32_t index = 0; index < kChunkSize * kChunkSize; ++index) {
+		if (!info->is_ground[index]) {
+			int32_t x = (int32_t)(index % kChunkSize) + base_x, z = (int32_t)(index / kChunkSize) + base_z,
+			        &y = info->light_map[index];
+			--y;
+
+			uint32_t tries = kMaxTries;
+			while (tries--) {
+				y -= (int32_t)kTestDepth;
+				m_cave_noise->GenUniformGrid3D(deep_cave_output, x, y + 1, z, 1, kTestDepth, 1, kCaveNoiseFrequency,
+				                               (int)GetSeed());
+				for (int32_t i = kTestDepth; i > 0; --i) {
+					if (deep_cave_output[i - 1] < 0.0f) {
+						// find ground
+						y += i;
+						goto light_map_done;
+					}
+				}
+			}
+		}
+	light_map_done:;
+	}
 }
 
 void DefaultTerrain::generate_combined_xz_info(const ChunkPos2 &pos,
@@ -359,6 +402,8 @@ void DefaultTerrain::generate_combined_xz_info(const ChunkPos2 &pos,
 		combined_info->decoration.Merge(
 		    m_xz_cache.Acquire(pos + dp, xz_generator)->decorations.GetInfo(opposite_xz_neighbour_index(i)));
 	}
+	std::copy(center_xz_info->light_map, center_xz_info->light_map + kChunkSize * kChunkSize, combined_info->light_map);
+	combined_info->decoration.PopToLightMap(combined_info->light_map);
 }
 
 void DefaultTerrain::DecorationInfo::PopToChunk(const std::shared_ptr<Chunk> &chunk_ptr) const {
@@ -371,7 +416,9 @@ void DefaultTerrain::DecorationInfo::PopToChunk(const std::shared_ptr<Chunk> &ch
 			continue;
 		uint32_t idx = Chunk::XYZ2Index(i.first.x, y, i.first.z);
 		// TODO: better override condition
-		if (!i.second.GetTransparent() || chunk_ptr->GetBlock(idx) == Blocks::kAir || i.second.GetID() == Blocks::kAir)
+		if (!i.second.GetTransparent() || chunk_ptr->GetBlock(idx) == Blocks::kAir ||
+		    chunk_ptr->GetBlock(idx) == Blocks::kWater || i.second.GetID() == Blocks::kAir ||
+		    i.second.GetID() == Blocks::kWater)
 			chunk_ptr->SetBlock(idx, i.second);
 	}
 }

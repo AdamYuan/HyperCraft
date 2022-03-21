@@ -25,7 +25,7 @@ void main() {
 	if (tex.a == 0.0)
 		discard;
 	vec3 color = tex.rgb;
-	color *= vAO;
+	color *= vAO * vSunlight;
 	color *= max(dot(kFaceNormal[vFace], normalize(vec3(10, 5, 3))), 0) * 0.5 + 0.5;
 
 	float z = linearize_depth(gl_FragCoord.z);

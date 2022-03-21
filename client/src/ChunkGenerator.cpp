@@ -27,8 +27,8 @@ void ChunkGenerator::Run() {
 	client_ptr->GetTerrain()->Generate(m_chunk_ptr, nullptr);
 
 	m_chunk_ptr->SetGeneratedFlag();
-	/* spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,
-	             m_chunk_ptr->GetPosition().z); */
+	spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,
+	             m_chunk_ptr->GetPosition().z);
 
 	for (uint32_t i = 0; i < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++i)
 		if (m_chunk_ptr->GetBlock(i) != Blocks::kAir) {

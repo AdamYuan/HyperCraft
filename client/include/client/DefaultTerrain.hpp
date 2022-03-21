@@ -148,6 +148,14 @@ private:
 					it->second = i.second;
 			}
 		}
+		inline void PopToLightMap(int32_t light_map[kChunkSize * kChunkSize]) const {
+			for (const auto &i : m_blocks) {
+				if (!i.second.GetLightPass()) {
+					uint32_t idx = i.first.z * kChunkSize + i.first.x;
+					light_map[idx] = std::max(light_map[idx], i.first.y);
+				}
+			}
+		}
 		void PopToChunk(const std::shared_ptr<Chunk> &chunk_ptr) const;
 	};
 	class DecorationGroup {
@@ -360,12 +368,14 @@ private:
 	struct XZInfo {
 		DecorationGroup decorations;
 		int32_t height_map[kChunkSize * kChunkSize]{}, max_height{INT32_MIN};
+		int32_t light_map[kChunkSize * kChunkSize]{}; // the lowest spot with sunlight
 		uint16_t meta[kChunkSize * kChunkSize]{};
 		Biome biome_map[kChunkSize * kChunkSize]{};
 		std::bitset<kChunkSize * kChunkSize> is_ground, is_ocean;
 	};
 	struct CombinedXZInfo {
 		DecorationInfo decoration;
+		int32_t light_map[kChunkSize * kChunkSize]{}; // the lowest spot with sunlight
 	};
 
 	template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
