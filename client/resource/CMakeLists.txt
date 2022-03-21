@@ -21,8 +21,8 @@ add_custom_command(
 
 add_custom_target(
         client_resource_inl ALL DEPENDS
-        include/client/texture/block_texture_png.inl
-        include/client/texture/block_texture_transparency.inl
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_png.inl
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/client/texture/block_texture_transparency.inl
 )
 add_library(client_resource INTERFACE)
 add_dependencies(client_resource client_resource_inl)
