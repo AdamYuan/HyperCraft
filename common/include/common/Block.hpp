@@ -40,6 +40,7 @@ struct BlockTextures {
 	enum ID : BlockTexID {
 		kNone = 0,
 		kStone,
+		kCobblestone,
 		kDirt,
 		kGrassPlainTop,
 		kGrassPlainSide,
@@ -114,6 +115,7 @@ struct Blocks {
 	enum ID : BlockID {
 		kAir = 0,
 		kStone,
+		kCobblestone,
 		kDirt,
 		kGrass,
 		kSand,
@@ -213,9 +215,10 @@ private:
 	};
 
 	inline static constexpr BlockProperty kProperties[] = {
-	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},      //
-	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false}, //
-	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},   //
+	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},                  //
+	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false},             //
+	    {"Cobblestone", BLOCK_TEXTURE_SAME(BlockTextures::kCobblestone), false, false}, //
+	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},               //
 	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
 	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false},           //
 	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
