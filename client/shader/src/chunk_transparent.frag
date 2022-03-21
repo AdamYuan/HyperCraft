@@ -31,6 +31,7 @@ void main() {
 	float z = linearize_depth(gl_FragCoord.z);
 	float weight = pow(tex.a + 0.01, 4.0) +
 	               max(1e-2, min(3.0 * 1e3, 100.0 / (1e-5 + pow(abs(z) / 10.0, 3.0) + pow(abs(z) / 200.0, 6.0))));
+	weight *= gl_FrontFacing ? 1.0 : 0.125;
 	oAccum = vec4(color * tex.a, tex.a) * weight;
 	oReveal = tex.a;
 }

@@ -111,6 +111,10 @@ int main(int argc, char **argv) {
 		}
 		if (texture_size == -1) {
 			texture_size = x;
+			if (x & (x - 1)) {
+				printf("texture size (%dx%d) os not power of 2", x, x);
+				return EXIT_FAILURE;
+			}
 			combined_texture.resize(texture_count * texture_size * texture_size * 4);
 		} else if (texture_size != x) {
 			printf("texture size is not normalized (%s is %dx%d differ from %dx%d)\n", str.c_str(), x, y, texture_size,
