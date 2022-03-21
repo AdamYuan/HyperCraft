@@ -30,9 +30,14 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 							chunk_ptr->SetBlock(x, y, z, cur_height > ice_height ? Blocks::kIce : Blocks::kWater);
 						}
 					} else {
+						Block surface = Blocks::kSand;
+						if (biome == Biomes::kBorealForest || biome == Biomes::kTropicalForest)
+							surface = Blocks::kGravel;
+						else if (biome == Biomes::kTundra)
+							surface = Blocks::kCobblestone;
 						if (cur_height <= height) {
 							int32_t sand_height = -int32_t(meta % 4u);
-							chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? Blocks::kSand : Blocks::kStone));
+							chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? surface : Blocks::kStone));
 						} else if (cur_height <= 0) {
 							chunk_ptr->SetBlock(x, y, z, Blocks::kWater);
 						}

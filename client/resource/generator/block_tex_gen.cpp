@@ -36,7 +36,7 @@ std::string make_texture_filename(std::string_view x) {
 #define ASSERT_EX(cond, error_message) \
 	do { \
 		if (!(cond)) { \
-			std::cerr << error_message; \
+			std::cerr << (error_message); \
 			exit(1); \
 		} \
 	} while (0)
@@ -48,18 +48,16 @@ static void PngWriteCallback(png_structp png_ptr, png_bytep data, png_size_t len
 
 struct TPngDestructor {
 	png_struct *p;
-	explicit TPngDestructor(png_struct *p) : p(p) {}
 	~TPngDestructor() {
-		if (p) {
+		if (p)
 			png_destroy_write_struct(&p, nullptr);
-		}
 	}
 };
 
 std::vector<unsigned char> WritePngToMemory(size_t w, size_t h, const unsigned char *data) {
 	png_structp p = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
 	ASSERT_EX(p, "png_create_write_struct() failed");
-	TPngDestructor destroyPng(p);
+	TPngDestructor png_destructor{p};
 	png_infop info_ptr = png_create_info_struct(p);
 	ASSERT_EX(info_ptr, "png_create_info_struct() failed");
 	ASSERT_EX(0 == setjmp(png_jmpbuf(p)), "setjmp(png_jmpbuf(p) failed");

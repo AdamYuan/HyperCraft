@@ -51,6 +51,7 @@ struct BlockTextures {
 		kGrassBorealTop,
 		kGrassBorealSide,
 		kSand,
+		kGravel,
 		kGlass,
 		kSnow,
 		kBlueIce,
@@ -119,6 +120,7 @@ struct Blocks {
 		kDirt,
 		kGrass,
 		kSand,
+		kGravel,
 		kGlass,
 		kSnow,
 		kBlueIce,
@@ -221,6 +223,7 @@ private:
 	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},               //
 	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
 	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false},           //
+	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), false, false},       //
 	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
 	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
 	    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), false, false},    //
