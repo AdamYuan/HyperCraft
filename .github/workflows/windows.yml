@@ -34,11 +34,6 @@ jobs:
           update: false
           install: mingw-w64-x86_64-gcc cmake ninja
 
-      - name: Check msys
-        shell: bash
-        run: |
-          ls C:/msys64/mingw64/bin/
-
       - name: Configure
         shell: msys2 {0}
         run: |
