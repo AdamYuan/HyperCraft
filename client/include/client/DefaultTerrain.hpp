@@ -94,7 +94,7 @@ private:
 
 	// Noise generators
 	static constexpr float kBiomeNoiseFrequency = 0.01f, kBiomeCellLookupFrequency = 0.1f,
-	                       kHeightNoiseFrequency = 0.001f, kCaveNoiseFrequency = 0.016f;
+	                       kHeightNoiseFrequency = 0.001f, kCaveNoiseFrequency = 0.01f;
 
 	FastNoise::SmartNode<FastNoise::Perlin> m_biome_precipitation_noise;
 	FastNoise::SmartNode<FastNoise::SeedOffset> m_biome_temperature_noise;
@@ -150,7 +150,7 @@ private:
 		}
 		inline void PopToLightMap(int32_t light_map[kChunkSize * kChunkSize]) const {
 			for (const auto &i : m_blocks) {
-				if (!i.second.GetLightPass()) {
+				if (!i.second.GetDirectLightPass()) {
 					uint32_t idx = i.first.z * kChunkSize + i.first.x;
 					light_map[idx] = std::max(light_map[idx], i.first.y);
 				}
@@ -409,7 +409,7 @@ public:
 	}
 	~DefaultTerrain() override = default;
 	inline static std::unique_ptr<TerrainBase> Create(uint32_t seed) { return std::make_unique<DefaultTerrain>(seed); }
-	void Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t *y_peak) override;
+	void Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t light_map[kChunkSize * kChunkSize]) override;
 };
 
 #endif

@@ -24,7 +24,19 @@ void ChunkGenerator::Run() {
 	if (!client_ptr->IsConnected())
 		return;
 
-	client_ptr->GetTerrain()->Generate(m_chunk_ptr, nullptr);
+	thread_local static int32_t light_map[kChunkSize * kChunkSize];
+	client_ptr->GetTerrain()->Generate(m_chunk_ptr, light_map);
+
+	// set initial light
+
+	// sunlight from light_map
+	for (uint32_t y = 0; y < Chunk::kSize; ++y) {
+		int32_t cur_height = m_chunk_ptr->GetPosition().y * (int)Chunk::kSize + (int)y;
+		for (uint32_t idx = 0; idx < kChunkSize * kChunkSize; ++idx) {
+			if (cur_height > light_map[idx])
+				m_chunk_ptr->SetLight(y * kChunkSize * kChunkSize + idx, {15, 0});
+		}
+	}
 
 	m_chunk_ptr->SetGeneratedFlag();
 	spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,

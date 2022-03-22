@@ -5,7 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <random>
 
-void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t *y_peak) {
+void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t light_map[kChunkSize * kChunkSize]) {
 #if 1
 	std::shared_ptr<const XZInfo> xz_info = m_xz_cache.Acquire(
 	    chunk_ptr->GetPosition().xz(), [this](const ChunkPos2 &pos, XZInfo *info) { generate_xz_info(pos, info); });
@@ -121,7 +121,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 	// cave
 	if (chunk_ptr->GetPosition().y * (int)kChunkSize <= xz_info->max_height) {
 		// Generate a 16 x 16 x 16 area of noise
-		float cave_noise_output[Chunk::kSize * Chunk::kSize * Chunk::kSize];
+		thread_local static float cave_noise_output[Chunk::kSize * Chunk::kSize * Chunk::kSize];
 		m_cave_noise->GenUniformGrid3D(cave_noise_output, chunk_ptr->GetPosition().x * (int)Chunk::kSize,
 		                               chunk_ptr->GetPosition().y * (int)Chunk::kSize,
 		                               chunk_ptr->GetPosition().z * (int)Chunk::kSize, Chunk::kSize, Chunk::kSize,
@@ -143,16 +143,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, uint32_t 
 	    });
 	combined_xz_info->decoration.PopToChunk(chunk_ptr);
 	// pop light info
-	for (uint32_t y = 0; y < Chunk::kSize; ++y) {
-		uint32_t index = 0;
-		for (uint32_t z = 0; z < Chunk::kSize; ++z) {
-			for (uint32_t x = 0; x < Chunk::kSize; ++x, ++index) {
-				int32_t cur_height = chunk_ptr->GetPosition().y * (int)Chunk::kSize + (int)y;
-				if (cur_height > combined_xz_info->light_map[index])
-					chunk_ptr->SetLight(x, y, z, {15, 0});
-			}
-		}
-	}
+	std::copy(std::begin(combined_xz_info->light_map), std::end(combined_xz_info->light_map), light_map);
 #else
 	// pressure test
 	std::mt19937 gen(chunk_ptr->GetPosition().x ^ chunk_ptr->GetPosition().y ^ chunk_ptr->GetPosition().z);
@@ -266,7 +257,7 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 	int32_t base_x = (int32_t)pos.x * (int32_t)Chunk::kSize, base_z = (int32_t)pos.y * (int32_t)Chunk::kSize;
 
 	// Generate a 16 x 16 x 16 area of noise
-	float biome_temperature_output[Chunk::kSize * Chunk::kSize],
+	thread_local static float biome_temperature_output[Chunk::kSize * Chunk::kSize],
 	    biome_precipitation_output[Chunk::kSize * Chunk::kSize],
 	    biome_temperature_cell_output[Chunk::kSize * Chunk::kSize],
 	    biome_precipitation_cell_output[Chunk::kSize * Chunk::kSize], height_output[Chunk::kSize * Chunk::kSize];
@@ -300,7 +291,7 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		surface_y_vec.push_back(float(info->height_map[index]) * kCaveNoiseFrequency);
 	}
 
-	float surface_cave_output[kChunkSize * kChunkSize];
+	thread_local static float surface_cave_output[kChunkSize * kChunkSize];
 	m_cave_noise->GenPositionArray3D(surface_cave_output, kChunkSize * kChunkSize, surface_x_vec.data(),
 	                                 surface_y_vec.data(), surface_z_vec.data(), (float)base_x * kCaveNoiseFrequency,
 	                                 0.0f, (float)base_z * kCaveNoiseFrequency, (int)GetSeed());
@@ -365,7 +356,7 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 
 	// Generate light map
 	constexpr uint32_t kTestDepth = 16, kMaxTries = 100;
-	float deep_cave_output[kTestDepth];
+	thread_local static float deep_cave_output[kTestDepth];
 	std::copy(std::begin(info->height_map), std::end(info->height_map), info->light_map);
 	for (uint32_t index = 0; index < kChunkSize * kChunkSize; ++index) {
 		if (!info->is_ground[index]) {

@@ -11,8 +11,8 @@
 void ChunkMesher::generate_face_lights(
     ChunkMesher::Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
 
-	Block neighbour_blocks[27];
-	Light neighbour_lights[27];
+	thread_local static Block neighbour_blocks[27];
+	thread_local static Light neighbour_lights[27];
 	for (uint32_t index = 0; index < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++index) {
 		int_fast8_t pos[3];
 		Chunk::Index2XYZ(index, pos);
@@ -62,9 +62,9 @@ ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize 
 
 		uint_fast8_t x[3]{0};
 		int_fast8_t q[3]{0};
-		BlockTexture texture_mask[Chunk::kSize * Chunk::kSize]{};
-		std::bitset<Chunk::kSize * Chunk::kSize> face_inv_mask{};
-		Light4 light_mask[Chunk::kSize * Chunk::kSize]{};
+		thread_local static BlockTexture texture_mask[Chunk::kSize * Chunk::kSize]{};
+		thread_local static std::bitset<Chunk::kSize * Chunk::kSize> face_inv_mask{};
+		thread_local static Light4 light_mask[Chunk::kSize * Chunk::kSize]{};
 
 		// Compute texture_mask
 		q[axis] = -1;
@@ -269,16 +269,15 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	constexpr uint32_t kLookup1[6] = {22, 4, 16, 10, 14, 12};
 
 	Block sides[3];
-	bool trans[3], pass[3];
+	bool pass[3];
 
 	for (uint32_t v = 0; v < 4; ++v) {
 		for (uint32_t i = 0; i < 3; ++i) {
 			sides[i] = neighbour_blocks[kLookup3[face][v][i]];
-			trans[i] = sides[i].GetTransparent();
-			pass[i] = sides[i].GetLightPass();
+			pass[i] = sides[i].GetIndirectLightPass();
 		}
 
-		m_ao.Set(v, (!trans[0] && !trans[2] ? 0u : 3u - !trans[0] - !trans[1] - !trans[2]));
+		m_ao.Set(v, (!pass[0] && !pass[2] ? 0u : 3u - !pass[0] - !pass[1] - !pass[2]));
 
 		// smooth the LightLvl using the average value
 		uint32_t counter = 1, sunlight_sum = neighbour_lights[kLookup1[face]].GetSunlight(),
@@ -287,7 +286,7 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 			for (uint32_t i = 0; i < 3; ++i) {
 				if (!pass[i])
 					continue;
-				counter++;
+				++counter;
 				sunlight_sum += neighbour_lights[kLookup3[face][v][i]].GetSunlight();
 				torchlight_sum += neighbour_lights[kLookup3[face][v][i]].GetTorchlight();
 			}
@@ -312,7 +311,7 @@ void ChunkMesher::Run() {
 
 	std::vector<MeshGenInfo> meshes;
 	{
-		Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6];
+		thread_local static Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6];
 		generate_face_lights(face_lights);
 		meshes = generate_mesh(face_lights);
 	}

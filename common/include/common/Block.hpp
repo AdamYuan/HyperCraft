@@ -262,7 +262,14 @@ public:
 	inline constexpr const char *GetName() const { return get_property()->m_name; }
 	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->m_textures[face]; }
 	inline constexpr bool GetTransparent() const { return get_property()->m_transparent; }
-	inline constexpr bool GetLightPass() const { return get_property()->m_light_pass; }
+	// inline constexpr bool GetLightPass() const { return get_property()->m_light_pass; }
+	// Direct Light: vertical sunlight
+	inline constexpr bool GetDirectLightPass() const {
+		return get_property()->m_light_pass && get_property()->m_transparent;
+	}
+	inline constexpr bool GetIndirectLightPass() const {
+		return get_property()->m_transparent || get_property()->m_light_pass;
+	}
 
 	inline constexpr bool ShowFace(Block neighbour) const {
 		if (GetID() == Blocks::kAir || GetID() == neighbour.GetID())
