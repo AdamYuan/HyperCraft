@@ -1,5 +1,6 @@
 #include <client/ChunkGenerator.hpp>
 
+#include <client/ChunkLighter.hpp>
 #include <client/ChunkMesher.hpp>
 #include <client/ClientBase.hpp>
 #include <client/World.hpp>
@@ -28,7 +29,6 @@ void ChunkGenerator::Run() {
 	client_ptr->GetTerrain()->Generate(m_chunk_ptr, light_map);
 
 	// set initial light
-
 	// sunlight from light_map
 	for (uint32_t y = 0; y < Chunk::kSize; ++y) {
 		int32_t cur_height = m_chunk_ptr->GetPosition().y * (int)Chunk::kSize + (int)y;
@@ -37,18 +37,16 @@ void ChunkGenerator::Run() {
 				m_chunk_ptr->SetLight(y * kChunkSize * kChunkSize + idx, {15, 0});
 		}
 	}
+	// TODO: add light from luminous blocks
 
 	m_chunk_ptr->SetGeneratedFlag();
-	spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,
-	             m_chunk_ptr->GetPosition().z);
+	/* spdlog::info("Chunk ({}, {}, {}) generated", m_chunk_ptr->GetPosition().x, m_chunk_ptr->GetPosition().y,
+	             m_chunk_ptr->GetPosition().z); */
 
 	for (uint32_t i = 0; i < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++i)
 		if (m_chunk_ptr->GetBlock(i) != Blocks::kAir) {
-			push_worker(ChunkMesher::Create(m_chunk_ptr));
+			push_worker(ChunkMesher::CreateWithInitialLight(m_chunk_ptr));
 			return;
 		}
-
-	// if there are no blocks, avoid meshing
-	m_chunk_ptr->SetMeshes({}); // ensure the mesh is removed
-	m_chunk_ptr->SetMeshedFlag();
+	m_chunk_ptr->SetFullNeighbourFlag();
 }

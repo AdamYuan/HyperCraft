@@ -56,7 +56,8 @@ void Canvas::create_opaque_buffer() {
 	for (uint32_t i = 0; i < m_framebuffers.size(); ++i) {
 		m_opaque_buffers[i].m_image = myvk::Image::CreateTexture2D(
 		    m_frame_manager_ptr->GetSwapchain()->GetDevicePtr(), m_frame_manager_ptr->GetSwapchain()->GetExtent(), 1,
-		    VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+		    VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+		    VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
 		m_opaque_buffers[i].m_image_view =
 		    myvk::ImageView::Create(m_opaque_buffers[i].m_image, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
@@ -109,7 +110,7 @@ void Canvas::create_render_pass() {
 
 	VkAttachmentDescription opaque_attachment = {};
 	{
-		opaque_attachment.format = VK_FORMAT_R8G8B8A8_UNORM;
+		opaque_attachment.format = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 		opaque_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		opaque_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		opaque_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

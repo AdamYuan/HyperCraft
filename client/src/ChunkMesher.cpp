@@ -4,12 +4,86 @@
 #include <client/WorldRenderer.hpp>
 
 #include <bitset>
+#include <queue>
 #include <spdlog/spdlog.h>
 
 #include <glm/gtx/string_cast.hpp>
 
+#include <glm/gtc/type_ptr.hpp>
+
+template <typename T, typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
+static constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
+	bool x_inside = 0 <= x && x < kChunkSize, y_inside = 0 <= y && y < kChunkSize, z_inside = 0 <= z && z < kChunkSize;
+	uint32_t bits = x_inside | (y_inside << 1u) | (z_inside << 2u);
+	if (bits == 7u)
+		return ChunkXYZ2Index(x, y, z);
+	constexpr uint32_t kOffsets[8] = {
+	    kChunkSize * kChunkSize * kChunkSize,
+	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30,
+	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30,
+	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 2,
+	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 2 + kChunkSize * kChunkSize * 30,
+	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 3 + kChunkSize * kChunkSize * 30,
+	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 3 +
+	        kChunkSize * kChunkSize * 30 * 2,
+	    0};
+	constexpr uint32_t kMultipliers[8][3] = {{30, 30, 30},
+	                                         {kChunkSize, 30, 30},
+	                                         {30, kChunkSize, 30},
+	                                         {kChunkSize, kChunkSize, 30},
+	                                         {30, 30, kChunkSize},
+	                                         {kChunkSize, 30, kChunkSize},
+	                                         {30, kChunkSize, kChunkSize},
+	                                         {kChunkSize, kChunkSize, kChunkSize}};
+	if (!x_inside)
+		x = x < 0 ? x + 15 : x - (int32_t)kChunkSize + 15;
+	if (!y_inside)
+		y = y < 0 ? y + 15 : y - (int32_t)kChunkSize + 15;
+	if (!z_inside)
+		z = z < 0 ? z + 15 : z - (int32_t)kChunkSize + 15;
+	return kOffsets[bits] + kMultipliers[bits][0] * (kMultipliers[bits][2] * y + z) + x;
+}
+
+template <typename T, typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
+static constexpr bool light_interfere(T x, T y, T z, LightLvl lvl) {
+	if (lvl <= 1)
+		return false;
+	if (x < -15 || x >= (int32_t)kChunkSize + 15 || y < -15 || y >= (int32_t)kChunkSize + 15 || z < -15 ||
+	    z >= (int32_t)kChunkSize + 15)
+		return false;
+	uint32_t dist = 0;
+	if (x < 0 || x >= kChunkSize)
+		dist += x < 0 ? -x : x - (int32_t)kChunkSize;
+	if (y < 0 || y >= kChunkSize)
+		dist += y < 0 ? -y : y - (int32_t)kChunkSize;
+	if (z < 0 || z >= kChunkSize)
+		dist += z < 0 ? -z : z - (int32_t)kChunkSize;
+	return (uint32_t)lvl >= dist;
+}
+
+void ChunkMesher::initial_sunlight_bfs(Light *light_buffer, std::queue<LightEntry> *queue) const {
+	while (!queue->empty()) {
+		LightEntry e = queue->front();
+		queue->pop();
+		for (BlockFace f = 0; f < 6; ++f) {
+			LightEntry nei = e;
+			BlockFaceProceed(glm::value_ptr(nei.position), f);
+			--nei.light_lvl;
+
+			if (light_interfere(nei.position.x, nei.position.y, nei.position.z, nei.light_lvl) &&
+			    get_block(nei.position.x, nei.position.y, nei.position.z).GetIndirectLightPass()) {
+				uint32_t idx = chunk_xyz_extended15_to_index(nei.position.x, nei.position.y, nei.position.z);
+				if (nei.light_lvl > light_buffer[idx].GetSunlight()) {
+					light_buffer[idx].SetSunlight(nei.light_lvl);
+					queue->push(nei);
+				}
+			}
+		}
+	}
+}
+
 void ChunkMesher::generate_face_lights(
-    ChunkMesher::Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
+    const Light *light_buffer, ChunkMesher::Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
 
 	thread_local static Block neighbour_blocks[27];
 	thread_local static Light neighbour_lights[27];
@@ -39,7 +113,7 @@ void ChunkMesher::generate_face_lights(
 					for (auto y = (int_fast8_t)(pos[1] - 1); y <= pos[1] + 1; ++y)
 						for (auto z = (int_fast8_t)(pos[2] - 1); z <= pos[2] + 1; ++z, ++nei_idx) {
 							neighbour_blocks[nei_idx] = get_block(x, y, z);
-							neighbour_lights[nei_idx] = get_light(x, y, z);
+							neighbour_lights[nei_idx] = light_buffer[chunk_xyz_extended15_to_index(x, y, z)];
 						}
 			}
 			face_lights[index][face].Initialize(face, neighbour_blocks, neighbour_lights);
@@ -297,22 +371,55 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	}
 }
 
-#include <random>
+// static thread_local LightQueue sunlight_queue{}; //, torchlight_queue{};
+static thread_local Light light_buffer[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30)]{};
+
 void ChunkMesher::Run() {
-	if (!lock() || !m_chunk_ptr->IsGenerated())
+	if (!lock())
+		return;
+	m_chunk_ptr->SetFullNeighbourFlag();
+
+	if (!m_chunk_ptr->IsGenerated() /* || !m_chunk_ptr->IsLatestLight()*/)
+		return;
+	uint64_t version = m_chunk_ptr->FetchMeshVersion();
+	if (!version)
 		return;
 	// if the neighbour chunks are not totally generated, return and move it back
 	for (const auto &i : m_neighbour_chunk_ptr)
 		if (!i->IsGenerated()) {
 			// spdlog::info("remesh");
-			push_worker(ChunkMesher::Create(m_chunk_ptr));
+			push_worker(ChunkMesher::CreateWithInitialLight(m_chunk_ptr));
 			return;
 		}
+
+	static thread_local std::queue<ChunkMesher::LightEntry> sunlight_queue;
+	if (m_init_light) {
+		/*m_chunk_ptr->PendLightVersion();
+		uint64_t version = m_chunk_ptr->FetchLightVersion();
+		if (!version)
+		    return;*/
+		// torchlight_queue.Clear();
+
+		// fetch light
+		// light_buffer[chunk_xyz_extended15_to_index(0, 0, 0)].SetSunlight(15);
+		for (int8_t y = -15; y < (int8_t)kChunkSize + 15; ++y)
+			for (int8_t z = -15; z < (int8_t)kChunkSize + 15; ++z)
+				for (int8_t x = -15; x < (int8_t)kChunkSize + 15; ++x) {
+					Light light = get_light(x, y, z);
+					light_buffer[chunk_xyz_extended15_to_index(x, y, z)] = light;
+					if (light_interfere(x, y, z, light.GetSunlight()))
+						sunlight_queue.push({{x, y, z}, light.GetSunlight()});
+					// if (light_interfere(x, y, z, light.GetTorchlight()))
+					//	torchlight_queue.Push({{x, y, z}, light.GetTorchlight()});
+				}
+		initial_sunlight_bfs(light_buffer, &sunlight_queue);
+		//  m_chunk_ptr->PushLight(version, light_buffer);
+	}
 
 	std::vector<MeshGenInfo> meshes;
 	{
 		thread_local static Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6];
-		generate_face_lights(face_lights);
+		generate_face_lights(light_buffer, face_lights);
 		meshes = generate_mesh(face_lights);
 	}
 	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
@@ -325,18 +432,16 @@ void ChunkMesher::Run() {
 	glm::i32vec3 base_position = (glm::i32vec3)m_chunk_ptr->GetPosition() * (int32_t)Chunk::kSize;
 	// erase previous meshes
 	std::vector<std::unique_ptr<ChunkMeshHandle>> mesh_handles(meshes.size());
-	// spdlog::info("Chunk {} meshed with {} meshes", glm::to_string(m_chunk_ptr->GetPosition()), meshes.size());
+	// spdlog::info("Chunk {} (version {}) meshed with {} meshes", glm::to_string(m_chunk_ptr->GetPosition()),
+	// version,meshes.size());
 	for (uint32_t i = 0; i < meshes.size(); ++i) {
 		auto &info = meshes[i];
 		mesh_handles[i] = world_renderer_ptr->GetChunkRenderer()->PushMesh(
 		    info.vertices, info.indices,
 		    {(fAABB)((i32AABB)info.aabb + base_position), base_position, (uint32_t)info.transparent});
 	}
-	{
-		std::scoped_lock lock{m_chunk_ptr->m_mesh_mutex};
-		std::swap(m_chunk_ptr->m_mesh_handles, mesh_handles);
-	}
-	m_chunk_ptr->SetMeshedFlag();
+	// Push mesh to chunk
+	m_chunk_ptr->SwapMesh(version, mesh_handles);
 	if (!mesh_handles.empty())
 		MeshEraser{std::move(mesh_handles)}.Run();
 }
