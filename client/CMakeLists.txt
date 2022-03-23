@@ -50,7 +50,9 @@ add_executable(CubeCraft3_client
         include/client/WorkerBase.hpp
         include/client/MeshEraser.hpp
         src/DepthHierarchy.cpp
-        include/client/DepthHierarchy.hpp src/ChunkLighter.cpp src/ChunkLighter.hpp)
+        include/client/DepthHierarchy.hpp
+        src/ChunkLighter.cpp
+        include/client/ChunkLighter.hpp)
 
 target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
 target_include_directories(CubeCraft3_client PRIVATE include)

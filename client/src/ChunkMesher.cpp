@@ -394,11 +394,10 @@ void ChunkMesher::Run() {
 
 	static thread_local std::queue<ChunkMesher::LightEntry> sunlight_queue;
 	if (m_init_light) {
-		/*m_chunk_ptr->PendLightVersion();
-		uint64_t version = m_chunk_ptr->FetchLightVersion();
-		if (!version)
-		    return;*/
-		// torchlight_queue.Clear();
+		m_chunk_ptr->PendLightVersion();
+		uint64_t light_version = m_chunk_ptr->FetchLightVersion();
+		if (!light_version)
+			return;
 
 		// fetch light
 		// light_buffer[chunk_xyz_extended15_to_index(0, 0, 0)].SetSunlight(15);
@@ -413,7 +412,7 @@ void ChunkMesher::Run() {
 					//	torchlight_queue.Push({{x, y, z}, light.GetTorchlight()});
 				}
 		initial_sunlight_bfs(light_buffer, &sunlight_queue);
-		//  m_chunk_ptr->PushLight(version, light_buffer);
+		m_chunk_ptr->PushLight(light_version, light_buffer);
 	}
 
 	std::vector<MeshGenInfo> meshes;
