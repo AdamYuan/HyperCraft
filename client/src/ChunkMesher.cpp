@@ -48,8 +48,7 @@ static inline constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
 
 template <typename T, typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
 static inline constexpr bool light_interfere(T x, T y, T z, LightLvl lvl) {
-	if (lvl <= 1 || x < -15 || x >= (int32_t)kChunkSize + 15 || y < -15 || y >= (int32_t)kChunkSize + 15 || z < -15 ||
-	    z >= (int32_t)kChunkSize + 15)
+	if (lvl <= 1)
 		return false;
 	uint32_t dist = 0;
 	if (x < 0 || x >= kChunkSize)
@@ -61,14 +60,25 @@ static inline constexpr bool light_interfere(T x, T y, T z, LightLvl lvl) {
 	return (uint32_t)lvl >= dist;
 }
 
+template <typename T, typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
+static inline constexpr bool chunk_xyz_extended15_in_bound(T x, T y, T z) {
+	return !(x < -15 || x >= (int32_t)kChunkSize + 15 || y < -15 || y >= (int32_t)kChunkSize + 15 || z < -15 ||
+	         z >= (int32_t)kChunkSize + 15);
+}
+
 void ChunkMesher::initial_sunlight_bfs() {
 	while (!m_light_queue.empty()) {
 		LightEntry e = m_light_queue.front();
 		m_light_queue.pop();
+		if (e.light_lvl <= 1u)
+			continue;
+		--e.light_lvl;
 		for (BlockFace f = 0; f < 6; ++f) {
 			LightEntry nei = e;
 			BlockFaceProceed(glm::value_ptr(nei.position), f);
-			--nei.light_lvl;
+
+			if (!chunk_xyz_extended15_in_bound(nei.position.x, nei.position.y, nei.position.z))
+				continue;
 
 			uint32_t idx = chunk_xyz_extended15_to_index(nei.position.x, nei.position.y, nei.position.z);
 			if (nei.light_lvl > m_light_buffer[idx].GetSunlight() &&
@@ -124,8 +134,6 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						texture_mask[counter] = 0;
 				}
 			}
-
-			// ++x[axis];
 
 			// Generate mesh for texture_mask using lexicographic ordering
 			counter = 0;
@@ -402,22 +410,21 @@ void ChunkMesher::Run() {
 	if (m_init_light) {
 		m_chunk_ptr->PendLightVersion();
 		uint64_t light_version = m_chunk_ptr->FetchLightVersion();
-		if (!light_version)
-			return;
-
-		// TODO: optimize this
-		for (int8_t y = -15; y < (int8_t)kChunkSize + 15; ++y)
-			for (int8_t z = -15; z < (int8_t)kChunkSize + 15; ++z)
-				for (int8_t x = -15; x < (int8_t)kChunkSize + 15; ++x) {
-					Light light = get_light(x, y, z);
-					m_light_buffer[chunk_xyz_extended15_to_index(x, y, z)] = light;
-					if (light_interfere(x, y, z, light.GetSunlight()))
-						m_light_queue.push({{x, y, z}, light.GetSunlight()});
-					// if (light_interfere(x, y, z, light.GetTorchlight()))
-					//	torchlight_queue.Push({{x, y, z}, light.GetTorchlight()});
-				}
-		initial_sunlight_bfs();
-		m_chunk_ptr->PushLight(light_version, m_light_buffer);
+		if (light_version) {
+			// TODO: optimize this
+			for (int8_t y = -15; y < (int8_t)kChunkSize + 15; ++y)
+				for (int8_t z = -15; z < (int8_t)kChunkSize + 15; ++z)
+					for (int8_t x = -15; x < (int8_t)kChunkSize + 15; ++x) {
+						Light light = get_light(x, y, z);
+						m_light_buffer[chunk_xyz_extended15_to_index(x, y, z)] = light;
+						if (light_interfere(x, y, z, light.GetSunlight()))
+							m_light_queue.push({{x, y, z}, light.GetSunlight()});
+						// if (light_interfere(x, y, z, light.GetTorchlight()))
+						//	torchlight_queue.Push({{x, y, z}, light.GetTorchlight()});
+					}
+			initial_sunlight_bfs();
+			m_chunk_ptr->PushLight(light_version, m_light_buffer);
+		}
 	}
 
 	std::vector<MeshGenInfo> meshes;
