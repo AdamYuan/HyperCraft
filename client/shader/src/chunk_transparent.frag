@@ -1,6 +1,7 @@
 #version 450
 
 layout(set = 0, binding = 0) uniform sampler2DArray uBlockTexture;
+layout(set = 0, binding = 1) uniform sampler3D uLightmapTexture;
 
 // layout(location = 0) in vec3 vPosition;
 layout(location = 1) in flat uint vFace;
@@ -25,7 +26,7 @@ void main() {
 	if (tex.a == 0.0)
 		discard;
 	vec3 color = tex.rgb;
-	color *= vAO * vSunlight;
+	color *= vAO * texture(uLightmapTexture, vec3(vTorchlight, vSunlight, 0.0)).xyz;
 	color *= max(dot(kFaceNormal[vFace], normalize(vec3(10, 5, 3))), 0) * 0.5 + 0.5;
 
 	float z = linearize_depth(gl_FragCoord.z);

@@ -30,6 +30,10 @@ public:
 	                                                   uint32_t mip_level, VkFormat format, VkImageUsageFlags usage,
 	                                                   const std::vector<std::shared_ptr<Queue>> &access_queue = {});
 
+	static std::shared_ptr<Image> CreateTexture3D(const std::shared_ptr<Device> &device, const VkExtent3D &size,
+	                                              uint32_t mip_level, VkFormat format, VkImageUsageFlags usage,
+	                                              const std::vector<std::shared_ptr<Queue>> &access_queue = {});
+
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
 
 	~Image() override;

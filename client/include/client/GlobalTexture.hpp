@@ -17,7 +17,12 @@ private:
 	std::shared_ptr<myvk::ImageView> m_block_view;
 	std::shared_ptr<myvk::Sampler> m_block_sampler;
 
+	std::shared_ptr<myvk::Image> m_lightmap_texture;
+	std::shared_ptr<myvk::ImageView> m_lightmap_view;
+	std::shared_ptr<myvk::Sampler> m_lightmap_sampler;
+
 	void create_block_texture(const std::shared_ptr<myvk::CommandPool> &command_pool);
+	void create_lightmap_texture(const std::shared_ptr<myvk::CommandPool> &command_pool);
 	void create_descriptors(const std::shared_ptr<myvk::Device> &device);
 
 public:

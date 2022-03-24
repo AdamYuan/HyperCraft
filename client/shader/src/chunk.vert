@@ -61,7 +61,7 @@ void main() {
 	vAO = kAOCurve[tex8_face3_ao2_sl4_tl4 & 0x3u];
 	tex8_face3_ao2_sl4_tl4 >>= 2u;
 
-	vSunlight = kSunlightCurve[tex8_face3_ao2_sl4_tl4 & 0xfu];
+	vSunlight = float(tex8_face3_ao2_sl4_tl4 & 0xfu) / 15.0;
 	tex8_face3_ao2_sl4_tl4 >>= 4u;
-	vTorchlight = kTorchlightCurve[tex8_face3_ao2_sl4_tl4 & 0xfu];
+	vTorchlight = float(tex8_face3_ao2_sl4_tl4 & 0xfu) / 15.0;
 }

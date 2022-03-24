@@ -106,6 +106,7 @@ void ChunkMesher::generate_face_lights(
 			if (!block.ShowFace(nei_block))
 				continue;
 
+			// TODO: Optimize this
 			if (!filled_neighbours) {
 				filled_neighbours = true;
 				uint32_t nei_idx = 0;
@@ -345,6 +346,8 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	Block sides[3];
 	bool pass[3];
 
+	// TODO: optimize this
+
 	for (uint32_t v = 0; v < 4; ++v) {
 		for (uint32_t i = 0; i < 3; ++i) {
 			sides[i] = neighbour_blocks[kLookup3[face][v][i]];
@@ -354,7 +357,8 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 		m_ao.Set(v, (!pass[0] && !pass[2] ? 0u : 3u - !pass[0] - !pass[1] - !pass[2]));
 
 		// smooth the LightLvl using the average value
-		uint32_t counter = 1, sunlight_sum = neighbour_lights[kLookup1[face]].GetSunlight(),
+		uint32_t counter = 1;
+		uint32_t sunlight_sum = neighbour_lights[kLookup1[face]].GetSunlight(),
 		         torchlight_sum = neighbour_lights[kLookup1[face]].GetTorchlight();
 		if (pass[0] || pass[2])
 			for (uint32_t i = 0; i < 3; ++i) {
@@ -364,8 +368,8 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 				sunlight_sum += neighbour_lights[kLookup3[face][v][i]].GetSunlight();
 				torchlight_sum += neighbour_lights[kLookup3[face][v][i]].GetTorchlight();
 			}
-		m_light[v].SetSunlight(sunlight_sum / counter);
-		m_light[v].SetTorchlight(torchlight_sum / counter);
+		m_light[v].SetSunlight(sunlight_sum / counter + (sunlight_sum % counter ? 1 : 0));
+		m_light[v].SetTorchlight(torchlight_sum / counter + (torchlight_sum % counter ? 1 : 0));
 		// spdlog::info("face={} torchlight={} sunlight={} ao={}", face, m_light[v].GetTorchlight(),
 		//                m_light[v].GetSunlight(), m_ao[v]);
 	}

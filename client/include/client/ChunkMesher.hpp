@@ -61,10 +61,12 @@ private:
 		AO4 m_ao;
 		void Initialize(BlockFace face, const Block neighbour_blocks[27], const Light neighbour_lights[27]);
 		inline bool GetFlip() const {
-			return (uint32_t)m_ao[0] + m_ao[2] + m_light[1].GetSunlight() + m_light[3].GetSunlight() +
-			           std::max(m_light[1].GetTorchlight(), m_light[3].GetTorchlight()) >
-			       (uint32_t)m_ao[1] + m_ao[3] + m_light[0].GetSunlight() + m_light[2].GetSunlight() +
-			           std::max(m_light[0].GetTorchlight(), m_light[2].GetTorchlight());
+			return std::abs((int32_t)(m_ao[0] + 1) * (m_light[0].GetSunlight() + 1) -
+			                (m_ao[2] + 1) * (m_light[2].GetSunlight() + 1))
+			       // + std::max(m_light[0].GetTorchlight(), m_light[2].GetTorchlight())
+			       < std::abs((int32_t)(m_ao[1] + 1) * (m_light[1].GetSunlight() + 1) -
+			                  (m_ao[3] + 1) * (m_light[3].GetSunlight() + 1));
+			// + std::max(m_light[1].GetTorchlight(), m_light[3].GetTorchlight());
 		}
 		inline bool operator==(Light4 f) const {
 			if (m_ao != f.m_ao)
@@ -91,7 +93,8 @@ private:
 		bool transparent;
 	};
 
-	void generate_face_lights(const Light *light_buffer, Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
+	void generate_face_lights(const Light *light_buffer,
+	                          Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
 
 	std::vector<MeshGenInfo>
 	generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;

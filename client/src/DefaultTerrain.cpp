@@ -273,7 +273,8 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 	m_height_noise_cache->GenUniformGrid2D(height_output, base_x, base_z, Chunk::kSize, Chunk::kSize,
 	                                       kHeightNoiseFrequency, (int)GetSeed());
 
-	std::vector<float> surface_x_vec, surface_y_vec, surface_z_vec;
+	thread_local static float surface_query_x[kChunkSize * kChunkSize], surface_query_y[kChunkSize * kChunkSize],
+	    surface_query_z[kChunkSize * kChunkSize];
 	info->max_height = INT32_MIN;
 	for (uint32_t index = 0, x, z; index < kChunkSize * kChunkSize; ++index) {
 		x = index % kChunkSize;
@@ -286,22 +287,30 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		    get_biome(biome_precipitation_cell_output[index], biome_temperature_cell_output[index]);
 		info->is_ocean[index] = height_output[index] <= 0.0f;
 
-		surface_x_vec.push_back(float(x) * kCaveNoiseFrequency);
-		surface_z_vec.push_back(float(z) * kCaveNoiseFrequency);
-		surface_y_vec.push_back(float(info->height_map[index]) * kCaveNoiseFrequency);
+		surface_query_x[index] = float(x) * kCaveNoiseFrequency;
+		surface_query_z[index] = float(z) * kCaveNoiseFrequency;
+		surface_query_y[index] = float(info->height_map[index]) * kCaveNoiseFrequency;
 	}
 
 	thread_local static float surface_cave_output[kChunkSize * kChunkSize];
-	m_cave_noise->GenPositionArray3D(surface_cave_output, kChunkSize * kChunkSize, surface_x_vec.data(),
-	                                 surface_y_vec.data(), surface_z_vec.data(), (float)base_x * kCaveNoiseFrequency,
-	                                 0.0f, (float)base_z * kCaveNoiseFrequency, (int)GetSeed());
+	// spdlog::info("{} {} {}", surface_x_vec.size(), surface_z_vec.size(), surface_y_vec.size());
+	m_cave_noise->GenPositionArray3D(surface_cave_output, kChunkSize * kChunkSize, surface_query_x, surface_query_y,
+	                                 surface_query_z, (float)base_x * kCaveNoiseFrequency, 0.0f,
+	                                 (float)base_z * kCaveNoiseFrequency, (int)GetSeed());
 
 	// Generate decorations
 	std::minstd_rand rand_gen((uint32_t)cash(pos.x, pos.y));
-	for (uint32_t index = 0; index < kChunkSize * kChunkSize; ++index) {
+	for (uint32_t index = 0, query_index = 0; index < kChunkSize * kChunkSize; ++index) {
 		uint16_t rand = rand_gen();
 		info->meta[index] = rand;
-		info->is_ground[index] = surface_cave_output[index] < 0.0f;
+
+		if constexpr (!Block{Blocks::kWater, 0}.GetDirectLightPass()) {
+			if (info->is_ocean[index] && info->height_map[index] < 0)
+				info->is_ground[index] = false;
+			else
+				info->is_ground[index] = surface_cave_output[index] < 0.0f;
+		} else
+			info->is_ground[index] = surface_cave_output[index] < 0.0f;
 
 		int32_t x = (int32_t)(index % kChunkSize), z = (int32_t)(index / kChunkSize), y = info->height_map[index];
 
@@ -359,6 +368,12 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 	thread_local static float deep_cave_output[kTestDepth];
 	std::copy(std::begin(info->height_map), std::end(info->height_map), info->light_map);
 	for (uint32_t index = 0; index < kChunkSize * kChunkSize; ++index) {
+		if constexpr (!Block{Blocks::kWater, 0}.GetDirectLightPass()) {
+			if (info->is_ocean[index] && info->height_map[index] < 0) {
+				info->light_map[index] = 0;
+				continue;
+			}
+		}
 		if (!info->is_ground[index]) {
 			int32_t x = (int32_t)(index % kChunkSize) + base_x, z = (int32_t)(index / kChunkSize) + base_z,
 			        &y = info->light_map[index];

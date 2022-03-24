@@ -229,7 +229,7 @@ private:
 	    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), false, false},    //
 	    {"Ice", BLOCK_TEXTURE_SAME(BlockTextures::kIce), true, false},              //
 	    {"Sandstone", BLOCK_TEXTURE_SAME(BlockTextures::kSandstone), false, false}, //
-	    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), true, true},           //
+	    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), true, false},          //
 	    BLOCK_PROPERTY_META_ARRAY("Leaves", kLeavesProperties),
 	    BLOCK_PROPERTY_META_FUNCTION("Log", get_log_property),
 	    BLOCK_PROPERTY_META_ARRAY("Plank", kPlankProperties),
