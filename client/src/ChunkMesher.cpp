@@ -11,6 +11,8 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+thread_local std::queue<ChunkMesher::LightEntry> ChunkMesher::m_light_queue;
+
 template <typename T, typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
 static inline constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
 	bool x_inside = 0 <= x && x < kChunkSize, y_inside = 0 <= y && y < kChunkSize, z_inside = 0 <= z && z < kChunkSize;
