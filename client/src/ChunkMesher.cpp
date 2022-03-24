@@ -12,7 +12,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 template <typename T, typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
-static constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
+static inline constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
 	bool x_inside = 0 <= x && x < kChunkSize, y_inside = 0 <= y && y < kChunkSize, z_inside = 0 <= z && z < kChunkSize;
 	uint32_t bits = x_inside | (y_inside << 1u) | (z_inside << 2u);
 	if (bits == 7u)
@@ -45,10 +45,8 @@ static constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
 }
 
 template <typename T, typename = std::enable_if_t<std::is_integral_v<T> && std::is_signed_v<T>>>
-static constexpr bool light_interfere(T x, T y, T z, LightLvl lvl) {
-	if (lvl <= 1)
-		return false;
-	if (x < -15 || x >= (int32_t)kChunkSize + 15 || y < -15 || y >= (int32_t)kChunkSize + 15 || z < -15 ||
+static inline constexpr bool light_interfere(T x, T y, T z, LightLvl lvl) {
+	if (lvl <= 1 || x < -15 || x >= (int32_t)kChunkSize + 15 || y < -15 || y >= (int32_t)kChunkSize + 15 || z < -15 ||
 	    z >= (int32_t)kChunkSize + 15)
 		return false;
 	uint32_t dist = 0;
@@ -61,70 +59,28 @@ static constexpr bool light_interfere(T x, T y, T z, LightLvl lvl) {
 	return (uint32_t)lvl >= dist;
 }
 
-void ChunkMesher::initial_sunlight_bfs(Light *light_buffer, std::queue<LightEntry> *queue) const {
-	while (!queue->empty()) {
-		LightEntry e = queue->front();
-		queue->pop();
+void ChunkMesher::initial_sunlight_bfs() {
+	while (!m_light_queue.empty()) {
+		LightEntry e = m_light_queue.front();
+		m_light_queue.pop();
 		for (BlockFace f = 0; f < 6; ++f) {
 			LightEntry nei = e;
 			BlockFaceProceed(glm::value_ptr(nei.position), f);
 			--nei.light_lvl;
 
-			if (light_interfere(nei.position.x, nei.position.y, nei.position.z, nei.light_lvl) &&
+			uint32_t idx = chunk_xyz_extended15_to_index(nei.position.x, nei.position.y, nei.position.z);
+			if (nei.light_lvl > m_light_buffer[idx].GetSunlight() &&
 			    get_block(nei.position.x, nei.position.y, nei.position.z).GetIndirectLightPass()) {
-				uint32_t idx = chunk_xyz_extended15_to_index(nei.position.x, nei.position.y, nei.position.z);
-				if (nei.light_lvl > light_buffer[idx].GetSunlight()) {
-					light_buffer[idx].SetSunlight(nei.light_lvl);
-					queue->push(nei);
+				m_light_buffer[idx].SetSunlight(nei.light_lvl);
+				if (light_interfere(nei.position.x, nei.position.y, nei.position.z, nei.light_lvl)) {
+					m_light_queue.push(nei);
 				}
 			}
 		}
 	}
 }
 
-void ChunkMesher::generate_face_lights(
-    const Light *light_buffer, ChunkMesher::Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
-
-	thread_local static Block neighbour_blocks[27];
-	thread_local static Light neighbour_lights[27];
-	for (uint32_t index = 0; index < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++index) {
-		int_fast8_t pos[3];
-		Chunk::Index2XYZ(index, pos);
-
-		Block block;
-		if ((block = m_chunk_ptr->GetBlock(index)).GetID() == Blocks::kAir)
-			continue;
-
-		bool filled_neighbours = false;
-
-		for (BlockFace face = 0; face < 6; ++face) {
-			int_fast8_t nei[3] = {pos[0], pos[1], pos[2]};
-			BlockFaceProceed(nei, face);
-
-			Block nei_block = get_block(nei[0], nei[1], nei[2]);
-
-			if (!block.ShowFace(nei_block))
-				continue;
-
-			// TODO: Optimize this
-			if (!filled_neighbours) {
-				filled_neighbours = true;
-				uint32_t nei_idx = 0;
-				for (auto x = (int_fast8_t)(pos[0] - 1); x <= pos[0] + 1; ++x)
-					for (auto y = (int_fast8_t)(pos[1] - 1); y <= pos[1] + 1; ++y)
-						for (auto z = (int_fast8_t)(pos[2] - 1); z <= pos[2] + 1; ++z, ++nei_idx) {
-							neighbour_blocks[nei_idx] = get_block(x, y, z);
-							neighbour_lights[nei_idx] = light_buffer[chunk_xyz_extended15_to_index(x, y, z)];
-						}
-			}
-			face_lights[index][face].Initialize(face, neighbour_blocks, neighbour_lights);
-			// spdlog::info("face={}, (x, y, z)=({}, {}, {})", face, pos[0], pos[1], pos[2]);
-		}
-	}
-}
-
-std::vector<ChunkMesher::MeshGenInfo>
-ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const {
+std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 	std::vector<MeshGenInfo> ret;
 
 	MeshGenInfo opaque_mesh_info, transparent_mesh_info;
@@ -154,16 +110,14 @@ ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize 
 						BlockFace f = axis << 1;
 						texture_mask[counter] = a.GetTexture(f);
 						face_inv_mask[counter] = false;
-						light_mask[counter] = face_lights[Chunk::XYZ2Index(x[0] + q[0], x[1] + q[1], x[2] + q[2])][f];
-						// spdlog::info("axis = {}, face={}, ao={}, (x, y, z)=({}, {}, {})", axis, f,
-						//             light_mask[counter].m_ao.m_data, x[0] + q[0], x[1] + q[1], x[2] + q[2]);
+						init_light4(light_mask + counter, f, (int_fast8_t)(x[0] + q[0]), (int_fast8_t)(x[1] + q[1]),
+						            (int_fast8_t)(x[2] + q[2]));
 					} else if (Chunk::kSize != x[axis] && b.ShowFace(a)) {
 						BlockFace f = (axis << 1) | 1;
 						texture_mask[counter] = b.GetTexture(f);
 						face_inv_mask[counter] = true;
-						light_mask[counter] = face_lights[Chunk::XYZ2Index(x[0], x[1], x[2])][f];
-						// spdlog::info("axis = {}, inv face={}, ao={}, (x, y, z)=({}, {}, {})", axis, f,
-						//               light_mask[counter].m_ao.m_data, x[0], x[1], x[2]);
+						init_light4(light_mask + counter, f, (int_fast8_t)(x[0]), (int_fast8_t)(x[1]),
+						            (int_fast8_t)(x[2]));
 					} else
 						texture_mask[counter] = 0;
 				}
@@ -319,8 +273,7 @@ ChunkMesher::generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize 
 	return ret;
 }
 
-void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_blocks[27],
-                                     const Light neighbour_lights[27]) {
+void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int_fast8_t y, int_fast8_t z) const {
 	//  structure of the neighbour arrays
 	// y
 	// |
@@ -337,46 +290,94 @@ void ChunkMesher::Light4::Initialize(BlockFace face, const Block neighbour_block
 	//    \   2   11  20
 	//     z
 
-	constexpr uint32_t kLookup3[6][4][3] = {
+	/*constexpr uint32_t kLookup3[6][4][3] = {
 	    {{21, 18, 19}, {21, 24, 25}, {23, 26, 25}, {23, 20, 19}}, {{3, 0, 1}, {5, 2, 1}, {5, 8, 7}, {3, 6, 7}},
 	    {{15, 6, 7}, {17, 8, 7}, {17, 26, 25}, {15, 24, 25}},     {{9, 0, 1}, {9, 18, 19}, {11, 20, 19}, {11, 2, 1}},
 	    {{11, 2, 5}, {11, 20, 23}, {17, 26, 23}, {17, 8, 5}},     {{9, 0, 3}, {15, 6, 3}, {15, 24, 21}, {9, 18, 21}}};
-	constexpr uint32_t kLookup1[6] = {22, 4, 16, 10, 14, 12};
+	constexpr uint32_t kLookup1[6] = {22, 4, 16, 10, 14, 12};*/
 
-	Block sides[3];
+	constexpr int_fast8_t kLookup1v[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+	constexpr int_fast8_t kLookup3v[6][4][3][3] = {{
+	                                                   {{1, 0, -1}, {1, -1, -1}, {1, -1, 0}},
+	                                                   {{1, 0, -1}, {1, 1, -1}, {1, 1, 0}},
+	                                                   {{1, 0, 1}, {1, 1, 1}, {1, 1, 0}},
+	                                                   {{1, 0, 1}, {1, -1, 1}, {1, -1, 0}},
+	                                               },
+	                                               {
+	                                                   {{-1, 0, -1}, {-1, -1, -1}, {-1, -1, 0}},
+	                                                   {{-1, 0, 1}, {-1, -1, 1}, {-1, -1, 0}},
+	                                                   {{-1, 0, 1}, {-1, 1, 1}, {-1, 1, 0}},
+	                                                   {{-1, 0, -1}, {-1, 1, -1}, {-1, 1, 0}},
+	                                               },
+	                                               {
+	                                                   {{0, 1, -1}, {-1, 1, -1}, {-1, 1, 0}},
+	                                                   {{0, 1, 1}, {-1, 1, 1}, {-1, 1, 0}},
+	                                                   {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}},
+	                                                   {{0, 1, -1}, {1, 1, -1}, {1, 1, 0}},
+	                                               },
+	                                               {
+	                                                   {{0, -1, -1}, {-1, -1, -1}, {-1, -1, 0}},
+	                                                   {{0, -1, -1}, {1, -1, -1}, {1, -1, 0}},
+	                                                   {{0, -1, 1}, {1, -1, 1}, {1, -1, 0}},
+	                                                   {{0, -1, 1}, {-1, -1, 1}, {-1, -1, 0}},
+	                                               },
+	                                               {
+	                                                   {{0, -1, 1}, {-1, -1, 1}, {-1, 0, 1}},
+	                                                   {{0, -1, 1}, {1, -1, 1}, {1, 0, 1}},
+	                                                   {{0, 1, 1}, {1, 1, 1}, {1, 0, 1}},
+	                                                   {{0, 1, 1}, {-1, 1, 1}, {-1, 0, 1}},
+	                                               },
+	                                               {{{0, -1, -1}, {-1, -1, -1}, {-1, 0, -1}},
+	                                                {{0, 1, -1}, {-1, 1, -1}, {-1, 0, -1}},
+	                                                {{0, 1, -1}, {1, 1, -1}, {1, 0, -1}},
+	                                                {{0, -1, -1}, {1, -1, -1}, {1, 0, -1}}}};
+
 	bool pass[3];
 
 	// TODO: optimize this
 
 	for (uint32_t v = 0; v < 4; ++v) {
-		for (uint32_t i = 0; i < 3; ++i) {
-			sides[i] = neighbour_blocks[kLookup3[face][v][i]];
-			pass[i] = sides[i].GetIndirectLightPass();
-		}
+		pass[0] = get_block(x + kLookup3v[face][v][0][0], y + kLookup3v[face][v][0][1], z + kLookup3v[face][v][0][2])
+		              .GetIndirectLightPass();
+		pass[1] = get_block(x + kLookup3v[face][v][1][0], y + kLookup3v[face][v][1][1], z + kLookup3v[face][v][1][2])
+		              .GetIndirectLightPass();
+		pass[2] = get_block(x + kLookup3v[face][v][2][0], y + kLookup3v[face][v][2][1], z + kLookup3v[face][v][2][2])
+		              .GetIndirectLightPass();
 
-		m_ao.Set(v, (!pass[0] && !pass[2] ? 0u : 3u - !pass[0] - !pass[1] - !pass[2]));
+		light4->m_ao.Set(v, (!pass[0] && !pass[2] ? 0u : 3u - !pass[0] - !pass[1] - !pass[2]));
 
 		// smooth the LightLvl using the average value
 		uint32_t counter = 1;
-		uint32_t sunlight_sum = neighbour_lights[kLookup1[face]].GetSunlight(),
-		         torchlight_sum = neighbour_lights[kLookup1[face]].GetTorchlight();
-		if (pass[0] || pass[2])
-			for (uint32_t i = 0; i < 3; ++i) {
-				if (!pass[i])
-					continue;
+		Light light = m_light_buffer[chunk_xyz_extended15_to_index(x + kLookup1v[face][0], y + kLookup1v[face][1],
+		                                                           z + kLookup1v[face][2])];
+		uint32_t sunlight_sum = light.GetSunlight(), torchlight_sum = light.GetTorchlight();
+		if (pass[0] || pass[2]) {
+			if (pass[0]) {
 				++counter;
-				sunlight_sum += neighbour_lights[kLookup3[face][v][i]].GetSunlight();
-				torchlight_sum += neighbour_lights[kLookup3[face][v][i]].GetTorchlight();
+				light = m_light_buffer[chunk_xyz_extended15_to_index(
+				    x + kLookup3v[face][v][0][0], y + kLookup3v[face][v][0][1], z + kLookup3v[face][v][0][2])];
+				sunlight_sum += light.GetSunlight();
+				torchlight_sum += light.GetTorchlight();
 			}
-		m_light[v].SetSunlight(sunlight_sum / counter + (sunlight_sum % counter ? 1 : 0));
-		m_light[v].SetTorchlight(torchlight_sum / counter + (torchlight_sum % counter ? 1 : 0));
-		// spdlog::info("face={} torchlight={} sunlight={} ao={}", face, m_light[v].GetTorchlight(),
-		//                m_light[v].GetSunlight(), m_ao[v]);
+			if (pass[1]) {
+				++counter;
+				light = m_light_buffer[chunk_xyz_extended15_to_index(
+				    x + kLookup3v[face][v][1][0], y + kLookup3v[face][v][1][1], z + kLookup3v[face][v][1][2])];
+				sunlight_sum += light.GetSunlight();
+				torchlight_sum += light.GetTorchlight();
+			}
+			if (pass[2]) {
+				++counter;
+				light = m_light_buffer[chunk_xyz_extended15_to_index(
+				    x + kLookup3v[face][v][2][0], y + kLookup3v[face][v][2][1], z + kLookup3v[face][v][2][2])];
+				sunlight_sum += light.GetSunlight();
+				torchlight_sum += light.GetTorchlight();
+			}
+		}
+		light4->m_light[v].SetSunlight(sunlight_sum / counter + (sunlight_sum % counter ? 1 : 0));
+		light4->m_light[v].SetTorchlight(torchlight_sum / counter + (torchlight_sum % counter ? 1 : 0));
 	}
 }
-
-// static thread_local LightQueue sunlight_queue{}; //, torchlight_queue{};
-static thread_local Light light_buffer[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30)]{};
 
 void ChunkMesher::Run() {
 	if (!lock())
@@ -396,35 +397,29 @@ void ChunkMesher::Run() {
 			return;
 		}
 
-	static thread_local std::queue<ChunkMesher::LightEntry> sunlight_queue;
 	if (m_init_light) {
 		m_chunk_ptr->PendLightVersion();
 		uint64_t light_version = m_chunk_ptr->FetchLightVersion();
 		if (!light_version)
 			return;
 
-		// fetch light
-		// light_buffer[chunk_xyz_extended15_to_index(0, 0, 0)].SetSunlight(15);
+		// TODO: optimize this
 		for (int8_t y = -15; y < (int8_t)kChunkSize + 15; ++y)
 			for (int8_t z = -15; z < (int8_t)kChunkSize + 15; ++z)
 				for (int8_t x = -15; x < (int8_t)kChunkSize + 15; ++x) {
 					Light light = get_light(x, y, z);
-					light_buffer[chunk_xyz_extended15_to_index(x, y, z)] = light;
+					m_light_buffer[chunk_xyz_extended15_to_index(x, y, z)] = light;
 					if (light_interfere(x, y, z, light.GetSunlight()))
-						sunlight_queue.push({{x, y, z}, light.GetSunlight()});
+						m_light_queue.push({{x, y, z}, light.GetSunlight()});
 					// if (light_interfere(x, y, z, light.GetTorchlight()))
 					//	torchlight_queue.Push({{x, y, z}, light.GetTorchlight()});
 				}
-		initial_sunlight_bfs(light_buffer, &sunlight_queue);
-		m_chunk_ptr->PushLight(light_version, light_buffer);
+		initial_sunlight_bfs();
+		m_chunk_ptr->PushLight(light_version, m_light_buffer);
 	}
 
 	std::vector<MeshGenInfo> meshes;
-	{
-		thread_local static Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6];
-		generate_face_lights(light_buffer, face_lights);
-		meshes = generate_mesh(face_lights);
-	}
+	{ meshes = generate_mesh(); }
 	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
 	if (!world_ptr)
 		return;

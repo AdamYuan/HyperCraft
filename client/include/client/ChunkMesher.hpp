@@ -29,22 +29,9 @@ private:
 		glm::i8vec3 position;
 		LightLvl light_lvl;
 	};
-	class LightQueue {
-	private:
-		LightEntry m_entries[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30)]{};
-		LightEntry *m_back = m_entries, *m_top = m_entries;
+	inline static thread_local Light m_light_buffer[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30)]{};
+	inline static thread_local std::queue<LightEntry> m_light_queue{};
 
-	public:
-		inline void Clear() {
-			m_back = m_entries;
-			m_top = m_entries;
-		}
-		inline bool Empty() const { return m_back == m_top; }
-		inline LightEntry Pop() { return *(m_back++); }
-		inline void Push(const LightEntry &e) { *(m_top++) = e; }
-	};
-
-	void initial_sunlight_bfs(Light *light_buffer, std::queue<LightEntry> *queue) const;
 	struct AO4 { // compressed ambient occlusion data for 4 vertices (a face)
 		uint8_t m_data;
 		inline uint8_t Get(uint32_t i) const { return (m_data >> (i << 1u)) & 0x3u; }
@@ -59,7 +46,6 @@ private:
 	struct Light4 { // compressed light data for 4 vertices (a face)
 		Light m_light[4];
 		AO4 m_ao;
-		void Initialize(BlockFace face, const Block neighbour_blocks[27], const Light neighbour_lights[27]);
 		inline bool GetFlip() const {
 			return std::abs((int32_t)(m_ao[0] + 1) * (m_light[0].GetSunlight() + 1) -
 			                (m_ao[2] + 1) * (m_light[2].GetSunlight() + 1))
@@ -93,11 +79,9 @@ private:
 		bool transparent;
 	};
 
-	void generate_face_lights(const Light *light_buffer,
-	                          Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
-
-	std::vector<MeshGenInfo>
-	generate_mesh(const Light4 face_lights[Chunk::kSize * Chunk::kSize * Chunk::kSize][6]) const;
+	void initial_sunlight_bfs();
+	void init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int_fast8_t y, int_fast8_t z) const;
+	std::vector<MeshGenInfo> generate_mesh() const;
 };
 
 #endif

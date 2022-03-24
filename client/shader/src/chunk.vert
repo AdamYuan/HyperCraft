@@ -25,14 +25,6 @@ struct MeshInfo {
 layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
 
 const float kAOCurve[4] = {0.54, 0.7569, 0.87, 1.0};
-const float kSunlightCurve[16] = {
-
-    0.010000, 0.010020, 0.010313, 0.011584, 0.015006, 0.022222, 0.035344, 0.056953,
-    0.090100, 0.138304, 0.205556, 0.296313, 0.415504, 0.568526, 0.761246, 1.000000,
-};
-
-const float kTorchlightCurve[16] = {0.000000, 0.100000, 0.200000, 0.300000, 0.400000, 0.500000, 0.600000, 0.700000,
-                                    0.800000, 0.900000, 1.000000, 1.100000, 1.200000, 1.300000, 1.400000, 1.500000};
 
 void main() {
 	uint x10_y10_z10 = aVertData.x, tex8_face3_ao2_sl4_tl4 = aVertData.y;
