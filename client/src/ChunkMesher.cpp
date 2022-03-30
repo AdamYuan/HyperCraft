@@ -216,7 +216,6 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 #include <client/texture/block_texture_transparency.inl>
 						MeshGenInfo &info =
 						    kBlockTextureTransparency[quad_texture.GetID()] ? transparent_mesh_info : opaque_mesh_info;
-						// TODO: switch it when transparent
 						// if indices would exceed, restart
 						uint16_t cur_vertex = info.vertices.size();
 						if (cur_vertex + 4 > UINT16_MAX) {
@@ -427,8 +426,7 @@ void ChunkMesher::Run() {
 		}
 	}
 
-	std::vector<MeshGenInfo> meshes;
-	{ meshes = generate_mesh(); }
+	std::vector<MeshGenInfo> meshes = generate_mesh();
 	std::shared_ptr<World> world_ptr = m_chunk_ptr->LockWorld();
 	if (!world_ptr)
 		return;

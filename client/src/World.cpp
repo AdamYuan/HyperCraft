@@ -39,7 +39,7 @@ void World::Update(const glm::vec3 &position) {
 
 	static glm::i16vec3 last_chunk_pos = {INT16_MAX, INT16_MAX, INT16_MAX};
 	glm::i16vec3 current_chunk_pos =
-	    (glm::i16vec3)position / (int16_t)Chunk::kSize - (glm::i16vec3)glm::lessThan(position, {0.0f, 0.0f, 0.0f});
+	    (glm::i32vec3)position / (int32_t)Chunk::kSize - (glm::i32vec3)glm::lessThan(position, {0.0f, 0.0f, 0.0f});
 
 	// if (last_chunk_pos.x == INT16_MAX) {
 	if (current_chunk_pos != last_chunk_pos) {
