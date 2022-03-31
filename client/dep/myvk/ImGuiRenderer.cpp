@@ -31,8 +31,7 @@ void ImGuiRenderer::create_font_texture(const std::shared_ptr<myvk::CommandPool>
 	{
 		std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(command_pool->GetDevicePtr());
 		std::shared_ptr<myvk::Buffer> staging_buffer =
-		    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), data_size);
-		staging_buffer->UpdateData(data, data + data_size);
+		    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), data, data + data_size);
 
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 		command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -283,26 +282,27 @@ void ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &
 	{
 		VkDeviceSize vertex_size = draw_data->TotalVtxCount * sizeof(ImDrawVert);
 		VkDeviceSize index_size = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
-		if (!vertex_buffer || vertex_buffer->GetSize() < vertex_size || vertex_buffer->GetSize() > vertex_size * 4)
-			vertex_buffer = myvk::Buffer::Create(device, vertex_size * 2, VMA_MEMORY_USAGE_CPU_TO_GPU,
-			                                     VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-		if (!index_buffer || index_buffer->GetSize() < index_size || index_buffer->GetSize() > index_size * 4)
-			index_buffer = myvk::Buffer::Create(device, index_size * 2, VMA_MEMORY_USAGE_CPU_TO_GPU,
-			                                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-
-		auto *vertex_map = (ImDrawVert *)vertex_buffer->Map();
-		auto *index_map = (ImDrawIdx *)index_buffer->Map();
-
-		for (int i = 0; i < draw_data->CmdListsCount; ++i) {
-			const ImDrawList *cmd_list = draw_data->CmdLists[i];
-			std::copy(cmd_list->VtxBuffer.begin(), cmd_list->VtxBuffer.end(), vertex_map);
-			std::copy(cmd_list->IdxBuffer.begin(), cmd_list->IdxBuffer.end(), index_map);
-			vertex_map += cmd_list->VtxBuffer.Size;
-			index_map += cmd_list->IdxBuffer.Size;
+		if (!vertex_buffer || vertex_buffer->GetSize() < vertex_size || vertex_buffer->GetSize() > vertex_size * 4) {
+			vertex_buffer =
+			    myvk::Buffer::Create(device, vertex_size * 2,
+			                         VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			                         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		}
+		if (!index_buffer || index_buffer->GetSize() < index_size || index_buffer->GetSize() > index_size * 4) {
+			index_buffer = myvk::Buffer::Create(
+			    device, index_size * 2, VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			    VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 		}
 
-		vertex_buffer->Unmap();
-		index_buffer->Unmap();
+		auto *vertex_ptr = (ImDrawVert *)vertex_buffer->GetMappedData();
+		auto *index_ptr = (ImDrawIdx *)index_buffer->GetMappedData();
+		for (int i = 0; i < draw_data->CmdListsCount; ++i) {
+			const ImDrawList *cmd_list = draw_data->CmdLists[i];
+			std::copy(cmd_list->VtxBuffer.begin(), cmd_list->VtxBuffer.end(), vertex_ptr);
+			std::copy(cmd_list->IdxBuffer.begin(), cmd_list->IdxBuffer.end(), index_ptr);
+			vertex_ptr += cmd_list->VtxBuffer.Size;
+			index_ptr += cmd_list->IdxBuffer.Size;
+		}
 	}
 
 	setup_render_state(command_buffer, fb_width, fb_height, current_frame);

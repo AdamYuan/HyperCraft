@@ -50,7 +50,6 @@ private:
 	// Indirect command buffers
 	// draw command count for vkDrawIndexedIndirectCount
 	std::shared_ptr<myvk::Buffer> m_frame_draw_count_buffers[kFrameCount];
-	uint32_t *m_frame_count_ptrs[kFrameCount]{}; // mapped pointer of count buffers
 	// indirect draw commands for vkCmdDrawIndexedIndirectCount (separated with an offset for each pass)
 	std::shared_ptr<myvk::Buffer> m_frame_draw_command_buffers[kFrameCount][kPassCount];
 
@@ -100,8 +99,9 @@ private:
 		std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
 		{
 			std::shared_ptr<myvk::Buffer> mesh_info_buffer =
-			    myvk::Buffer::Create(m_transfer_queue->GetDevicePtr(), staging->GetSize(), VMA_MEMORY_USAGE_GPU_ONLY,
-			                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+			    myvk::Buffer::Create(m_transfer_queue->GetDevicePtr(), staging->GetSize(), 0,
+			                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			                         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
 			command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 			command_buffer->CmdCopy(staging, mesh_info_buffer, {{0, 0, staging->GetSize()}});
 			// TODO: Queue ownership transfer (Maybe)
@@ -154,12 +154,12 @@ public:
 	       VkDeviceSize index_buffer_size) {
 		auto ret = std::make_shared<MeshCluster>();
 		ret->m_transfer_queue = transfer_queue;
-		ret->m_vertex_buffer =
-		    myvk::Buffer::CreateDedicated(transfer_queue->GetDevicePtr(), vertex_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
-		                                  VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-		ret->m_index_buffer =
-		    myvk::Buffer::CreateDedicated(transfer_queue->GetDevicePtr(), index_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
-		                                  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		ret->m_vertex_buffer = myvk::Buffer::Create(
+		    transfer_queue->GetDevicePtr(), vertex_buffer_size, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+		    VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+		ret->m_index_buffer = myvk::Buffer::Create(transfer_queue->GetDevicePtr(), index_buffer_size,
+		                                           VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+		                                           VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
 
 		VmaVirtualBlockCreateInfo virtual_block_create_info = {};
 		virtual_block_create_info.size = vertex_buffer_size;
@@ -175,9 +175,9 @@ public:
 		                                 {{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, (2 + kPassCount) * kFrameCount}});
 		for (uint32_t i = 0; i < kFrameCount; ++i) {
 			ret->m_frame_draw_count_buffers[i] = myvk::Buffer::Create(
-			    transfer_queue->GetDevicePtr(), sizeof(uint32_t) * kPassCount, VMA_MEMORY_USAGE_CPU_TO_GPU,
-			    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
-			ret->m_frame_count_ptrs[i] = (uint32_t *)ret->m_frame_draw_count_buffers[i]->Map();
+			    transfer_queue->GetDevicePtr(), sizeof(uint32_t) * kPassCount,
+			    VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+			    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO);
 			ret->m_frame_descriptor_sets[i] =
 			    myvk::DescriptorSet::Create(ret->m_descriptor_pool, descriptor_set_layout);
 			ret->m_frame_descriptor_sets[i]->UpdateStorageBuffer(ret->m_frame_draw_count_buffers[i], 1);
@@ -208,7 +208,10 @@ public:
 		descriptor_set->UpdateStorageBuffer(mesh_info_buffer, 0);
 
 		// reset counters
-		std::fill(m_frame_count_ptrs[current_frame], m_frame_count_ptrs[current_frame] + kPassCount, 0u);
+		{
+			auto count_ptrs = (uint32_t *)m_frame_draw_count_buffers[current_frame]->GetMappedData();
+			std::fill(count_ptrs, count_ptrs + kPassCount, 0u);
+		}
 
 		// check draw_command buffer size
 		VkDeviceSize desired_drawcmd_buffer_size =
@@ -216,9 +219,10 @@ public:
 		for (uint32_t p = 0; p < kPassCount; ++p) {
 			std::shared_ptr<myvk::Buffer> &draw_command_buffer = m_frame_draw_command_buffers[current_frame][p];
 			if ((draw_command_buffer ? draw_command_buffer->GetSize() : 0) < desired_drawcmd_buffer_size) {
-				draw_command_buffer = myvk::Buffer::Create(
-				    m_transfer_queue->GetDevicePtr(), desired_drawcmd_buffer_size, VMA_MEMORY_USAGE_GPU_ONLY,
-				    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+				draw_command_buffer =
+				    myvk::Buffer::Create(m_transfer_queue->GetDevicePtr(), desired_drawcmd_buffer_size, 0,
+				                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+				                         VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE);
 				descriptor_set->UpdateStorageBuffer(draw_command_buffer, 2 + p);
 			}
 		}

@@ -12,9 +12,11 @@ private:
 	VmaAllocation m_allocation{VK_NULL_HANDLE};
 
 public:
-	static std::shared_ptr<Image> Create(const std::shared_ptr<Device> &device, VmaMemoryUsage memory_usage,
-	                                     const VkImageCreateInfo &create_info,
-	                                     const std::vector<std::shared_ptr<Queue>> &access_queues = {});
+	static std::shared_ptr<Image>
+	Create(const std::shared_ptr<Device> &device, const VkImageCreateInfo &create_info,
+	       VmaAllocationCreateFlags allocation_flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+	       VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+	       const std::vector<std::shared_ptr<Queue>> &access_queues = {});
 
 	static uint32_t QueryMipLevel(uint32_t w);
 
@@ -26,8 +28,9 @@ public:
 	                                              uint32_t mip_level, VkFormat format, VkImageUsageFlags usage,
 	                                              const std::vector<std::shared_ptr<Queue>> &access_queue = {});
 
-	static std::shared_ptr<Image> CreateTexture2DArray(const std::shared_ptr<Device> &device, const VkExtent2D &size, uint32_t array_layer,
-	                                                   uint32_t mip_level, VkFormat format, VkImageUsageFlags usage,
+	static std::shared_ptr<Image> CreateTexture2DArray(const std::shared_ptr<Device> &device, const VkExtent2D &size,
+	                                                   uint32_t array_layer, uint32_t mip_level, VkFormat format,
+	                                                   VkImageUsageFlags usage,
 	                                                   const std::vector<std::shared_ptr<Queue>> &access_queue = {});
 
 	static std::shared_ptr<Image> CreateTexture3D(const std::shared_ptr<Device> &device, const VkExtent3D &size,

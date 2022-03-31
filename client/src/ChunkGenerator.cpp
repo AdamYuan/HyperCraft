@@ -48,5 +48,5 @@ void ChunkGenerator::Run() {
 			push_worker(ChunkMesher::CreateWithInitialLight(m_chunk_ptr));
 			return;
 		}
-	m_chunk_ptr->SetFullNeighbourFlag();
+	m_chunk_ptr->SetMeshedFlag();
 }

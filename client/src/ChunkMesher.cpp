@@ -391,7 +391,6 @@ void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int
 void ChunkMesher::Run() {
 	if (!lock())
 		return;
-	m_chunk_ptr->SetFullNeighbourFlag();
 
 	if (!m_chunk_ptr->IsGenerated() /* || !m_chunk_ptr->IsLatestLight()*/)
 		return;
@@ -433,6 +432,8 @@ void ChunkMesher::Run() {
 	std::shared_ptr<WorldRenderer> world_renderer_ptr = world_ptr->LockWorldRenderer();
 	if (!world_renderer_ptr)
 		return;
+
+	m_chunk_ptr->SetMeshedFlag();
 
 	glm::i32vec3 base_position = (glm::i32vec3)m_chunk_ptr->GetPosition() * (int32_t)Chunk::kSize;
 	// erase previous meshes

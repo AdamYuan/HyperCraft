@@ -127,11 +127,10 @@ public:
 	// Flags
 	bool IsGenerated() const { return m_generated_flag.load(std::memory_order_acquire); }
 	void SetGeneratedFlag() { m_generated_flag.store(true, std::memory_order_release); }
-	bool IsFullNeighbour() const { return m_full_neighbour_flag.load(std::memory_order_acquire); }
-	void SetFullNeighbourFlag() { m_full_neighbour_flag.store(true, std::memory_order_release); }
+	bool IsMeshed() const { return m_meshed_flag.load(std::memory_order_acquire); }
+	void SetMeshedFlag() { m_meshed_flag.store(true, std::memory_order_release); }
 
 	// Versions
-	static inline constexpr uint64_t GetInitialVersion() { return 0; }
 	inline void PendMeshVersion() { m_mesh_version.Pend(); }
 	inline void PendLightVersion() { m_light_version.Pend(); }
 
@@ -227,7 +226,7 @@ private:
 			return m_done.load(std::memory_order_acquire) == m_pending.load(std::memory_order_acquire);
 		}
 	};
-	std::atomic_bool m_generated_flag{}, m_full_neighbour_flag{};
+	std::atomic_bool m_generated_flag{}, m_meshed_flag{};
 	Version<true> m_mesh_version{}, m_light_version{};
 };
 

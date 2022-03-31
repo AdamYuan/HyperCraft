@@ -59,7 +59,7 @@ void World::Update(const glm::vec3 &position) {
 					                     std::make_move_iterator(meshes.end()));
 				it = m_chunks.erase(it);
 			} else {
-				if (!it->second->IsFullNeighbour())
+				if (!it->second->IsMeshed())
 					new_nei_workers.push_back(ChunkMesher::CreateWithInitialLight(it->second));
 				++it;
 			}

@@ -55,9 +55,11 @@ private:
 		case Biomes::kDesert:
 			return cubic(height, 1.2f, -0.7f, 0.2f) + 0.01f;
 		case Biomes::kForest:
-		case Biomes::kTropicalForest:
-		case Biomes::kBorealForest:
 			return cubic(height, -0.8f, 1.5f, 0.0f) + 0.005f;
+		case Biomes::kTropicalForest:
+			return cubic(height, -0.8f, 1.5f, 0.5f) + 0.005f;
+		case Biomes::kBorealForest:
+			return cubic(height, -0.8f, 1.5f, 0.6f) + 0.005f;
 		default:
 			return 0.0f;
 		}

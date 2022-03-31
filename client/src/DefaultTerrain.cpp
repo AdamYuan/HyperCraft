@@ -164,11 +164,11 @@ void DefaultTerrain::initialize_biome_noise() {
 	m_biome_temperature_noise->SetOffset(100007);
 
 	m_biome_bias_x_remap = FastNoise::New<FastNoise::Remap>();
-	m_biome_bias_x_remap->SetRemap(-1.0, 1.0, -0.5, 0.5);
+	m_biome_bias_x_remap->SetRemap(-1.0, 1.0, -0.4, 0.4);
 	m_biome_bias_x_remap->SetSource(m_biome_precipitation_noise);
 
 	m_biome_bias_y_remap = FastNoise::New<FastNoise::Remap>();
-	m_biome_bias_y_remap->SetRemap(-1.0, 1.0, -0.5, 0.5);
+	m_biome_bias_y_remap->SetRemap(-1.0, 1.0, -0.4, 0.4);
 	m_biome_bias_y_remap->SetSource(m_biome_temperature_noise);
 
 	m_biome_bias_x = FastNoise::New<FastNoise::FractalFBm>();

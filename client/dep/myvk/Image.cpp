@@ -11,8 +11,8 @@ static inline uint32_t simple_ctz(uint32_t x) {
 }
 
 namespace myvk {
-std::shared_ptr<Image> Image::Create(const std::shared_ptr<Device> &device, VmaMemoryUsage memory_usage,
-                                     const VkImageCreateInfo &create_info,
+std::shared_ptr<Image> Image::Create(const std::shared_ptr<Device> &device, const VkImageCreateInfo &create_info,
+                                     VmaAllocationCreateFlags allocation_flags, VmaMemoryUsage memory_usage,
                                      const std::vector<std::shared_ptr<Queue>> &access_queues) {
 	std::shared_ptr<Image> ret = std::make_shared<Image>();
 	ret->m_device_ptr = device;
@@ -38,6 +38,7 @@ std::shared_ptr<Image> Image::Create(const std::shared_ptr<Device> &device, VmaM
 	}
 
 	VmaAllocationCreateInfo alloc_info = {};
+	alloc_info.flags = allocation_flags;
 	alloc_info.usage = memory_usage;
 
 	if (vmaCreateImage(device->GetAllocatorHandle(), &new_info, &alloc_info, &ret->m_image, &ret->m_allocation,
@@ -61,7 +62,8 @@ std::shared_ptr<Image> Image::CreateTexture2D(const std::shared_ptr<Device> &dev
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, VMA_MEMORY_USAGE_GPU_ONLY, create_info, access_queue);
+	return Create(device, create_info, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+	              access_queue);
 }
 
 std::shared_ptr<Image> Image::CreateTexture3D(const std::shared_ptr<Device> &device, const VkExtent3D &size,
@@ -79,7 +81,8 @@ std::shared_ptr<Image> Image::CreateTexture3D(const std::shared_ptr<Device> &dev
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, VMA_MEMORY_USAGE_GPU_ONLY, create_info, access_queue);
+	return Create(device, create_info, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+	              access_queue);
 }
 
 std::shared_ptr<Image> Image::CreateTexture2DArray(const std::shared_ptr<Device> &device, const VkExtent2D &size,
@@ -98,7 +101,8 @@ std::shared_ptr<Image> Image::CreateTexture2DArray(const std::shared_ptr<Device>
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, VMA_MEMORY_USAGE_GPU_ONLY, create_info, access_queue);
+	return Create(device, create_info, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+	              access_queue);
 }
 
 uint32_t Image::QueryMipLevel(uint32_t w) { return simple_ctz(w); }

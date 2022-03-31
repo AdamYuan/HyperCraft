@@ -134,7 +134,7 @@ Application::Application() {
 	m_world = World::Create();
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
-	m_camera->m_speed = 32.0f;
+	m_camera->m_speed = 64.0f;
 	m_world_renderer =
 	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_depth_hierarchy, m_transfer_queue,
 	                          Canvas::kOpaqueSubpass, Canvas::kTransparentSubpass, Canvas::kScreenSubpass);

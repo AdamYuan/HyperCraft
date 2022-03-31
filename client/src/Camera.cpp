@@ -20,8 +20,10 @@ std::shared_ptr<Camera> Camera::Create(const std::shared_ptr<myvk::Device> &devi
 	}
 
 	for (uint32_t i = 0; i < kFrameCount; ++i) {
-		ret->m_uniform_buffers[i] = myvk::Buffer::Create(device, sizeof(UniformData), VMA_MEMORY_USAGE_CPU_TO_GPU,
-		                                                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+		ret->m_uniform_buffers[i] =
+		    myvk::Buffer::Create(device, sizeof(UniformData),
+		                         VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
+		                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO);
 		ret->m_descriptor_sets[i] = myvk::DescriptorSet::Create(ret->m_descriptor_pool, ret->m_descriptor_set_layout);
 		ret->m_descriptor_sets[i]->UpdateUniformBuffer(ret->m_uniform_buffers[i], 0);
 	}
