@@ -62,7 +62,7 @@ std::shared_ptr<Image> Image::CreateTexture2D(const std::shared_ptr<Device> &dev
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, create_info, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
 	              access_queue);
 }
 
@@ -81,7 +81,7 @@ std::shared_ptr<Image> Image::CreateTexture3D(const std::shared_ptr<Device> &dev
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, create_info, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
 	              access_queue);
 }
 
@@ -101,7 +101,7 @@ std::shared_ptr<Image> Image::CreateTexture2DArray(const std::shared_ptr<Device>
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, create_info, VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
 	              access_queue);
 }
 

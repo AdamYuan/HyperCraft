@@ -14,7 +14,7 @@ private:
 public:
 	static std::shared_ptr<Image>
 	Create(const std::shared_ptr<Device> &device, const VkImageCreateInfo &create_info,
-	       VmaAllocationCreateFlags allocation_flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT,
+	       VmaAllocationCreateFlags allocation_flags = 0,
 	       VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
 	       const std::vector<std::shared_ptr<Queue>> &access_queues = {});
 

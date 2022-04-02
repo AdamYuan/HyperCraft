@@ -96,7 +96,7 @@ struct GraphicsPipelineState {
 		void Enable(const std::vector<VkDynamicState> &dynamic_states);
 	} m_dynamic_state;
 
-	void SetGraphicsPipelineCreateInfo(VkGraphicsPipelineCreateInfo *info) const;
+	void PopGraphicsPipelineCreateInfo(VkGraphicsPipelineCreateInfo *info) const;
 };
 } // namespace myvk
 

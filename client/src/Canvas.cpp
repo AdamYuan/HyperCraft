@@ -82,187 +82,42 @@ void Canvas::create_reveal_buffer() {
 }
 
 void Canvas::create_render_pass() {
-	VkRenderPassCreateInfo render_pass_info = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+	myvk::RenderPassState state = {4, 5};
+	state.RegisterAttachment(0, "SwapchainImg", m_frame_manager_ptr->GetSwapchain()->GetImageFormat(),
+	                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
+	state.RegisterAttachment(1, "DepthImg", VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_SAMPLE_COUNT_1_BIT, VK_ATTACHMENT_LOAD_OP_CLEAR,
+	                         VK_ATTACHMENT_STORE_OP_STORE);
+	state.RegisterAttachment(2, "OpaqueImg", VK_FORMAT_B10G11R11_UFLOAT_PACK32, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+	state.RegisterAttachment(3, "AccumImg", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+	state.RegisterAttachment(4, "RevealImg", VK_FORMAT_R8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 
-	VkAttachmentDescription color_attachment = {};
-	{
-		color_attachment.format = m_frame_manager_ptr->GetSwapchain()->GetImageFormat();
-		color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	}
+	state.RegisterSubpass(0, "OpaquePass")
+	    .AddDefaultColorAttachment("OpaqueImg", nullptr)
+	    .SetReadWriteDepthStencilAttachment("DepthImg", nullptr);
 
-	VkAttachmentDescription depth_attachment = {};
-	{
-		depth_attachment.format = VK_FORMAT_D32_SFLOAT;
-		depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		depth_attachment.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL; // for depth hierarchy
-	}
+	state.RegisterSubpass(1, "TransparentPass")
+	    .SetReadOnlyDepthStencilAttachment("DepthImg", "OpaquePass")
+	    .AddDefaultColorAttachment("AccumImg", nullptr)
+	    .AddDefaultColorAttachment("RevealImg", nullptr);
 
-	VkAttachmentDescription opaque_attachment = {};
-	{
-		opaque_attachment.format = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
-		opaque_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		opaque_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		opaque_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		opaque_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		opaque_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		opaque_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		opaque_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	}
+	state.RegisterSubpass(2, "ScreenPass")
+	    .AddDefaultColorAttachment("SwapchainImg", nullptr)
+	    // inputs
+	    .AddDefaultColorInputAttachment("OpaqueImg", "OpaquePass")
+	    .AddDefaultColorInputAttachment("AccumImg", "TransparentPass")
+	    .AddDefaultColorInputAttachment("RevealImg", "TransparentPass");
 
-	VkAttachmentDescription accum_attachment = {};
-	{
-		accum_attachment.format = VK_FORMAT_R16G16B16A16_SFLOAT;
-		accum_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		accum_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		accum_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		accum_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		accum_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		accum_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		accum_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	}
+	state.RegisterSubpass(3, "UIPass").AddDefaultColorAttachment("SwapchainImg", "ScreenPass");
 
-	VkAttachmentDescription reveal_attachment = {};
-	{
-		reveal_attachment.format = VK_FORMAT_R8_UNORM;
-		reveal_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-		reveal_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		reveal_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		reveal_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		reveal_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		reveal_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		reveal_attachment.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	}
-
-	// Set attachments
-	constexpr uint32_t kColorAttachment = 0, kDepthAttachment = 1, kOpaqueAttachment = 2, kAccumAttachment = 3,
-	                   kRevealAttachment = 4;
-	std::vector<VkAttachmentDescription> attachments = {color_attachment, depth_attachment, opaque_attachment,
-	                                                    accum_attachment, reveal_attachment};
-	render_pass_info.attachmentCount = attachments.size();
-	render_pass_info.pAttachments = attachments.data();
-
-	std::vector<VkSubpassDescription> subpasses(4);
-
-	VkAttachmentReference p0_color_attachment_ref = {};
-	p0_color_attachment_ref.attachment = kOpaqueAttachment;
-	p0_color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference p0_depth_attachment_ref = {};
-	p0_depth_attachment_ref.attachment = kDepthAttachment;
-	p0_depth_attachment_ref.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	{ // opaque pass
-
-		subpasses[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpasses[0].colorAttachmentCount = 1;
-		subpasses[0].pColorAttachments = &p0_color_attachment_ref;
-		subpasses[0].pDepthStencilAttachment = &p0_depth_attachment_ref;
-	}
-
-	VkAttachmentReference p1_color_attachment_refs[] = {{kAccumAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-	                                                    {kRevealAttachment, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
-	VkAttachmentReference p1_depth_attachment_ref = {kDepthAttachment,
-	                                                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-	{ // transparent pass
-
-		subpasses[1].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpasses[1].colorAttachmentCount = std::size(p1_color_attachment_refs);
-		subpasses[1].pColorAttachments = p1_color_attachment_refs;
-		subpasses[1].pDepthStencilAttachment = &p1_depth_attachment_ref;
-	}
-
-	VkAttachmentReference p2_color_attachment_ref = {};
-	p2_color_attachment_ref.attachment = kColorAttachment; // color buffer
-	p2_color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	// input attachments: opaque, accum, reveal
-	VkAttachmentReference p2_input_attachment_refs[] = {{kOpaqueAttachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-	                                                    {kAccumAttachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-	                                                    {kRevealAttachment, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
-	{ // screen pass
-		subpasses[2].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpasses[2].colorAttachmentCount = 1;
-		subpasses[2].pColorAttachments = &p2_color_attachment_ref;
-		subpasses[2].pDepthStencilAttachment = VK_NULL_HANDLE;
-		subpasses[2].inputAttachmentCount = std::size(p2_input_attachment_refs);
-		subpasses[2].pInputAttachments = p2_input_attachment_refs;
-	}
-
-	VkAttachmentReference p3_color_attachment_ref = {};
-	p3_color_attachment_ref.attachment = kColorAttachment;
-	p3_color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	{ // imgui pass
-		subpasses[3].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpasses[3].colorAttachmentCount = 1;
-		subpasses[3].pColorAttachments = &p3_color_attachment_ref;
-		subpasses[3].pDepthStencilAttachment = nullptr;
-	}
-
-	// Set subpasses
-	render_pass_info.subpassCount = subpasses.size();
-	render_pass_info.pSubpasses = subpasses.data();
-
-	std::vector<VkSubpassDependency> subpass_dependencies(5);
-	subpass_dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-	subpass_dependencies[0].dstSubpass = kOpaqueSubpass;
-	subpass_dependencies[0].srcStageMask =
-	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-	    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT; // TODO: Check it
-	subpass_dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-	                                       VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-	                                       VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	subpass_dependencies[0].srcAccessMask = 0;
-	subpass_dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-	                                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-	                                        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	subpass_dependencies[1].srcSubpass = kOpaqueSubpass;
-	subpass_dependencies[1].dstSubpass = kTransparentSubpass;
-	subpass_dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	subpass_dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	subpass_dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-	subpass_dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	subpass_dependencies[2].srcSubpass = kOpaqueSubpass;
-	subpass_dependencies[2].dstSubpass = kScreenSubpass;
-	subpass_dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[2].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	subpass_dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[2].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	subpass_dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	subpass_dependencies[3].srcSubpass = kTransparentSubpass;
-	subpass_dependencies[3].dstSubpass = kScreenSubpass;
-	subpass_dependencies[3].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[3].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	subpass_dependencies[3].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[3].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	subpass_dependencies[3].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	subpass_dependencies[4].srcSubpass = kScreenSubpass;
-	subpass_dependencies[4].dstSubpass = kUISubpass;
-	subpass_dependencies[4].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[4].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	subpass_dependencies[4].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	subpass_dependencies[4].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-	subpass_dependencies[4].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-	// Set dependencies
-	render_pass_info.dependencyCount = subpass_dependencies.size();
-	render_pass_info.pDependencies = subpass_dependencies.data();
-
-	m_render_pass = myvk::RenderPass::Create(m_frame_manager_ptr->GetSwapchain()->GetDevicePtr(), render_pass_info);
+	m_render_pass = myvk::RenderPass::Create(m_frame_manager_ptr->GetSwapchain()->GetDevicePtr(), state);
 }
 
 void Canvas::create_framebuffers() {

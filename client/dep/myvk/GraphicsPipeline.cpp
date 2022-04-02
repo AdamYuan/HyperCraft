@@ -34,7 +34,7 @@ GraphicsPipeline::Create(const std::shared_ptr<PipelineLayout> &pipeline_layout,
 	create_info.layout = pipeline_layout->GetHandle();
 	create_info.stageCount = shader_stages.size();
 	create_info.pStages = shader_stages.data();
-	pipeline_state.SetGraphicsPipelineCreateInfo(&create_info);
+	pipeline_state.PopGraphicsPipelineCreateInfo(&create_info);
 	create_info.subpass = subpass;
 
 	if (vkCreateGraphicsPipelines(pipeline_layout->GetDevicePtr()->GetHandle(),
@@ -138,7 +138,7 @@ void GraphicsPipelineState::DynamicState::Enable(const std::vector<VkDynamicStat
 	m_create_info.dynamicStateCount = m_dynamic_states.size();
 	m_create_info.pDynamicStates = m_dynamic_states.data();
 }
-void GraphicsPipelineState::SetGraphicsPipelineCreateInfo(VkGraphicsPipelineCreateInfo *info) const {
+void GraphicsPipelineState::PopGraphicsPipelineCreateInfo(VkGraphicsPipelineCreateInfo *info) const {
 	info->pRasterizationState = &m_rasterization_state.m_create_info;
 	info->pVertexInputState = m_vertex_input_state.m_enable ? &m_vertex_input_state.m_create_info : nullptr;
 	info->pInputAssemblyState = m_input_assembly_state.m_enable ? &m_input_assembly_state.m_create_info : nullptr;
