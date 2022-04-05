@@ -86,7 +86,10 @@ add_library(client_dep STATIC
         myvk/QueryPool.hpp
         myvk/ImGuiRenderer.cpp
         myvk/ImGuiRenderer.hpp
-        )
+        myvk/FramebufferBase.cpp
+        myvk/FramebufferBase.hpp
+        myvk/ImagelessFramebuffer.cpp
+        myvk/ImagelessFramebuffer.hpp)
 
 target_include_directories(client_dep PUBLIC .)
 target_link_libraries(client_dep PUBLIC glfw FastNoise)

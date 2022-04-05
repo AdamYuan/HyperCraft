@@ -9,6 +9,8 @@ class ImageBase : public DeviceObjectBase {
 protected:
 	VkImage m_image{VK_NULL_HANDLE};
 
+	// TODO: VkImageCreateFlags ?
+	VkImageUsageFlags m_usage{};
 	VkExtent3D m_extent{};
 	VkImageType m_type{};
 	VkFormat m_format{};
@@ -16,9 +18,14 @@ protected:
 	uint32_t m_array_layers{};
 
 public:
+	~ImageBase() override = default;
+
 	VkImage GetHandle() const { return m_image; }
 
 	const VkExtent3D &GetExtent() const { return m_extent; }
+	VkExtent2D GetExtent2D() const { return {m_extent.width, m_extent.height}; }
+
+	VkImageUsageFlags GetUsage() const { return m_usage; }
 
 	VkImageType GetType() const { return m_type; }
 
@@ -70,6 +77,17 @@ public:
 	                                      VkAccessFlags dst_access_mask, VkImageLayout old_layout,
 	                                      VkImageLayout new_layout, uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,
 	                                      uint32_t dst_queue_family = VK_QUEUE_FAMILY_IGNORED) const;
+
+	VkFramebufferAttachmentImageInfo GetFramebufferAttachmentImageInfo() const {
+		VkFramebufferAttachmentImageInfo ret = {VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO};
+		ret.usage = m_usage;
+		ret.width = m_extent.width;
+		ret.height = m_extent.height;
+		ret.layerCount = m_array_layers;
+		ret.viewFormatCount = 1;
+		ret.pViewFormats = &m_format;
+		return ret;
+	}
 };
 } // namespace myvk
 

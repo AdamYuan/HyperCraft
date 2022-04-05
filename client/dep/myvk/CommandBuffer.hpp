@@ -7,6 +7,7 @@
 #include "DeviceObjectBase.hpp"
 #include "Fence.hpp"
 #include "Framebuffer.hpp"
+#include "ImagelessFramebuffer.hpp"
 #include "PipelineBase.hpp"
 #include "QueryPool.hpp"
 #include "RenderPass.hpp"
@@ -55,6 +56,12 @@ public:
 
 	void CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
 	                        const std::shared_ptr<Framebuffer> &framebuffer,
+	                        const std::vector<VkClearValue> &clear_values,
+	                        VkSubpassContents subpass_contents = VK_SUBPASS_CONTENTS_INLINE) const;
+
+	void CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
+	                        const std::shared_ptr<ImagelessFramebuffer> &framebuffer,
+	                        const std::vector<std::shared_ptr<ImageView>> &attachments,
 	                        const std::vector<VkClearValue> &clear_values,
 	                        VkSubpassContents subpass_contents = VK_SUBPASS_CONTENTS_INLINE) const;
 

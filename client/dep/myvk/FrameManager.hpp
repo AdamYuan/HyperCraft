@@ -27,13 +27,17 @@ private:
 	std::function<void(const FrameManager &)> m_resize_func;
 
 	void initialize(const std::shared_ptr<Queue> &graphics_queue, const std::shared_ptr<PresentQueue> &present_queue,
-	                bool use_vsync, uint32_t frame_count = 3);
+	                bool use_vsync, uint32_t frame_count = 3,
+	                VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 	void recreate_swapchain();
 
 public:
 	static std::shared_ptr<FrameManager> Create(const std::shared_ptr<Queue> &graphics_queue,
 	                                            const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
-	                                            uint32_t frame_count = 3);
+	                                            uint32_t frame_count = 3,
+	                                            VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+
+	~FrameManager() override = default;
 
 	inline const std::shared_ptr<myvk::Device> &GetDevicePtr() const override { return m_swapchain->GetDevicePtr(); }
 
@@ -55,7 +59,16 @@ public:
 	const std::vector<std::shared_ptr<SwapchainImage>> &GetSwapchainImages() const { return m_swapchain_images; }
 	const std::vector<std::shared_ptr<ImageView>> &GetSwapchainImageViews() const { return m_swapchain_image_views; }
 
+	const std::shared_ptr<SwapchainImage> &GetCurrentSwapchainImage() const {
+		return m_swapchain_images[m_current_image_index];
+	}
+	const std::shared_ptr<ImageView> &GetCurrentSwapchainImageView() const {
+		return m_swapchain_image_views[m_current_image_index];
+	}
+
 	VkExtent2D GetExtent() const { return m_swapchain->GetExtent(); }
+
+	void CmdPipelineSetScreenSize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 };
 } // namespace myvk
 

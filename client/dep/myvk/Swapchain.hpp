@@ -25,7 +25,8 @@ private:
 
 public:
 	static std::shared_ptr<Swapchain> Create(const std::shared_ptr<Queue> &graphics_queue,
-	                                         const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync);
+	                                         const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
+	                                         VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
 	static std::shared_ptr<Swapchain> Create(const std::shared_ptr<Swapchain> &old_swapchain);
 
@@ -35,6 +36,8 @@ public:
 	VkResult Present(uint32_t image_index, const SemaphoreGroup &wait_semaphores) const;
 
 	uint32_t GetImageCount() const { return m_image_count; }
+
+	VkImageUsageFlags GetImageUsage() const { return m_swapchain_create_info.imageUsage; }
 
 	VkSwapchainKHR GetHandle() const { return m_swapchain; };
 

@@ -260,9 +260,10 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 							info.indices.push_back(cur_vertex + 3);
 						}
 
-						for (uint_fast8_t b = 0; b < width; ++b)
-							for (uint_fast8_t a = 0; a < height; ++a)
-								texture_mask[counter + b + a * Chunk::kSize] = 0;
+						for (uint_fast8_t a = 0; a < height; ++a) {
+							auto *base_ptr = texture_mask + counter + kChunkSize * a;
+							std::fill(base_ptr, base_ptr + width, 0);
+						}
 
 						// Increase counters
 						i += width;

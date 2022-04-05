@@ -155,6 +155,33 @@ void CommandBuffer::CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render
 	vkCmdBeginRenderPass(m_command_buffer, &render_begin_info, subpass_contents);
 }
 
+void CommandBuffer::CmdBeginRenderPass(const std::shared_ptr<RenderPass> &render_pass,
+                                       const std::shared_ptr<ImagelessFramebuffer> &framebuffer,
+                                       const std::vector<std::shared_ptr<ImageView>> &attachments,
+                                       const std::vector<VkClearValue> &clear_values,
+                                       VkSubpassContents subpass_contents) const {
+	std::vector<VkImageView> attachment_handles(attachments.size());
+	for (size_t i = 0; i < attachments.size(); ++i)
+		attachment_handles[i] = attachments[i]->GetHandle();
+
+	VkRenderPassAttachmentBeginInfo attachment_begin_info = {VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO};
+	attachment_begin_info.attachmentCount = attachment_handles.size();
+	attachment_begin_info.pAttachments = attachment_handles.data();
+
+	VkRenderPassBeginInfo render_begin_info = {};
+	render_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	render_begin_info.renderPass = render_pass->GetHandle();
+	render_begin_info.framebuffer = framebuffer->GetHandle();
+	render_begin_info.renderArea.offset = {0, 0};
+	render_begin_info.renderArea.extent = framebuffer->GetExtent();
+	render_begin_info.clearValueCount = clear_values.size();
+	render_begin_info.pClearValues = clear_values.data();
+
+	render_begin_info.pNext = &attachment_begin_info;
+
+	vkCmdBeginRenderPass(m_command_buffer, &render_begin_info, subpass_contents);
+}
+
 void CommandBuffer::CmdEndRenderPass() const { vkCmdEndRenderPass(m_command_buffer); }
 
 void CommandBuffer::CmdBindPipeline(const std::shared_ptr<PipelineBase> &pipeline) const {

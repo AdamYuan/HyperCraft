@@ -108,19 +108,19 @@ void ChunkRenderer::create_transparent_pipeline(const std::shared_ptr<myvk::Rend
 
 /* void ChunkRenderer::CmdRender(const std::shared_ptr<myvk::CommandBuffer> &culling_command_buffer,
                               const std::shared_ptr<myvk::CommandBuffer> &draw_command_buffer, const VkExtent2D &extent,
-                              uint32_t current_frame) const {
-    auto prepared_clusters = PrepareClusters(current_frame);
+                              uint32_t frame) const {
+    auto prepared_clusters = PrepareClusters(frame);
 
     // Culling compute pipeline
     culling_command_buffer->CmdBindPipeline(m_culling_pipeline);
     culling_command_buffer->CmdPushConstants(m_culling_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(Frustum),
                                              &m_camera_ptr->GetFrustum());
     for (const auto &i : prepared_clusters) {
-        culling_command_buffer->CmdBindDescriptorSets({i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
+        culling_command_buffer->CmdBindDescriptorSets({i.m_cluster_ptr->GetFrameDescriptorSet(frame)},
                                                       m_culling_pipeline);
         spdlog::info("cluster mesh count: {}", i.m_mesh_count);
         i.m_cluster_ptr->CmdDispatch(culling_command_buffer, i.m_mesh_count);
-        i.m_cluster_ptr->CmdBarrier(culling_command_buffer, current_frame);
+        i.m_cluster_ptr->CmdBarrier(culling_command_buffer, frame);
     }
 
     // Main graphics pipeline
@@ -136,34 +136,33 @@ void ChunkRenderer::create_transparent_pipeline(const std::shared_ptr<myvk::Rend
 
     for (const auto &i : prepared_clusters) {
         draw_command_buffer->CmdBindDescriptorSets({m_texture_ptr->GetDescriptorSet(),
-                                                    m_camera_ptr->GetFrameDescriptorSet(current_frame),
-                                                    i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
+                                                    m_camera_ptr->GetFrameDescriptorSet(frame),
+                                                    i.m_cluster_ptr->GetFrameDescriptorSet(frame)},
                                                    m_opaque_pipeline);
-        i.m_cluster_ptr->CmdDrawIndirect(draw_command_buffer, current_frame, i.m_mesh_count);
+        i.m_cluster_ptr->CmdDrawIndirect(draw_command_buffer, frame, i.m_mesh_count);
     }
 } */
 void ChunkRenderer::PrepareFrame() {
-	uint32_t current_frame = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame();
-	m_frame_prepared_clusters[current_frame] =
-	    PrepareClusters(m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame());
+	uint32_t frame = m_frame_manager_ptr->GetCurrentFrame();
+	m_frame_prepared_clusters[frame] = PrepareClusters(frame);
 }
 
 void ChunkRenderer::CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
-	uint32_t current_frame = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame();
+	uint32_t frame = m_frame_manager_ptr->GetCurrentFrame();
 	// Culling compute pipeline
 	command_buffer->CmdBindPipeline(m_culling_pipeline);
-	for (const auto &i : m_frame_prepared_clusters[current_frame]) {
-		command_buffer->CmdBindDescriptorSets({i.m_cluster_ptr->GetFrameDescriptorSet(current_frame),
-		                                       m_camera_ptr->GetFrameDescriptorSet(current_frame),
-		                                       m_depth_ptr->GetFrameDescriptorSet(current_frame)},
+	for (const auto &i : m_frame_prepared_clusters[frame]) {
+		command_buffer->CmdBindDescriptorSets({i.m_cluster_ptr->GetFrameDescriptorSet(frame),
+		                                       m_camera_ptr->GetFrameDescriptorSet(frame),
+		                                       m_depth_ptr->GetFrameDescriptorSet(frame)},
 		                                      m_culling_pipeline);
 		i.m_cluster_ptr->CmdDispatch(command_buffer, i.m_mesh_count);
-		i.m_cluster_ptr->CmdBarrier(command_buffer, current_frame);
+		i.m_cluster_ptr->CmdBarrier(command_buffer, frame);
 	}
 }
 void ChunkRenderer::CmdOpaqueDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
-	uint32_t current_frame = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame();
-	const VkExtent2D &extent = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetExtent();
+	uint32_t frame = m_frame_manager_ptr->GetCurrentFrame();
+	const VkExtent2D &extent = m_frame_manager_ptr->GetExtent();
 	// Main graphics pipeline
 	command_buffer->CmdBindPipeline(m_opaque_pipeline);
 	VkRect2D scissor = {};
@@ -175,33 +174,26 @@ void ChunkRenderer::CmdOpaqueDrawIndirect(const std::shared_ptr<myvk::CommandBuf
 	viewport.maxDepth = 1.0f;
 	command_buffer->CmdSetViewport({viewport});
 
-	for (const auto &i : m_frame_prepared_clusters[current_frame]) {
+	for (const auto &i : m_frame_prepared_clusters[frame]) {
 		command_buffer->CmdBindDescriptorSets({m_texture_ptr->GetDescriptorSet(),
-		                                       m_camera_ptr->GetFrameDescriptorSet(current_frame),
-		                                       i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
+		                                       m_camera_ptr->GetFrameDescriptorSet(frame),
+		                                       i.m_cluster_ptr->GetFrameDescriptorSet(frame)},
 		                                      m_opaque_pipeline);
-		i.m_cluster_ptr->CmdDrawIndirect(command_buffer, current_frame, 0, i.m_mesh_count);
+		i.m_cluster_ptr->CmdDrawIndirect(command_buffer, frame, 0, i.m_mesh_count);
 	}
 }
 void ChunkRenderer::CmdTransparentDrawIndirect(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) {
-	uint32_t current_frame = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetCurrentFrame();
-	const VkExtent2D &extent = m_depth_ptr->GetCanvasPtr()->GetFrameManagerPtr()->GetExtent();
+	uint32_t frame = m_frame_manager_ptr->GetCurrentFrame();
 	// Main graphics pipeline
-	command_buffer->CmdBindPipeline(m_transparent_pipeline);
-	VkRect2D scissor = {};
-	scissor.extent = extent;
-	command_buffer->CmdSetScissor({scissor});
-	VkViewport viewport = {};
-	viewport.width = (float)extent.width;
-	viewport.height = (float)extent.height;
-	viewport.maxDepth = 1.0f;
-	command_buffer->CmdSetViewport({viewport});
 
-	for (const auto &i : m_frame_prepared_clusters[current_frame]) {
+	command_buffer->CmdBindPipeline(m_transparent_pipeline);
+	m_frame_manager_ptr->CmdPipelineSetScreenSize(command_buffer);
+
+	for (const auto &i : m_frame_prepared_clusters[frame]) {
 		command_buffer->CmdBindDescriptorSets({m_texture_ptr->GetDescriptorSet(),
-		                                       m_camera_ptr->GetFrameDescriptorSet(current_frame),
-		                                       i.m_cluster_ptr->GetFrameDescriptorSet(current_frame)},
+		                                       m_camera_ptr->GetFrameDescriptorSet(frame),
+		                                       i.m_cluster_ptr->GetFrameDescriptorSet(frame)},
 		                                      m_opaque_pipeline);
-		i.m_cluster_ptr->CmdDrawIndirect(command_buffer, current_frame, 1, i.m_mesh_count);
+		i.m_cluster_ptr->CmdDrawIndirect(command_buffer, frame, 1, i.m_mesh_count);
 	}
 }

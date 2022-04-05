@@ -14,6 +14,7 @@ std::vector<std::shared_ptr<SwapchainImage>> SwapchainImage::Create(const std::s
 		ret[i]->m_swapchain_ptr = swapchain;
 		ret[i]->m_image = images[i];
 
+		ret[i]->m_usage = swapchain->GetImageUsage();
 		ret[i]->m_extent = {swapchain->GetExtent().width, swapchain->GetExtent().height};
 		ret[i]->m_type = VK_IMAGE_TYPE_2D;
 		ret[i]->m_format = swapchain->GetImageFormat();

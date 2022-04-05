@@ -266,7 +266,7 @@ void ImGuiRenderer::create_pipeline(const std::shared_ptr<myvk::RenderPass> &ren
 }
 
 void ImGuiRenderer::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer,
-                                    uint32_t current_frame) {
+                                    uint32_t current_frame) const {
 	const std::shared_ptr<myvk::Device> &device = command_buffer->GetDevicePtr();
 
 	ImDrawData *draw_data = ImGui::GetDrawData();

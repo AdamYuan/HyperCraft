@@ -99,8 +99,7 @@ public:
 			return SetDepthStencilAttachment(
 			    attachment_str, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, src_subpass_str,
 			    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-			    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-			    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+			    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 			    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT, dependency_flag);
 		}
 		inline SubpassAttachmentHandle
@@ -110,7 +109,7 @@ public:
 			    attachment_str, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, src_subpass_str,
 			    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
 			    VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-			    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+			    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
 			    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
 			    dependency_flag);
 		}
@@ -166,6 +165,11 @@ public:
 	                        VkAttachmentLoadOp load_op, VkAttachmentStoreOp store_op,
 	                        VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 	                        VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE);
+
+	void AddExtraSubpassDependency(const char *src_subpass_str, const char *dst_subpass_str,
+	                               VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage,
+	                               VkAccessFlags src_access, VkAccessFlags dst_access,
+	                               VkDependencyFlags dependency_flag);
 
 	void PopRenderPassCreateInfo(VkRenderPassCreateInfo *info) const;
 };

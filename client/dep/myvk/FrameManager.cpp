@@ -23,9 +23,9 @@ void FrameManager::recreate_swapchain() {
 }
 
 void FrameManager::initialize(const std::shared_ptr<Queue> &graphics_queue,
-                              const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
-                              uint32_t frame_count) {
-	m_swapchain = myvk::Swapchain::Create(graphics_queue, present_queue, use_vsync);
+                              const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync, uint32_t frame_count,
+                              VkImageUsageFlags image_usage) {
+	m_swapchain = myvk::Swapchain::Create(graphics_queue, present_queue, use_vsync, image_usage);
 	m_swapchain_images = myvk::SwapchainImage::Create(m_swapchain);
 	m_swapchain_image_views.resize(m_swapchain->GetImageCount());
 	for (uint32_t i = 0; i < m_swapchain->GetImageCount(); ++i)
@@ -92,10 +92,21 @@ void FrameManager::WaitIdle() const {
 }
 std::shared_ptr<FrameManager> FrameManager::Create(const std::shared_ptr<Queue> &graphics_queue,
                                                    const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
-                                                   uint32_t frame_count) {
+                                                   uint32_t frame_count, VkImageUsageFlags image_usage) {
 	std::shared_ptr<FrameManager> ret = std::make_shared<FrameManager>();
-	ret->initialize(graphics_queue, present_queue, use_vsync, frame_count);
+	ret->initialize(graphics_queue, present_queue, use_vsync, frame_count, image_usage);
 	return ret;
+}
+void FrameManager::CmdPipelineSetScreenSize(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
+	VkExtent2D extent = m_swapchain->GetExtent();
+	VkRect2D scissor = {};
+	scissor.extent = extent;
+	command_buffer->CmdSetScissor({scissor});
+	VkViewport viewport = {};
+	viewport.width = (float)extent.width;
+	viewport.height = (float)extent.height;
+	viewport.maxDepth = 1.0f;
+	command_buffer->CmdSetViewport({viewport});
 }
 
 } // namespace myvk

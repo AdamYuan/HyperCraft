@@ -4,7 +4,6 @@
 #include <cinttypes>
 
 #include <client/Camera.hpp>
-#include <client/Canvas.hpp>
 #include <client/ChunkMesh.hpp>
 #include <client/DepthHierarchy.hpp>
 #include <client/GlobalTexture.hpp>
@@ -24,6 +23,9 @@ private:
 	std::shared_ptr<Camera> m_camera_ptr;
 	std::shared_ptr<DepthHierarchy> m_depth_ptr; // for Hi-Z Culling
 
+	std::shared_ptr<myvk::RenderPass> m_render_pass_ptr;
+	std::shared_ptr<myvk::FrameManager> m_frame_manager_ptr;
+
 	// Culling pipeline
 	std::shared_ptr<myvk::PipelineLayout> m_culling_pipeline_layout;
 	std::shared_ptr<myvk::ComputePipeline> m_culling_pipeline;
@@ -40,27 +42,34 @@ private:
 	std::vector<PreparedCluster> m_frame_prepared_clusters[kFrameCount];
 
 public:
-	explicit ChunkRenderer(const std::shared_ptr<GlobalTexture> &texture_ptr, const std::shared_ptr<Camera> &camera_ptr,
+	explicit ChunkRenderer(const std::shared_ptr<myvk::FrameManager> &frame_manager_ptr,
+	                       const std::shared_ptr<GlobalTexture> &texture_ptr, const std::shared_ptr<Camera> &camera_ptr,
 	                       const std::shared_ptr<DepthHierarchy> &depth_ptr,
-	                       const std::shared_ptr<myvk::Queue> &transfer_queue, uint32_t opaque_subpass,
+	                       const std::shared_ptr<myvk::Queue> &transfer_queue,
+	                       const std::shared_ptr<myvk::RenderPass> &render_pass_ptr, uint32_t opaque_subpass,
 	                       uint32_t transparent_subpass)
 	    : ChunkMeshRendererBase(transfer_queue, kClusterFaceCount * 4 * sizeof(ChunkMeshVertex),
 	                            kClusterFaceCount * 6 * sizeof(uint16_t)),
-	      m_texture_ptr{texture_ptr}, m_camera_ptr{camera_ptr}, m_depth_ptr{depth_ptr} {
+	      m_render_pass_ptr{render_pass_ptr}, m_frame_manager_ptr{frame_manager_ptr}, m_texture_ptr{texture_ptr},
+	      m_camera_ptr{camera_ptr}, m_depth_ptr{depth_ptr} {
 		create_culling_pipeline(transfer_queue->GetDevicePtr());
 		create_pipeline_layout(transfer_queue->GetDevicePtr());
-		create_opaque_pipeline(depth_ptr->GetCanvasPtr()->GetRenderPass(), opaque_subpass);
-		create_transparent_pipeline(depth_ptr->GetCanvasPtr()->GetRenderPass(), transparent_subpass);
+		create_opaque_pipeline(render_pass_ptr, opaque_subpass);
+		create_transparent_pipeline(render_pass_ptr, transparent_subpass);
 	}
 
-	inline static std::unique_ptr<ChunkRenderer> Create(const std::shared_ptr<GlobalTexture> &texture_ptr,
+	inline static std::unique_ptr<ChunkRenderer> Create(const std::shared_ptr<myvk::FrameManager> &frame_manager_ptr,
+	                                                    const std::shared_ptr<GlobalTexture> &texture_ptr,
 	                                                    const std::shared_ptr<Camera> &camera_ptr,
 	                                                    const std::shared_ptr<DepthHierarchy> &depth_ptr,
 	                                                    const std::shared_ptr<myvk::Queue> &transfer_queue,
+	                                                    const std::shared_ptr<myvk::RenderPass> &render_pass_ptr,
 	                                                    uint32_t opaque_subpass, uint32_t transparent_subpass) {
-		return std::make_unique<ChunkRenderer>(texture_ptr, camera_ptr, depth_ptr, transfer_queue, opaque_subpass,
-		                                       transparent_subpass);
+		return std::make_unique<ChunkRenderer>(frame_manager_ptr, texture_ptr, camera_ptr, depth_ptr, transfer_queue,
+		                                       render_pass_ptr, opaque_subpass, transparent_subpass);
 	}
+
+	inline const std::shared_ptr<DepthHierarchy> &GetDepthHierarchyPtr() const { return m_depth_ptr; }
 
 	void PrepareFrame();
 	void CmdDispatch(const std::shared_ptr<myvk::CommandBuffer> &command_buffer);

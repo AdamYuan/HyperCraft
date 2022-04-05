@@ -1,15 +1,16 @@
 #ifndef CUBECRAFT3_CLIENT_DEPTH_PYRAMID_HPP
 #define CUBECRAFT3_CLIENT_DEPTH_PYRAMID_HPP
 
-#include <client/Canvas.hpp>
 #include <client/Config.hpp>
 
 #include <myvk/Buffer.hpp>
 #include <myvk/ComputePipeline.hpp>
+#include <myvk/FrameManager.hpp>
+#include <myvk/Image.hpp>
 
 class DepthHierarchy {
 private:
-	std::shared_ptr<Canvas> m_canvas_ptr;
+	std::shared_ptr<myvk::FrameManager> m_frame_manager_ptr;
 
 	std::shared_ptr<myvk::PipelineLayout> m_build_pipeline_layout;
 	std::shared_ptr<myvk::ComputePipeline> m_build_pipeline;
@@ -19,8 +20,6 @@ private:
 
 	std::shared_ptr<myvk::Sampler> m_sampler;
 
-	std::shared_ptr<myvk::CommandPool> m_command_pool;
-
 	struct FrameData {
 		std::shared_ptr<myvk::Image> m_image;
 		std::shared_ptr<myvk::ImageView> m_image_view;
@@ -28,9 +27,6 @@ private:
 
 		std::vector<std::shared_ptr<myvk::DescriptorSet>> m_build_descriptor_sets;
 		std::shared_ptr<myvk::DescriptorSet> m_output_descriptor_set;
-
-		// std::shared_ptr<myvk::Buffer> m_build_buffer; // tmp buffer for copying depth image
-		// Use a tmp buffer has huge performance impact
 	};
 	FrameData m_frame_data[kFrameCount];
 
@@ -42,9 +38,9 @@ private:
 	// void create_build_buffers();
 
 public:
-	inline static std::shared_ptr<DepthHierarchy> Create(const std::shared_ptr<Canvas> &canvas_ptr) {
+	inline static std::shared_ptr<DepthHierarchy> Create(const std::shared_ptr<myvk::FrameManager> &frame_manager_ptr) {
 		std::shared_ptr<DepthHierarchy> ret = std::make_shared<DepthHierarchy>();
-		ret->m_canvas_ptr = canvas_ptr;
+		ret->m_frame_manager_ptr = frame_manager_ptr;
 		ret->Resize();
 		return ret;
 	}
@@ -60,13 +56,15 @@ public:
 
 	void CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const;
 
-	inline const std::shared_ptr<Canvas> &GetCanvasPtr() const { return m_canvas_ptr; }
-
 	inline const std::shared_ptr<myvk::DescriptorSetLayout> &GetDescriptorSetLayout() const {
 		return m_output_descriptor_set_layout;
 	}
 	inline const std::shared_ptr<myvk::DescriptorSet> &GetFrameDescriptorSet(uint32_t frame) const {
 		return m_frame_data[frame].m_output_descriptor_set;
+	}
+
+	inline const std::shared_ptr<myvk::ImageView> &GetAttachmentImageView() const {
+		return m_frame_data[m_frame_manager_ptr->GetCurrentFrame()].m_lod_image_views[0];
 	}
 };
 

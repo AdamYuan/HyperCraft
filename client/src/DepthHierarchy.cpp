@@ -3,9 +3,9 @@
 inline uint32_t group_x_8(uint32_t x) { return (x >> 3u) + (((x & 0x7u) > 0u) ? 1u : 0u); }
 
 void DepthHierarchy::create_images() {
-	VkExtent2D size = m_canvas_ptr->GetFrameManagerPtr()->GetExtent();
+	VkExtent2D size = m_frame_manager_ptr->GetExtent();
 	uint32_t mip_level = myvk::Image::QueryMipLevel(size);
-	const std::shared_ptr<myvk::Device> &device = m_canvas_ptr->GetFrameManagerPtr()->GetDevicePtr();
+	const std::shared_ptr<myvk::Device> &device = m_frame_manager_ptr->GetDevicePtr();
 
 	{
 		VkSamplerCreateInfo create_info = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
@@ -24,10 +24,30 @@ void DepthHierarchy::create_images() {
 		m_sampler = myvk::Sampler::Create(device, create_info);
 	}
 
+	// for clearing the images
+	std::shared_ptr<myvk::CommandPool> command_pool =
+	    myvk::CommandPool::Create(m_frame_manager_ptr->GetSwapchain()->GetGraphicsQueuePtr());
+	std::shared_ptr<myvk::CommandBuffer> command_buffer = myvk::CommandBuffer::Create(command_pool);
+	command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
 	for (auto &data : m_frame_data) {
-		data.m_image = myvk::Image::CreateTexture2D(device, size, mip_level, VK_FORMAT_R32_SFLOAT,
-		                                            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
-		                                                VK_IMAGE_USAGE_SAMPLED_BIT);
+		data.m_image =
+		    myvk::Image::CreateTexture2D(device, size, mip_level, VK_FORMAT_R32_SFLOAT,
+		                                 VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT |
+		                                     VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+		{
+			command_buffer->CmdPipelineBarrier(
+			    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
+			    {data.m_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+			                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)});
+			command_buffer->CmdClearColorImage(data.m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			                                   {{1.0, 1.0, 1.0, 1.0}});
+			command_buffer->CmdPipelineBarrier(
+			    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
+			    {data.m_image->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+			                                    VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+			                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
+		}
 		data.m_image_view = myvk::ImageView::Create(data.m_image, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
 		data.m_lod_image_views.clear();
 		data.m_lod_image_views.resize(mip_level);
@@ -36,11 +56,16 @@ void DepthHierarchy::create_images() {
 			    myvk::ImageView::Create(data.m_image, i, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
 		}
 	}
+
+	command_buffer->End();
+	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(m_frame_manager_ptr->GetDevicePtr());
+	command_buffer->Submit(fence);
+	fence->Wait();
 }
 
 void DepthHierarchy::create_descriptor_pool() {
 	// must be called after create_images
-	const std::shared_ptr<myvk::Device> &device = m_canvas_ptr->GetFrameManagerPtr()->GetDevicePtr();
+	const std::shared_ptr<myvk::Device> &device = m_frame_manager_ptr->GetDevicePtr();
 	uint32_t mip_level = m_frame_data[0].m_image->GetMipLevels();
 	m_descriptor_pool =
 	    myvk::DescriptorPool::Create(device, mip_level * kFrameCount,
@@ -49,7 +74,7 @@ void DepthHierarchy::create_descriptor_pool() {
 }
 
 void DepthHierarchy::create_build_descriptors() {
-	const std::shared_ptr<myvk::Device> &device = m_canvas_ptr->GetFrameManagerPtr()->GetDevicePtr();
+	const std::shared_ptr<myvk::Device> &device = m_frame_manager_ptr->GetDevicePtr();
 	uint32_t mip_level = m_frame_data[0].m_image->GetMipLevels();
 	m_build_descriptor_set_layout = myvk::DescriptorSetLayout::Create(
 	    device, {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT},
@@ -70,7 +95,7 @@ void DepthHierarchy::create_build_descriptors() {
 }
 
 void DepthHierarchy::create_output_descriptors() {
-	const std::shared_ptr<myvk::Device> &device = m_canvas_ptr->GetFrameManagerPtr()->GetDevicePtr();
+	const std::shared_ptr<myvk::Device> &device = m_frame_manager_ptr->GetDevicePtr();
 	m_output_descriptor_set_layout = myvk::DescriptorSetLayout::Create(
 	    device, {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT}});
 
@@ -91,7 +116,7 @@ void DepthHierarchy::create_output_descriptors() {
 } */
 
 void DepthHierarchy::create_build_pipeline() {
-	const std::shared_ptr<myvk::Device> &device = m_canvas_ptr->GetFrameManagerPtr()->GetDevicePtr();
+	const std::shared_ptr<myvk::Device> &device = m_frame_manager_ptr->GetDevicePtr();
 	m_build_pipeline_layout = myvk::PipelineLayout::Create(device, {m_build_descriptor_set_layout},
 	                                                       {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)}});
 
@@ -104,61 +129,24 @@ void DepthHierarchy::create_build_pipeline() {
 }
 
 void DepthHierarchy::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
-	const FrameData &data = m_frame_data[m_canvas_ptr->GetFrameManagerPtr()->GetCurrentFrame()];
+	const FrameData &data = m_frame_data[m_frame_manager_ptr->GetCurrentFrame()];
 	uint32_t width = data.m_image->GetExtent().width, height = data.m_image->GetExtent().height,
 	         mip_level = data.m_image->GetMipLevels();
 
-	// prepare first lod to be transfer
-	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-	    {// set first lod to be transfer
-	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-	                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)});
-
-	/*command_buffer->CmdCopy(m_canvas_ptr->GetCurrentDepthImage(), data.m_build_buffer,
-	                        {{0, 0, 0, {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1}, {0, 0, 0}, {width, height, 1}}},
-	                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);*/
-
-	// copy depth image to color image, trigger validation error
-	command_buffer->CmdCopy(m_canvas_ptr->GetCurrentDepthImage(), data.m_image,
-	                        {{{VK_IMAGE_ASPECT_DEPTH_BIT, 0, 0, 1},
-	                          {0, 0, 0},
-	                          {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
-	                          {0, 0, 0},
-	                          {width, height, 1}}});
-
-	// prevent new depth writing while copying
-	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, {}, {},
-	    {m_canvas_ptr->GetCurrentDepthImage()->GetMemoryBarrier(
-	        {VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1}, 0,
-	        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-	        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)});
-
-	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
+	/* command_buffer->CmdPipelineBarrier(
+	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
 	    {// set first lod for sampling
-	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}, VK_ACCESS_TRANSFER_WRITE_BIT,
-	                                    VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-	                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)});
+	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+	                                    VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+	                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)}); */
 
 	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
+	    VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, {}, {},
 	    {// set second lod to be generated
 	     data.m_image->GetMemoryBarrier({VK_IMAGE_ASPECT_COLOR_BIT, 1, 1, 0, 1}, 0, VK_ACCESS_SHADER_WRITE_BIT,
 	                                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL)});
 
 	{
-		/* command_buffer->CmdPipelineBarrier(
-		    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {},
-		    {data.m_build_buffer->GetDstMemoryBarrier({0, 0, data.m_build_buffer->GetSize()},
-		                                              VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT)},
-		    {}); */
-
-		/* command_buffer->CmdCopy(data.m_build_buffer, data.m_image,
-		                        {{0, 0, 0, {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1}, {0, 0, 0}, {width, height, 1}}},
-		                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL); */
-
 		command_buffer->CmdBindPipeline(m_build_pipeline);
 		for (uint32_t i = 1, w = width, h = height; i < mip_level; ++i) {
 			w = std::max(w >> 1u, 1u);

@@ -7,8 +7,9 @@ set(SHADER_SRC
         chunk_transparent.frag
         chunk_culling.comp
         depth_hierarchy.comp
-        screen.vert
-        screen.frag
+        quad.vert
+        oit_compositor.frag
+        post_process.frag
         )
 
 find_program(GLSLC "glslc")

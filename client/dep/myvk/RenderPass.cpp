@@ -111,6 +111,13 @@ void RenderPassState::PopRenderPassCreateInfo(VkRenderPassCreateInfo *info) cons
 	info->dependencyCount = m_subpass_dependencies.size();
 	info->pDependencies = info->dependencyCount ? m_subpass_dependencies.data() : nullptr;
 }
+void RenderPassState::AddExtraSubpassDependency(const char *src_subpass_str, const char *dst_subpass_str,
+                                                VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage,
+                                                VkAccessFlags src_access, VkAccessFlags dst_access,
+                                                VkDependencyFlags dependency_flag) {
+	insert_subpass_dependency(get_subpass(src_subpass_str), get_subpass(dst_subpass_str), src_stage, dst_stage,
+	                          src_access, dst_access, dependency_flag);
+}
 
 RenderPassState::SubpassAttachmentHandle RenderPassState::SubpassAttachmentHandle::AddColorResolveAttachment(
     const char *attachment_str, VkImageLayout layout, const char *resolve_attachment_str, VkImageLayout resolve_layout,

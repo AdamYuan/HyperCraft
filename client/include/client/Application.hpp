@@ -5,12 +5,11 @@
 #include <myvk/FrameManager.hpp>
 #include <myvk/ImGuiRenderer.hpp>
 
-#include <client/Canvas.hpp>
-
 #include <client/Camera.hpp>
 #include <client/ClientBase.hpp>
 #include <client/DepthHierarchy.hpp>
 #include <client/GlobalTexture.hpp>
+#include <client/ScreenRenderer.hpp>
 #include <client/WorldRenderer.hpp>
 
 class Application {
@@ -27,12 +26,11 @@ private:
 
 	// frame objects
 	std::shared_ptr<myvk::FrameManager> m_frame_manager;
-	std::shared_ptr<Canvas> m_canvas;
 	std::shared_ptr<DepthHierarchy> m_depth_hierarchy;
 
 	// render pass
-	myvk::ImGuiRenderer m_imgui_renderer;
 	std::shared_ptr<WorldRenderer> m_world_renderer;
+	std::unique_ptr<ScreenRenderer> m_screen_renderer;
 
 	// game objects and resources
 	std::shared_ptr<GlobalTexture> m_global_texture;

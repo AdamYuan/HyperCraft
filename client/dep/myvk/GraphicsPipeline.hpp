@@ -26,6 +26,8 @@ public:
 	VkPipelineBindPoint GetBindPoint() const override { return VK_PIPELINE_BIND_POINT_GRAPHICS; }
 
 	const std::shared_ptr<RenderPass> &GetRenderPassPtr() const { return m_render_pass_ptr; }
+
+	~GraphicsPipeline() override = default;
 };
 
 struct GraphicsPipelineState {

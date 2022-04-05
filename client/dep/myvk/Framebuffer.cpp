@@ -4,8 +4,7 @@ namespace myvk {
 
 std::shared_ptr<Framebuffer> Framebuffer::Create(const std::shared_ptr<RenderPass> &render_pass,
                                                  const std::vector<std::shared_ptr<ImageView>> &image_views,
-                                                 const VkExtent2D &extent, uint32_t layers,
-                                                 VkFramebufferCreateFlags flags) {
+                                                 const VkExtent2D &extent, uint32_t layers) {
 	std::shared_ptr<Framebuffer> ret = std::make_shared<Framebuffer>();
 	ret->m_render_pass_ptr = render_pass;
 	ret->m_image_view_ptrs = image_views;
@@ -18,7 +17,6 @@ std::shared_ptr<Framebuffer> Framebuffer::Create(const std::shared_ptr<RenderPas
 
 	VkFramebufferCreateInfo create_info = {};
 	create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	create_info.flags = flags;
 	create_info.renderPass = render_pass->GetHandle();
 	create_info.attachmentCount = attachments.size();
 	create_info.pAttachments = attachments.data();
@@ -34,15 +32,7 @@ std::shared_ptr<Framebuffer> Framebuffer::Create(const std::shared_ptr<RenderPas
 }
 
 std::shared_ptr<Framebuffer> Framebuffer::Create(const std::shared_ptr<RenderPass> &render_pass,
-                                                 const std::shared_ptr<ImageView> &image_view,
-                                                 VkFramebufferCreateFlags flags) {
-	VkExtent3D extent_3d = image_view->GetImagePtr()->GetExtent();
-	return Create(render_pass, {image_view}, {extent_3d.width, extent_3d.height},
-	              image_view->GetImagePtr()->GetArrayLayers(), flags);
-}
-
-Framebuffer::~Framebuffer() {
-	if (m_framebuffer)
-		vkDestroyFramebuffer(m_render_pass_ptr->GetDevicePtr()->GetHandle(), m_framebuffer, nullptr);
+                                                 const std::shared_ptr<ImageView> &image_view) {
+	return Create(render_pass, {image_view}, image_view->GetImagePtr()->GetExtent2D(), 1);
 }
 } // namespace myvk

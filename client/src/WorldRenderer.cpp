@@ -3,81 +3,135 @@
 #include <myvk/ShaderModule.hpp>
 #include <spdlog/spdlog.h>
 
-void WorldRenderer::create_descriptors() {
-	const std::shared_ptr<myvk::Device> &device = m_transfer_queue->GetDevicePtr();
-	uint32_t image_count = m_canvas_ptr->GetFrameManagerPtr()->GetSwapchain()->GetImageCount();
-	m_screen_descriptor_pool =
-	    myvk::DescriptorPool::Create(device, image_count, {{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, image_count * 3}});
+void WorldRenderer::CmdRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
+	uint32_t frame = m_frame_manager_ptr->GetCurrentFrame();
+	// Generate draw commands for chunks
+	m_chunk_renderer->PrepareFrame();
+	m_chunk_renderer->CmdDispatch(command_buffer);
 
-	m_screen_descriptor_set_layout = myvk::DescriptorSetLayout::Create(
-	    device, {
-	                {0, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
-	                {1, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
-	                {2, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
-	            });
+	VkClearValue result_clear_value, depth_clear_value, opaque_clear_value, accum_clear_value, reveal_clear_value;
+	result_clear_value.color = {0.0f, 0.0f, 0.0f, 0.0f};
+	depth_clear_value.depthStencil = {1.0f, 0u};
+	opaque_clear_value.color = {0.7, 0.8, 0.96, 1.0};
+	accum_clear_value.color = {0.0f, 0.0f, 0.0f, 0.0f};
+	reveal_clear_value.color = {1.0f};
+	command_buffer->CmdBeginRenderPass(
+	    m_render_pass, m_frames[frame].framebuffer,
+	    {result_clear_value, depth_clear_value, opaque_clear_value, accum_clear_value, reveal_clear_value});
+	{
+		// Subpass 0: Opaque
+		m_chunk_renderer->CmdOpaqueDrawIndirect(command_buffer);
 
-	m_screen_descriptor_sets.resize(image_count);
-	for (auto &i : m_screen_descriptor_sets) {
-		i = myvk::DescriptorSet::Create(m_screen_descriptor_pool, m_screen_descriptor_set_layout);
+		// Subpass 1: Transparent
+		command_buffer->CmdNextSubpass();
+		m_chunk_renderer->CmdTransparentDrawIndirect(command_buffer);
+
+		// Subpass 2: OIT Composite
+		command_buffer->CmdNextSubpass();
+		m_oit_compositor->CmdDrawPipeline(command_buffer, frame);
 	}
+	command_buffer->CmdEndRenderPass();
 }
 
-void WorldRenderer::update_descriptors() {
-	for (size_t i = 0; i < m_screen_descriptor_sets.size(); ++i) {
-		auto &set = m_screen_descriptor_sets[i];
-		set->UpdateInputAttachment(m_canvas_ptr->GetOpaqueImageView(i), 0);
-		set->UpdateInputAttachment(m_canvas_ptr->GetAccumImageView(i), 1);
-		set->UpdateInputAttachment(m_canvas_ptr->GetRevealImageView(i), 2);
-	}
-}
-
-void WorldRenderer::create_pipeline(uint32_t subpass) {
+void WorldRenderer::create_render_pass() {
 	const std::shared_ptr<myvk::Device> &device = m_transfer_queue->GetDevicePtr();
 
-	m_screen_pipeline_layout = myvk::PipelineLayout::Create(device, {m_screen_descriptor_set_layout}, {});
+	myvk::RenderPassState state = {3, 5};
+	state.RegisterAttachment(0, "ResultImg", VK_FORMAT_B10G11R11_UFLOAT_PACK32, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE);
+	state.RegisterAttachment(1, "DepthImg", VK_FORMAT_D32_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_STORE);
+	state.RegisterAttachment(2, "OpaqueImg", VK_FORMAT_B10G11R11_UFLOAT_PACK32, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+	state.RegisterAttachment(3, "AccumImg", VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+	state.RegisterAttachment(4, "RevealImg", VK_FORMAT_R8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED,
+	                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_SAMPLE_COUNT_1_BIT,
+	                         VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_STORE_OP_DONT_CARE);
 
-	constexpr uint32_t kScreenVertSpv[] = {
-#include <client/shader/screen.vert.u32>
-	};
-	constexpr uint32_t kScreenFragSpv[] = {
-#include <client/shader/screen.frag.u32>
-	};
+	state.RegisterSubpass(0, "OpaquePass")
+	    .AddDefaultColorAttachment("OpaqueImg", nullptr)
+	    .SetReadWriteDepthStencilAttachment("DepthImg", nullptr);
 
-	std::shared_ptr<myvk::ShaderModule> vert_shader_module, frag_shader_module;
-	vert_shader_module = myvk::ShaderModule::Create(device, kScreenVertSpv, sizeof(kScreenVertSpv));
-	frag_shader_module = myvk::ShaderModule::Create(device, kScreenFragSpv, sizeof(kScreenFragSpv));
+	state.RegisterSubpass(1, "TransparentPass")
+	    .SetReadOnlyDepthStencilAttachment("DepthImg", "OpaquePass")
+	    .AddDefaultColorAttachment("AccumImg", nullptr)
+	    .AddDefaultColorAttachment("RevealImg", nullptr);
 
-	std::vector<VkPipelineShaderStageCreateInfo> shader_stages = {
-	    vert_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT),
-	    frag_shader_module->GetPipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT)};
+	state.RegisterSubpass(2, "ScreenPass")
+	    .AddDefaultColorAttachment("ResultImg", nullptr)
+	    // inputs
+	    .AddDefaultColorInputAttachment("OpaqueImg", "OpaquePass")
+	    .AddDefaultColorInputAttachment("AccumImg", "TransparentPass")
+	    .AddDefaultColorInputAttachment("RevealImg", "TransparentPass");
 
-	myvk::GraphicsPipelineState pipeline_state = {};
-	pipeline_state.m_vertex_input_state.Enable();
-	pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-	pipeline_state.m_viewport_state.Enable(1, 1);
-	pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
-	                                                VK_CULL_MODE_FRONT_BIT);
-	pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_1_BIT);
-	pipeline_state.m_color_blend_state.Enable(1, VK_FALSE);
-	pipeline_state.m_dynamic_state.Enable({VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR});
+	state.AddExtraSubpassDependency("ScreenPass", nullptr, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	                                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+	                                VK_ACCESS_SHADER_READ_BIT, 0);
+	state.AddExtraSubpassDependency("TransparentPass", nullptr,
+	                                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+	                                    VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+	                                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+	                                VK_ACCESS_SHADER_READ_BIT, 0);
 
-	m_screen_pipeline = myvk::GraphicsPipeline::Create(m_screen_pipeline_layout, m_canvas_ptr->GetRenderPass(),
-	                                                   shader_stages, pipeline_state, subpass);
+	m_render_pass = myvk::RenderPass::Create(device, state);
 }
-void WorldRenderer::CmdScreenDraw(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
-	const VkExtent2D &extent = m_canvas_ptr->GetFrameManagerPtr()->GetExtent();
-	// Main graphics pipeline
-	command_buffer->CmdBindPipeline(m_screen_pipeline);
-	VkRect2D scissor = {};
-	scissor.extent = extent;
-	command_buffer->CmdSetScissor({scissor});
-	VkViewport viewport = {};
-	viewport.width = (float)extent.width;
-	viewport.height = (float)extent.height;
-	viewport.maxDepth = 1.0f;
-	command_buffer->CmdSetViewport({viewport});
 
-	command_buffer->CmdBindDescriptorSets(
-	    {m_screen_descriptor_sets[m_canvas_ptr->GetFrameManagerPtr()->GetCurrentImageIndex()]}, m_screen_pipeline);
-	command_buffer->CmdDraw(3, 1, 0, 0);
+void WorldRenderer::create_frame_descriptors() {
+	const std::shared_ptr<myvk::Device> &device = m_transfer_queue->GetDevicePtr();
+
+	m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(
+	    device, {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
+	             {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT}});
+	m_descriptor_pool = myvk::DescriptorPool::Create(device, kFrameCount,
+	                                                 {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2 * kFrameCount}});
+
+	for (auto &frame : m_frames)
+		frame.descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
+}
+
+void WorldRenderer::create_frame_images() {
+	const std::shared_ptr<myvk::Device> &device = m_transfer_queue->GetDevicePtr();
+	VkExtent2D extent = m_frame_manager_ptr->GetSwapchain()->GetExtent();
+
+	for (uint32_t i = 0; i < kFrameCount; ++i) {
+		auto &frame = m_frames[i];
+
+		frame.result = myvk::Image::CreateTexture2D(device, extent, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+		                                            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+		frame.result_view = myvk::ImageView::Create(frame.result, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		frame.depth =
+		    myvk::Image::CreateTexture2D(device, extent, 1, VK_FORMAT_D32_SFLOAT,
+		                                 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+		frame.depth_view = myvk::ImageView::Create(frame.depth, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		frame.opaque =
+		    myvk::Image::CreateTexture2D(device, extent, 1, VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+		                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+		frame.opaque_view = myvk::ImageView::Create(frame.opaque, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		frame.accum =
+		    myvk::Image::CreateTexture2D(device, extent, 1, VK_FORMAT_R16G16B16A16_SFLOAT,
+		                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+		frame.accum_view = myvk::ImageView::Create(frame.accum, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		frame.reveal =
+		    myvk::Image::CreateTexture2D(device, extent, 1, VK_FORMAT_R8_UNORM,
+		                                 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+		frame.reveal_view = myvk::ImageView::Create(frame.reveal, VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_ASPECT_COLOR_BIT);
+
+		frame.framebuffer = myvk::Framebuffer::Create(
+		    m_render_pass,
+		    {frame.result_view, frame.depth_view, frame.opaque_view, frame.accum_view, frame.reveal_view}, extent);
+
+		m_oit_compositor->Update(i, frame.opaque_view, frame.accum_view, frame.reveal_view);
+
+		frame.descriptor_set->UpdateCombinedImageSampler(m_sampler, frame.result_view, 0);
+		frame.descriptor_set->UpdateCombinedImageSampler(m_sampler, frame.depth_view, 1);
+	}
 }

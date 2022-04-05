@@ -14,5 +14,4 @@ void main() {
 		float reveal = subpassLoad(uReveal).r;
 		oColor = vec4(accum.rgb * (1.0 - reveal) / accum.a + opaque.xyz * reveal, 1);
 	}
-	oColor = vec4(pow(oColor.xyz, vec3(1.0 / 2.2)), 1);
 }

@@ -19,6 +19,8 @@ public:
 
 	VkDeviceSize GetSize() const { return m_size; }
 
+	~BufferBase() override = default;
+
 	std::vector<VkBufferMemoryBarrier> GetMemoryBarriers(const std::vector<BufferSubresourceRange> &regions,
 	                                                     VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
 	                                                     uint32_t src_queue_family = VK_QUEUE_FAMILY_IGNORED,

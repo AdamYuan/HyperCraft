@@ -22,7 +22,6 @@ void Application::init_imgui() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui_ImplGlfw_InitForVulkan(m_window, true);
-	m_imgui_renderer.Initialize(m_main_command_pool, m_canvas->GetRenderPass(), Canvas::kUISubpass, kFrameCount);
 }
 
 void Application::create_vulkan_base() {
@@ -47,8 +46,9 @@ void Application::create_vulkan_base() {
 		exit(EXIT_FAILURE);
 	}
 	VkPhysicalDeviceVulkan12Features vk12features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-	vk12features.drawIndirectCount = VK_TRUE;   // for vkCmdDrawIndexedIndirectCount
-	vk12features.samplerFilterMinmax = VK_TRUE; // for occlusion culling
+	vk12features.drawIndirectCount = VK_TRUE;    // for vkCmdDrawIndexedIndirectCount
+	vk12features.samplerFilterMinmax = VK_TRUE;  // for occlusion culling
+	vk12features.imagelessFramebuffer = VK_TRUE; // for imageless framebuffer
 	m_device = myvk::Device::Create(device_create_info, &vk12features);
 
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);
@@ -64,22 +64,20 @@ void Application::create_vulkan_base() {
 void Application::create_frame_object() {
 	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount);
 	m_frame_manager->SetResizeFunc([&](const myvk::FrameManager &frame_manager) { resize(frame_manager); });
-	m_canvas = Canvas::Create(m_frame_manager);
-	m_depth_hierarchy = DepthHierarchy::Create(m_canvas);
+	m_depth_hierarchy = DepthHierarchy::Create(m_frame_manager);
 }
 
 void Application::resize(const myvk::FrameManager &frame_manager) {
 	m_camera->m_aspect_ratio = (float)frame_manager.GetExtent().width / (float)frame_manager.GetExtent().height;
-	m_canvas->Resize();
 	m_depth_hierarchy->Resize();
 	m_world_renderer->Resize();
+	m_screen_renderer->Resize();
 }
 
 void Application::draw_frame() {
 	if (!m_frame_manager->NewFrame())
 		return;
 
-	uint32_t image_index = m_frame_manager->GetCurrentImageIndex();
 	uint32_t current_frame = m_frame_manager->GetCurrentFrame();
 
 	m_camera->Update(current_frame);
@@ -90,28 +88,8 @@ void Application::draw_frame() {
 		// Build depth hierarchy for Hi-Z culling (next frame's)
 		m_depth_hierarchy->CmdBuild(command_buffer);
 
-		// Generate draw commands for chunks
-		m_world_renderer->GetChunkRenderer()->PrepareFrame();
-		m_world_renderer->GetChunkRenderer()->CmdDispatch(command_buffer);
-
-		m_canvas->CmdBeginRenderPass(command_buffer, {0.7, 0.8, 0.96, 1.0});
-		{
-			// Subpass 0: Opaque
-			m_world_renderer->GetChunkRenderer()->CmdOpaqueDrawIndirect(command_buffer);
-
-			// Subpass 1: Transparent
-			command_buffer->CmdNextSubpass();
-			m_world_renderer->GetChunkRenderer()->CmdTransparentDrawIndirect(command_buffer);
-
-			// Subpass 2: Screen
-			command_buffer->CmdNextSubpass();
-			m_world_renderer->CmdScreenDraw(command_buffer);
-
-			// Subpass 3: ImGui
-			command_buffer->CmdNextSubpass();
-			m_imgui_renderer.CmdDrawPipeline(command_buffer, current_frame);
-		}
-		command_buffer->CmdEndRenderPass();
+		m_world_renderer->CmdRenderPass(command_buffer);
+		m_screen_renderer->CmdRenderPass(command_buffer);
 	}
 	command_buffer->End();
 
@@ -135,9 +113,9 @@ Application::Application() {
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
 	m_camera->m_speed = 64.0f;
-	m_world_renderer =
-	    WorldRenderer::Create(m_world, m_global_texture, m_camera, m_depth_hierarchy, m_transfer_queue,
-	                          Canvas::kOpaqueSubpass, Canvas::kTransparentSubpass, Canvas::kScreenSubpass);
+	m_world_renderer = WorldRenderer::Create(m_frame_manager, m_world, m_global_texture, m_camera, m_depth_hierarchy,
+	                                         m_transfer_queue);
+	m_screen_renderer = ScreenRenderer::Create(m_world_renderer);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 }

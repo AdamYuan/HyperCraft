@@ -17,6 +17,7 @@ std::shared_ptr<Image> Image::Create(const std::shared_ptr<Device> &device, cons
 	std::shared_ptr<Image> ret = std::make_shared<Image>();
 	ret->m_device_ptr = device;
 
+	ret->m_usage = create_info.usage;
 	ret->m_extent = create_info.extent;
 	ret->m_type = create_info.imageType;
 	ret->m_format = create_info.format;
@@ -62,8 +63,7 @@ std::shared_ptr<Image> Image::CreateTexture2D(const std::shared_ptr<Device> &dev
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-	              access_queue);
+	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, access_queue);
 }
 
 std::shared_ptr<Image> Image::CreateTexture3D(const std::shared_ptr<Device> &device, const VkExtent3D &size,
@@ -81,8 +81,7 @@ std::shared_ptr<Image> Image::CreateTexture3D(const std::shared_ptr<Device> &dev
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-	              access_queue);
+	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, access_queue);
 }
 
 std::shared_ptr<Image> Image::CreateTexture2DArray(const std::shared_ptr<Device> &device, const VkExtent2D &size,
@@ -101,8 +100,7 @@ std::shared_ptr<Image> Image::CreateTexture2DArray(const std::shared_ptr<Device>
 	create_info.usage = usage;
 	create_info.samples = VK_SAMPLE_COUNT_1_BIT;
 
-	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-	              access_queue);
+	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, access_queue);
 }
 
 uint32_t Image::QueryMipLevel(uint32_t w) { return simple_ctz(w); }

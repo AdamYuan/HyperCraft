@@ -14,6 +14,8 @@ public:
 	                                               const std::shared_ptr<ShaderModule> &shader_module);
 
 	VkPipelineBindPoint GetBindPoint() const override { return VK_PIPELINE_BIND_POINT_COMPUTE; }
+
+	~ComputePipeline() override = default;
 };
 } // namespace myvk
 

@@ -20,6 +20,7 @@ private:
 public:
 	static std::shared_ptr<UniqueQueue> Create(const std::shared_ptr<Device> &device, uint32_t family_index,
 	                                           uint32_t queue_index);
+	~UniqueQueue() override = default;
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_device_ptr; }
 
 	friend class Queue;
@@ -32,6 +33,8 @@ protected:
 
 public:
 	static std::shared_ptr<Queue> Create(const std::shared_ptr<UniqueQueue> &unique_queue);
+
+	~Queue() override = default;
 
 	const std::shared_ptr<Device> &GetDevicePtr() const override { return m_unique_queue_ptr->GetDevicePtr(); }
 
@@ -53,6 +56,8 @@ private:
 public:
 	static std::shared_ptr<PresentQueue> Create(const std::shared_ptr<UniqueQueue> &unique_queue,
 	                                            const std::shared_ptr<Surface> &surface);
+
+	~PresentQueue() override = default;
 
 	const std::shared_ptr<Surface> &GetSurfacePtr() const { return m_surface_ptr; }
 };

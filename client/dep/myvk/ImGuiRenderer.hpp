@@ -25,7 +25,7 @@ private:
 	std::shared_ptr<myvk::PipelineLayout> m_pipeline_layout;
 	std::shared_ptr<myvk::GraphicsPipeline> m_pipeline;
 
-	std::vector<std::shared_ptr<myvk::Buffer>> m_vertex_buffers, m_index_buffers;
+	mutable std::vector<std::shared_ptr<myvk::Buffer>> m_vertex_buffers, m_index_buffers;
 
 	void create_font_texture(const std::shared_ptr<myvk::CommandPool> &graphics_command_pool);
 
@@ -40,7 +40,7 @@ public:
 	void Initialize(const std::shared_ptr<myvk::CommandPool> &command_pool,
 	                const std::shared_ptr<myvk::RenderPass> &render_pass, uint32_t subpass, uint32_t frame_count);
 
-	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame);
+	void CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &command_buffer, uint32_t current_frame) const;
 };
 } // namespace myvk
 

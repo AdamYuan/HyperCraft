@@ -29,8 +29,6 @@ add_executable(CubeCraft3_client
         include/client/Camera.hpp
         src/GlobalTexture.cpp
         include/client/GlobalTexture.hpp
-        src/Canvas.cpp
-        include/client/Canvas.hpp
         src/ENetClient.cpp
         include/client/ENetClient.hpp
         include/client/ClientBase.hpp
@@ -52,7 +50,13 @@ add_executable(CubeCraft3_client
         src/DepthHierarchy.cpp
         include/client/DepthHierarchy.hpp
         src/ChunkLighter.cpp
-        include/client/ChunkLighter.hpp)
+        include/client/ChunkLighter.hpp
+        src/OITCompositor.cpp
+        include/client/OITCompositor.hpp
+        src/PostProcessor.cpp
+        include/client/PostProcessor.hpp
+        src/ScreenRenderer.cpp
+        include/client/ScreenRenderer.hpp)
 
 target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
 target_include_directories(CubeCraft3_client PRIVATE include)

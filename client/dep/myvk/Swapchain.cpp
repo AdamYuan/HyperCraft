@@ -10,7 +10,8 @@ Swapchain::~Swapchain() {
 }
 
 std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Queue> &graphics_queue,
-                                             const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync) {
+                                             const std::shared_ptr<PresentQueue> &present_queue, bool use_vsync,
+                                             VkImageUsageFlags image_usage) {
 	std::shared_ptr<Swapchain> ret = std::make_shared<Swapchain>();
 	ret->m_graphics_queue_ptr = graphics_queue;
 	ret->m_present_queue_ptr = present_queue;
@@ -89,7 +90,7 @@ std::shared_ptr<Swapchain> Swapchain::Create(const std::shared_ptr<Queue> &graph
 	create_info.imageColorSpace = surface_format.colorSpace;
 	create_info.imageExtent = extent;
 	create_info.imageArrayLayers = 1;
-	create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	create_info.imageUsage = image_usage;
 
 	if (present_queue->GetFamilyIndex() != graphics_queue->GetFamilyIndex()) {
 		uint32_t queue_family_indices[] = {graphics_queue->GetFamilyIndex(), present_queue->GetFamilyIndex()};
