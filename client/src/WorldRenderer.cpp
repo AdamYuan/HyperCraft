@@ -69,6 +69,7 @@ void WorldRenderer::create_render_pass() {
 	    .AddDefaultColorInputAttachment("AccumImg", "TransparentPass")
 	    .AddDefaultColorInputAttachment("RevealImg", "TransparentPass");
 
+	// Prepare attachments for screen pass input
 	state.AddExtraSubpassDependency("ScreenPass", nullptr, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 	                                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 	                                VK_ACCESS_SHADER_READ_BIT, 0);

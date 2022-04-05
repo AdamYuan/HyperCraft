@@ -27,8 +27,8 @@ void ScreenRenderer::create_render_pass() {
 	state.RegisterSubpass(0, "PostProcessPass")
 	    .AddDefaultColorAttachment("SwapchainImg", nullptr)
 	    .AddColorAttachment("HiDepthImg", VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, nullptr,
-	                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                        VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
+	                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+	                        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
 	state.RegisterSubpass(1, "ImGuiPass").AddDefaultColorAttachment("SwapchainImg", "PostProcessPass");
 
 	state.AddExtraSubpassDependency("PostProcessPass", nullptr, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
