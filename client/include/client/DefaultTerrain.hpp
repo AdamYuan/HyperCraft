@@ -43,7 +43,7 @@ private:
 	inline static constexpr float biome_height_transform(Biome biome, float height) {
 		switch (biome) {
 		case Biomes::kOcean:
-			return std::min(height * 0.25f, 0.0f);
+			return std::min(height * 0.5f, 0.0f);
 		case Biomes::kPlain:
 			return cubic(height, -0.05f, 0.0f, 0.15f) + 0.005f;
 		case Biomes::kSavanna:

@@ -4,8 +4,6 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform sampler2D uPreviousLod;
 layout(set = 0, binding = 1, r32f) uniform image2D uCurrentLod;
 
-layout(push_constant) uniform uuPushConstant { uint uIsFirstLod; };
-
 void main() {
 	ivec2 current_size = imageSize(uCurrentLod), current_pos = ivec2(gl_GlobalInvocationID.xy);
 	if (current_pos.x >= current_size.x || current_pos.y >= current_size.y)

@@ -117,8 +117,7 @@ void DepthHierarchy::create_output_descriptors() {
 
 void DepthHierarchy::create_build_pipeline() {
 	const std::shared_ptr<myvk::Device> &device = m_frame_manager_ptr->GetDevicePtr();
-	m_build_pipeline_layout = myvk::PipelineLayout::Create(device, {m_build_descriptor_set_layout},
-	                                                       {{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t)}});
+	m_build_pipeline_layout = myvk::PipelineLayout::Create(device, {m_build_descriptor_set_layout}, {});
 
 	constexpr const uint32_t kDepthHierarchyCompSpv[] = {
 #include <client/shader/depth_hierarchy.comp.u32>
@@ -152,15 +151,6 @@ void DepthHierarchy::CmdBuild(const std::shared_ptr<myvk::CommandBuffer> &comman
 			w = std::max(w >> 1u, 1u);
 			h = std::max(h >> 1u, 1u);
 			command_buffer->CmdBindDescriptorSets({data.m_build_descriptor_sets[i - 1]}, m_build_pipeline);
-			if (i == 1) {
-				uint32_t v = 1;
-				command_buffer->CmdPushConstants(m_build_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-				                                 sizeof(uint32_t), &v);
-			} else if (i == 2) {
-				uint32_t v = 0;
-				command_buffer->CmdPushConstants(m_build_pipeline_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0,
-				                                 sizeof(uint32_t), &v);
-			}
 			command_buffer->CmdDispatch(group_x_8(w), group_x_8(h), 1);
 			if (i < mip_level - 1) {
 				command_buffer->CmdPipelineBarrier(
