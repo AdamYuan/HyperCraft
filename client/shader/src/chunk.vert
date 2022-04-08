@@ -27,7 +27,7 @@ layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMesh
 const float kAOCurve[4] = {0.54, 0.7569, 0.87, 1.0};
 
 void main() {
-	uint x10_y10_z10 = aVertData.x, tex8_face3_ao2_sl4_tl4 = aVertData.y;
+	uint x10_y10_z10 = aVertData.x, tex8_face3_ao2_sl6_tl6 = aVertData.y;
 
 	vec3 pos;
 	pos.x = int(x10_y10_z10 & 0x3ffu) * 0.0625;
@@ -42,18 +42,18 @@ void main() {
 
 	gl_Position = uViewProjection * vec4(pos + translate, 1.0f);
 
-	vTexture = tex8_face3_ao2_sl4_tl4 & 0xffu;
-	tex8_face3_ao2_sl4_tl4 >>= 8u;
+	vTexture = tex8_face3_ao2_sl6_tl6 & 0xffu;
+	tex8_face3_ao2_sl6_tl6 >>= 8u;
 
-	vFace = tex8_face3_ao2_sl4_tl4 & 0x7u;
-	tex8_face3_ao2_sl4_tl4 >>= 3u;
+	vFace = tex8_face3_ao2_sl6_tl6 & 0x7u;
+	tex8_face3_ao2_sl6_tl6 >>= 3u;
 
 	vTexcoord = (vFace & 0x6u) == 0u ? -pos.zy : ((vFace & 0x6u) == 0x2u ? pos.xz : -pos.xy);
 
-	vAO = kAOCurve[tex8_face3_ao2_sl4_tl4 & 0x3u];
-	tex8_face3_ao2_sl4_tl4 >>= 2u;
+	vAO = kAOCurve[tex8_face3_ao2_sl6_tl6 & 0x3u];
+	tex8_face3_ao2_sl6_tl6 >>= 2u;
 
-	vSunlight = float(tex8_face3_ao2_sl4_tl4 & 0xfu) / 15.0;
-	tex8_face3_ao2_sl4_tl4 >>= 4u;
-	vTorchlight = float(tex8_face3_ao2_sl4_tl4 & 0xfu) / 15.0;
+	vSunlight = float(tex8_face3_ao2_sl6_tl6 & 0x3fu) / 63.0;
+	tex8_face3_ao2_sl6_tl6 >>= 6u;
+	vTorchlight = float(tex8_face3_ao2_sl6_tl6 & 0x3fu) / 63.0;
 }

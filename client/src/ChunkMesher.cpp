@@ -185,32 +185,32 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						                    uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset,
 						                    quad_face,
 						                    quad_light.m_ao[0],
-						                    quad_light.m_light[0].GetSunlight(),
-						                    quad_light.m_light[0].GetTorchlight(),
+						                    quad_light.m_sunlight[0],
+						                    quad_light.m_torchlight[0],
 						                    quad_texture.GetID()},
 						    v01 = {uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
 						           quad_light.m_ao[1],
-						           quad_light.m_light[1].GetSunlight(),
-						           quad_light.m_light[1].GetTorchlight(),
+						           quad_light.m_sunlight[1],
+						           quad_light.m_torchlight[1],
 						           quad_texture.GetID()},
 						    v10 = {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
 						           quad_light.m_ao[2],
-						           quad_light.m_light[2].GetSunlight(),
-						           quad_light.m_light[2].GetTorchlight(),
+						           quad_light.m_sunlight[2],
+						           quad_light.m_torchlight[2],
 						           quad_texture.GetID()},
 						    v11 = {uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
 						           quad_light.m_ao[3],
-						           quad_light.m_light[3].GetSunlight(),
-						           quad_light.m_light[3].GetTorchlight(),
+						           quad_light.m_sunlight[3],
+						           quad_light.m_torchlight[3],
 						           quad_texture.GetID()};
 
 #include <client/texture/block_texture_transparency.inl>
@@ -384,8 +384,8 @@ void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int
 				torchlight_sum += light.GetTorchlight();
 			}
 		}
-		light4->m_light[v].SetSunlight(sunlight_sum / counter + (sunlight_sum % counter ? 1 : 0));
-		light4->m_light[v].SetTorchlight(torchlight_sum / counter + (torchlight_sum % counter ? 1 : 0));
+		light4->m_sunlight[v] = (sunlight_sum << 2u) / counter;
+		light4->m_torchlight[v] = (torchlight_sum << 2u) / counter;
 	}
 }
 
