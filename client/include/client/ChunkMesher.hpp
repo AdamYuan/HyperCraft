@@ -65,7 +65,7 @@ private:
 	struct MeshGenInfo {
 		std::vector<ChunkMeshVertex> vertices;
 		std::vector<uint16_t> indices;
-		AABB<uint_fast8_t> aabb{};
+		AABB<uint32_t> aabb{};
 		bool transparent;
 	};
 

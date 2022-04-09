@@ -99,6 +99,44 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 	opaque_mesh_info.transparent = false;
 	transparent_mesh_info.transparent = true;
 
+	for (uint32_t idx = 0; idx < kChunkSize * kChunkSize * kChunkSize; ++idx) {
+		Block b = m_chunk_ptr->GetBlock(idx);
+		if (b.HaveCustomMesh()) {
+			const BlockMesh *mesh = b.GetCustomMesh();
+			glm::u32vec3 base;
+			ChunkIndex2XYZ(idx, glm::value_ptr(base));
+			base <<= ChunkMeshVertex::kUnitBitOffset;
+			for (uint32_t i = 0; i < mesh->face_count; ++i) {
+				const BlockMeshFace *mesh_face = mesh->faces + i;
+
+				MeshGenInfo &info = mesh_face->texture.IsTransparent() ? transparent_mesh_info : opaque_mesh_info;
+				// if indices would exceed, restart
+				uint16_t cur_vertex = info.vertices.size();
+				if (cur_vertex + 4 > UINT16_MAX) {
+					bool trans = info.transparent;
+					ret.push_back(std::move(info));
+					info = MeshGenInfo{};
+					info.transparent = trans;
+				}
+
+				// TODO: light value interpolation
+				for (const auto &v : mesh_face->vertices) {
+					info.aabb.Merge({base.x + v.x, base.y + v.y, base.z + v.z});
+					info.vertices.push_back((ChunkMeshVertex){base.x + v.x, base.y + v.y, base.z + v.z, mesh_face->face,
+					                                          v.ao, 63, 63, mesh_face->texture.GetID()});
+				}
+
+				info.indices.push_back(cur_vertex);
+				info.indices.push_back(cur_vertex + 1);
+				info.indices.push_back(cur_vertex + 2);
+
+				info.indices.push_back(cur_vertex);
+				info.indices.push_back(cur_vertex + 2);
+				info.indices.push_back(cur_vertex + 3);
+			}
+		}
+	}
+
 	for (uint_fast8_t axis = 0; axis < 3; ++axis) {
 		const uint_fast8_t u = (axis + 1) % 3;
 		const uint_fast8_t v = (axis + 2) % 3;
@@ -221,8 +259,12 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 							info = MeshGenInfo{};
 							info.transparent = trans;
 						}
-						info.aabb.Merge(
-						    {{x[0], x[1], x[2]}, {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]}});
+						info.aabb.Merge({{uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
+						                  uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
+						                  uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset},
+						                 {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+						                  uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+						                  uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset}});
 
 						info.vertices.push_back(v00);
 						info.vertices.push_back(v01);
@@ -299,9 +341,10 @@ void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int
 
 	/*constexpr uint32_t kLookup3[6][4][3] = {
 	    {{21, 18, 19}, {21, 24, 25}, {23, 26, 25}, {23, 20, 19}}, {{3, 0, 1}, {5, 2, 1}, {5, 8, 7}, {3, 6, 7}},
-	    {{15, 6, 7}, {17, 8, 7}, {17, 26, 25}, {15, 24, 25}},     {{9, 0, 1}, {9, 18, 19}, {11, 20, 19}, {11, 2, 1}},
-	    {{11, 2, 5}, {11, 20, 23}, {17, 26, 23}, {17, 8, 5}},     {{9, 0, 3}, {15, 6, 3}, {15, 24, 21}, {9, 18, 21}}};
-	constexpr uint32_t kLookup1[6] = {22, 4, 16, 10, 14, 12};*/
+	    {{15, 6, 7}, {17, 8, 7}, {17, 26, 25}, {15, 24, 25}},     {{9, 0, 1}, {9, 18, 19}, {11, 20, 19}, {11, 2,
+	1}},
+	    {{11, 2, 5}, {11, 20, 23}, {17, 26, 23}, {17, 8, 5}},     {{9, 0, 3}, {15, 6, 3}, {15, 24, 21}, {9, 18,
+	21}}}; constexpr uint32_t kLookup1[6] = {22, 4, 16, 10, 14, 12};*/
 
 	constexpr int_fast8_t kLookup1v[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
 	constexpr int_fast8_t kLookup3v[6][4][3][3] = {{
@@ -442,7 +485,8 @@ void ChunkMesher::Run() {
 		auto &info = meshes[i];
 		mesh_handles[i] = world_renderer_ptr->GetChunkRenderer()->PushMesh(
 		    info.vertices, info.indices,
-		    {(fAABB)((i32AABB)info.aabb + base_position), base_position, (uint32_t)info.transparent});
+		    {(fAABB)info.aabb / glm::vec3(1u << ChunkMeshVertex::kUnitBitOffset) + (glm::vec3)base_position,
+		     base_position, (uint32_t)info.transparent});
 	}
 	// Push mesh to chunk
 	m_chunk_ptr->SwapMesh(version, mesh_handles);

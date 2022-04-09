@@ -39,7 +39,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t l
 				switch (biome) {
 				case Biomes::kPlain:
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrass, BlockMetas::Grass::kPlain});
+						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrassBlock, BlockMetas::Grass::kPlain});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 4u) - 1;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -47,7 +47,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t l
 					break;
 				case Biomes::kSavanna:
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrass, BlockMetas::Grass::kSavanna});
+						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrassBlock, BlockMetas::Grass::kSavanna});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -90,7 +90,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t l
 				} break;
 				case Biomes::kForest: {
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrass, BlockMetas::Grass::kPlain});
+						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockMetas::Grass::kPlain});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -98,7 +98,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t l
 				} break;
 				case Biomes::kTropicalForest: {
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrass, BlockMetas::Grass::kTropical});
+						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockMetas::Grass::kTropical});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -106,7 +106,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t l
 				} break;
 				case Biomes::kBorealForest: {
 					if (cur_height == height) {
-						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrass, BlockMetas::Grass::kBoreal});
+						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockMetas::Grass::kBoreal});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
 						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
@@ -352,6 +352,13 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 					info->decorations.GenBirchTree(rand_gen, x, y, z);
 				else
 					info->decorations.GenOakTree(rand_gen, x, y, z);
+			} else if (rand_gen() % 50 == 0) {
+				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, 0});
+			}
+		} break;
+		case Biomes::kDesert: {
+			if (rand % 500 == 0) {
+				info->decorations.SetBlock(x, y + 1, z, Blocks::kDeadBush);
 			}
 		} break;
 		case Biomes::kSavanna: {

@@ -20,7 +20,7 @@ kIce,
 kSandstone,
 kWater,
 
-	// TREE
+// TREE
 kAcaciaLeaves,
 kAcaciaLog,
 kAcaciaLogTop,
@@ -44,4 +44,8 @@ kSprucePlank,
 kBirchLeaves,
 kBirchLog,
 kBirchLogTop,
-kBirchPlank
+kBirchPlank,
+
+kGrass,
+kDeadBush,
+kVine,

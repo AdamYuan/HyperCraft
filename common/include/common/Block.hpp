@@ -2,7 +2,9 @@
 #define CUBECRAFT3_COMMON_BLOCK_HPP
 
 #include <cinttypes>
+#include <common/AABB.hpp>
 #include <common/Endian.hpp>
+#include <iterator>
 #include <resource/texture/BlockTexture.hpp>
 #include <type_traits>
 
@@ -20,27 +22,30 @@ using BlockID = uint8_t;
 using BlockMeta = uint8_t;
 
 // TODO: custom block mesh
+struct BlockMeshVertex {
+	uint8_t x{}, y{}, z{}, ao{3};
+};
 struct BlockMeshFace {
 	BlockFace face{};
-	BlockTexture texture;
-	int8_t vertices[4][3]{};
+	BlockTexture texture{};
+	BlockMeshVertex vertices[4]{};
 };
 struct BlockMesh {
 	const BlockMeshFace *faces{nullptr};
 	uint32_t face_count{};
+	AABB<uint8_t> aabb;
 };
 
 struct BlockProperty {
 	const char *name{"Unnamed"};
 	BlockTexture textures[6]{};
 	bool transparent{false}, light_pass{false};
+	BlockMesh custom_mesh;
 	// META path #1: array to properties
 	const BlockProperty *meta_property_array{nullptr};
 	BlockMeta meta_property_array_count{};
 	// META path #2: function pointer
 	const BlockProperty *(*meta_property_func)(BlockMeta meta){nullptr};
-	bool have_custom_mesh{false};
-	BlockMesh custom_mesh;
 };
 
 #define BLOCK_TEXTURE_SAME(x) \
@@ -49,9 +54,11 @@ struct BlockProperty {
 	{ s, s, t, b, s, s }
 #define BLOCK_PROPERTY_ARRAY_SIZE(array) (sizeof(array) / sizeof(BlockProperty))
 #define BLOCK_PROPERTY_META_ARRAY(generic_name, meta_prop_array) \
-	{ generic_name, {}, {}, {}, meta_prop_array, sizeof(meta_prop_array) / sizeof(BlockProperty) }
+	{ generic_name, {}, {}, {}, {}, meta_prop_array, sizeof(meta_prop_array) / sizeof(BlockProperty) }
 #define BLOCK_PROPERTY_META_FUNCTION(generic_name, meta_prop_func) \
-	{ generic_name, {}, {}, {}, nullptr, 0, meta_prop_func }
+	{ generic_name, {}, {}, {}, {}, nullptr, 0, meta_prop_func }
+#define BLOCK_MESH_ARRAY(face_array) \
+	(BlockMesh) { face_array, sizeof(face_array) / sizeof(BlockMeshFace) }
 
 struct Blocks {
 	enum ID : BlockID {
@@ -59,8 +66,10 @@ struct Blocks {
 		kStone,
 		kCobblestone,
 		kDirt,
+		kGrassBlock,
 		kGrass,
 		kSand,
+		kDeadBush,
 		kGravel,
 		kGlass,
 		kSnow,
@@ -98,20 +107,20 @@ private:
 		};
 	};
 
-	inline static constexpr BlockProperty kGrassProperties[] = {
-	    {"Grass",
+	inline static constexpr BlockProperty kGrassBlockProperties[] = {
+	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassPlainSide,
 	                                BlockTextures::kGrassPlainTop),
 	     false, false}, //
-	    {"Grass",
+	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassSavannaSide,
 	                                BlockTextures::kGrassSavannaTop),
 	     false, false}, //
-	    {"Grass",
+	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassTropicalSide,
 	                                BlockTextures::kGrassTropicalTop),
 	     false, false}, //
-	    {"Grass",
+	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassBorealSide,
 	                                BlockTextures::kGrassBorealTop),
 	     false, false}, //
@@ -157,13 +166,35 @@ private:
 	    {"Birch Plank", BLOCK_TEXTURE_SAME(BlockTextures::kBirchPlank), false, false},   //
 	};
 
+	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
+	inline static constexpr BlockMeshFace kCrossMeshFaces[] = {
+	    {BlockFaces::kFront,
+	     {TexID},
+	     {{8 - Radius, 0, 8 - Radius},
+	      {8 + Radius, 0, 8 + Radius},
+	      {8 + Radius, Height, 8 + Radius},
+	      {8 - Radius, Height, 8 - Radius}}},
+	    {BlockFaces::kLeft,
+	     {TexID},
+	     {{8 - Radius, 0, 8 + Radius},
+	      {8 + Radius, 0, 8 - Radius},
+	      {8 + Radius, Height, 8 - Radius},
+	      {8 - Radius, Height, 8 + Radius}}},
+	};
+	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
+	inline static constexpr BlockMesh kCrossMesh = {kCrossMeshFaces<TexID, Radius, Height>,
+	                                                std::size(kCrossMeshFaces<TexID, Radius, Height>),
+	                                                {{8 - Radius, 0, 8 - Radius}, {8 + Radius, Height, 8 + Radius}}};
+
 	inline static constexpr BlockProperty kProperties[] = {
 	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},                  //
 	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false},             //
 	    {"Cobblestone", BLOCK_TEXTURE_SAME(BlockTextures::kCobblestone), false, false}, //
 	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},               //
-	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
-	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false},           //
+	    BLOCK_PROPERTY_META_ARRAY("Grass Block", kGrassBlockProperties),
+	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrass, 8, 16>},
+	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
+	    {"Dead Bush", {}, true, true, kCrossMesh<BlockTextures::kDeadBush, 8, 16>},
 	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), false, false},       //
 	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
 	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
@@ -199,10 +230,8 @@ public:
 	inline constexpr uint16_t GetData() const { return m_data; }
 	inline void SetData(uint16_t data) { m_data = data; }
 
-	inline constexpr const BlockMesh *GetCustomMesh() const {
-		return get_property()->have_custom_mesh ? &get_property()->custom_mesh : nullptr;
-	}
-	inline constexpr bool HaveCustomMesh() const { return get_property()->have_custom_mesh; }
+	inline constexpr bool HaveCustomMesh() const { return get_property()->custom_mesh.face_count; }
+	inline constexpr const BlockMesh *GetCustomMesh() const { return &get_property()->custom_mesh; }
 	inline constexpr const char *GetGenericName() const { return get_generic_property()->name; }
 	inline constexpr const char *GetName() const { return get_property()->name; }
 	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->textures[face]; }
@@ -234,5 +263,6 @@ public:
 #undef BLOCK_PROPERTY_ARRAY_SIZE
 #undef BLOCK_PROPERTY_META_ARRAY
 #undef BLOCK_PROPERTY_META_FUNCTION
+#undef BLOCK_MESH_ARRAY
 
 #endif
