@@ -3,103 +3,44 @@
 
 #include <cinttypes>
 #include <common/Endian.hpp>
+#include <resource/texture/BlockTexture.hpp>
 #include <type_traits>
 
 using BlockFace = uint8_t;
 struct BlockFaces {
 	enum FACE : BlockFace { kRight = 0, kLeft, kTop, kBottom, kFront, kBack };
 };
+inline constexpr BlockFace BlockFaceOpposite(BlockFace f) { return f ^ 1u; }
 template <typename T>
 inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type BlockFaceProceed(T *xyz, BlockFace f) {
 	xyz[f >> 1] += 1 - ((f & 1) << 1);
 }
 
-using BlockTexID = uint16_t;
-using BlockTexRot = uint8_t;
-
-class BlockTexture {
-private:
-	uint16_t m_data;
-
-public:
-	inline constexpr BlockTexture() : m_data{} {}
-	inline constexpr BlockTexture(BlockTexID id) : m_data{id} {}
-	inline constexpr BlockTexture(BlockTexID id, BlockTexRot rot) : m_data((rot << 14u) | id) {}
-
-	inline constexpr BlockTexRot GetRotation() const { return m_data >> 14u; }
-	inline constexpr BlockTexID GetID() const { return m_data & 0x3fffu; }
-
-	inline constexpr uint16_t GetData() const { return m_data; }
-	inline constexpr bool Empty() const { return m_data == 0; }
-
-	bool operator==(BlockTexture r) const { return m_data == r.m_data; }
-	bool operator!=(BlockTexture r) const { return m_data != r.m_data; }
-};
-
-struct BlockTextures {
-	enum ID : BlockTexID {
-		kNone = 0,
-		kStone,
-		kCobblestone,
-		kDirt,
-		kGrassPlainTop,
-		kGrassPlainSide,
-		kGrassSavannaTop,
-		kGrassSavannaSide,
-		kGrassTropicalTop,
-		kGrassTropicalSide,
-		kGrassBorealTop,
-		kGrassBorealSide,
-		kSand,
-		kGravel,
-		kGlass,
-		kSnow,
-		kBlueIce,
-		kIce,
-		kSandstone,
-		kWater,
-
-		// TREE
-		kAcaciaLeaves,
-		kAcaciaLog,
-		kAcaciaLogTop,
-		kAcaciaPlank,
-
-		kJungleLeaves,
-		kJungleLog,
-		kJungleLogTop,
-		kJunglePlank,
-
-		kOakLeaves,
-		kOakLog,
-		kOakLogTop,
-		kOakPlank,
-
-		kSpruceLeaves,
-		kSpruceLog,
-		kSpruceLogTop,
-		kSprucePlank,
-
-		kBirchLeaves,
-		kBirchLog,
-		kBirchLogTop,
-		kBirchPlank,
-	};
-	enum ROT : BlockTexRot { kRot0 = 0, kRot90, kRot180, kRot270 };
-};
-
 using BlockID = uint8_t;
 using BlockMeta = uint8_t;
 
+// TODO: custom block mesh
+struct BlockMeshFace {
+	BlockFace face{};
+	BlockTexture texture;
+	int8_t vertices[4][3]{};
+};
+struct BlockMesh {
+	const BlockMeshFace *faces{nullptr};
+	uint32_t face_count{};
+};
+
 struct BlockProperty {
-	const char *m_name{"Unnamed"};
-	BlockTexture m_textures[6]{};
-	bool m_transparent{false}, m_light_pass{false};
+	const char *name{"Unnamed"};
+	BlockTexture textures[6]{};
+	bool transparent{false}, light_pass{false};
 	// META path #1: array to properties
-	const BlockProperty *m_meta_property_array{nullptr};
-	BlockMeta m_meta_property_array_count{};
+	const BlockProperty *meta_property_array{nullptr};
+	BlockMeta meta_property_array_count{};
 	// META path #2: function pointer
-	const BlockProperty *(*m_meta_property_func)(BlockMeta meta){nullptr};
+	const BlockProperty *(*meta_property_func)(BlockMeta meta){nullptr};
+	bool have_custom_mesh{false};
+	BlockMesh custom_mesh;
 };
 
 #define BLOCK_TEXTURE_SAME(x) \
@@ -237,11 +178,11 @@ private:
 
 	inline constexpr const BlockProperty *get_generic_property() const { return kProperties + m_id; }
 	inline constexpr const BlockProperty *get_property() const {
-		return get_generic_property()->m_meta_property_func
-		           ? get_generic_property()->m_meta_property_func(m_meta)
-		           : (get_generic_property()->m_meta_property_array
-		                  ? get_generic_property()->m_meta_property_array +
-		                        (m_meta < get_generic_property()->m_meta_property_array_count ? m_meta : 0)
+		return get_generic_property()->meta_property_func
+		           ? get_generic_property()->meta_property_func(m_meta)
+		           : (get_generic_property()->meta_property_array
+		                  ? get_generic_property()->meta_property_array +
+		                        (m_meta < get_generic_property()->meta_property_array_count ? m_meta : 0)
 		                  : get_generic_property());
 	}
 
@@ -258,25 +199,30 @@ public:
 	inline constexpr uint16_t GetData() const { return m_data; }
 	inline void SetData(uint16_t data) { m_data = data; }
 
-	inline constexpr const char *GetGenericName() const { return get_generic_property()->m_name; }
-	inline constexpr const char *GetName() const { return get_property()->m_name; }
-	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->m_textures[face]; }
-	inline constexpr bool GetTransparent() const { return get_property()->m_transparent; }
+	inline constexpr const BlockMesh *GetCustomMesh() const {
+		return get_property()->have_custom_mesh ? &get_property()->custom_mesh : nullptr;
+	}
+	inline constexpr bool HaveCustomMesh() const { return get_property()->have_custom_mesh; }
+	inline constexpr const char *GetGenericName() const { return get_generic_property()->name; }
+	inline constexpr const char *GetName() const { return get_property()->name; }
+	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->textures[face]; }
+	inline constexpr bool GetTransparent() const { return get_property()->transparent; }
 	// inline constexpr bool GetLightPass() const { return get_property()->m_light_pass; }
 	// Direct Light: vertical sunlight
 	inline constexpr bool GetDirectLightPass() const {
-		return get_property()->m_light_pass && get_property()->m_transparent;
+		return get_property()->light_pass && get_property()->transparent;
 	}
 	inline constexpr bool GetIndirectLightPass() const {
-		return get_property()->m_transparent || get_property()->m_light_pass;
+		return get_property()->transparent || get_property()->light_pass;
 	}
 
-	inline constexpr bool ShowFace(Block neighbour) const {
-		if (GetID() == Blocks::kAir || GetID() == neighbour.GetID())
+	inline constexpr bool ShowFace(BlockFace face, Block neighbour) const {
+		BlockTexture tex = GetTexture(face), nei_tex = neighbour.GetTexture(BlockFaceOpposite(face));
+		if (tex.Empty() || tex.GetID() == nei_tex.GetID())
 			return false;
-		if (!GetTransparent() && !neighbour.GetTransparent())
+		if (!tex.IsTransparent() && !nei_tex.IsTransparent())
 			return false;
-		return !GetTransparent() || neighbour.GetID() == Blocks::kAir || neighbour.GetID() == Blocks::kWater;
+		return !tex.IsTransparent() || nei_tex.Empty() || neighbour.GetID() == Blocks::kWater; // or is liquid
 	}
 
 	bool operator==(Block r) const { return m_data == r.m_data; }

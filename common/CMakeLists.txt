@@ -3,6 +3,10 @@ project(CubeCraft3)
 
 set(CMAKE_CXX_STANDARD 17)
 
+if (NOT TARGET CubeCraft3_resource)
+    add_subdirectory(../resource ../resource)
+endif ()
+
 add_library(CubeCraft3_common_header INTERFACE)
 target_include_directories(CubeCraft3_common_header INTERFACE include dep)
 
@@ -29,5 +33,5 @@ endif ()
 add_subdirectory(dep)
 find_package(Threads REQUIRED)
 
-target_link_libraries(CubeCraft3_common PUBLIC common_dep Threads::Threads)
+target_link_libraries(CubeCraft3_common PUBLIC common_dep Threads::Threads PRIVATE CubeCraft3_resource_header)
 target_include_directories(CubeCraft3_common PUBLIC include)

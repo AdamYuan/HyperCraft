@@ -5,7 +5,9 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_subdirectory(dep)
 add_subdirectory(shader)
-add_subdirectory(resource)
+if (NOT TARGET CubeCraft3_resource)
+    add_subdirectory(../resource ../resource)
+endif ()
 if (NOT TARGET CubeCraft3_common)
     add_subdirectory(../common ../common)
 endif ()
@@ -58,5 +60,5 @@ add_executable(CubeCraft3_client
         src/ScreenRenderer.cpp
         include/client/ScreenRenderer.hpp)
 
-target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader client_resource CubeCraft3_common)
+target_link_libraries(CubeCraft3_client PRIVATE client_dep client_shader CubeCraft3_resource CubeCraft3_common)
 target_include_directories(CubeCraft3_client PRIVATE include)

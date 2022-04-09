@@ -45,36 +45,21 @@ private:
 		inline bool operator!=(AO4 r) const { return m_data != r.m_data; }
 	};
 	struct Light4 { // compressed light data for 4 vertices (a face)
-		uint8_t m_sunlight[4], m_torchlight[4];
-		AO4 m_ao;
+		union {
+			struct {
+				uint8_t sunlight[4], torchlight[4];
+			};
+			uint64_t lights;
+		};
+		AO4 ao;
 		inline bool GetFlip() const {
-			return std::abs((int32_t)(m_ao[0] + 1) * (m_sunlight[0] + 1) - (m_ao[2] + 1) * (m_sunlight[2] + 1))
+			return std::abs((int32_t)(ao[0] + 1) * (sunlight[0] + 1) - (ao[2] + 1) * (sunlight[2] + 1))
 			       // + std::max(m_light[0].GetTorchlight(), m_light[2].GetTorchlight())
-			       < std::abs((int32_t)(m_ao[1] + 1) * (m_sunlight[1] + 1) - (m_ao[3] + 1) * (m_sunlight[3] + 1));
+			       < std::abs((int32_t)(ao[1] + 1) * (sunlight[1] + 1) - (ao[3] + 1) * (sunlight[3] + 1));
 			// + std::max(m_light[1].GetTorchlight(), m_light[3].GetTorchlight());
 		}
-		inline bool operator==(Light4 f) const {
-			if (m_ao != f.m_ao)
-				return false;
-			for (uint32_t i = 0; i < 4; ++i) {
-				if (m_sunlight[i] != f.m_sunlight[i])
-					return false;
-				if (m_torchlight[i] != f.m_torchlight[i])
-					return false;
-			}
-			return true;
-		}
-		inline bool operator!=(Light4 f) const {
-			if (m_ao != f.m_ao)
-				return true;
-			for (uint32_t i = 0; i < 4; ++i) {
-				if (m_sunlight[i] != f.m_sunlight[i])
-					return true;
-				if (m_torchlight[i] != f.m_torchlight[i])
-					return true;
-			}
-			return false;
-		}
+		inline bool operator==(Light4 f) const { return ao == f.ao && lights == f.lights; }
+		inline bool operator!=(Light4 f) const { return ao != f.ao || lights != f.lights; }
 	};
 
 	struct MeshGenInfo {

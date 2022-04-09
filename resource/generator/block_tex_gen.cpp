@@ -1,5 +1,3 @@
-#include <common/Block.hpp>
-
 #define MAGIC_ENUM_RANGE_MIN 0
 #define MAGIC_ENUM_RANGE_MAX 256
 #include <magic_enum.hpp>
@@ -39,7 +37,11 @@ int main(int argc, char **argv) {
 	if (argc != 2)
 		return EXIT_FAILURE;
 
-	constexpr auto &names = magic_enum::enum_names<BlockTextures::ID>();
+	enum ID {
+#include <block_texture_enum.inl>
+	};
+
+	constexpr auto &names = magic_enum::enum_names<ID>();
 	const int texture_count = names.size() - 1;
 	int current_texture = 0;
 

@@ -1,5 +1,8 @@
 #include <client/GlobalTexture.hpp>
 
+#include <resource/texture/BlockTexture.hpp>
+#include <resource/texture/MiscTexture.hpp>
+
 #include <myvk/Buffer.hpp>
 #include <myvk/CommandBuffer.hpp>
 
@@ -16,7 +19,6 @@ std::shared_ptr<GlobalTexture> GlobalTexture::Create(const std::shared_ptr<myvk:
 void GlobalTexture::create_lightmap_texture(const std::shared_ptr<myvk::CommandPool> &command_pool) {
 	int x, y, c;
 
-#include <client/texture/misc_texture_png.inl>
 	stbi_uc *img = stbi_load_from_memory(kLightmapTexturePng, sizeof(kLightmapTexturePng), &x, &y, &c, 4);
 	std::shared_ptr<myvk::Buffer> staging =
 	    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), img, img + x * y * 4);
@@ -48,8 +50,7 @@ void GlobalTexture::create_lightmap_texture(const std::shared_ptr<myvk::CommandP
 	                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
 	command_buffer->CmdCopy(staging, m_lightmap_texture, {region});
 	command_buffer->CmdPipelineBarrier(
-	    VK_PIPELINE_STAGE_TRANSFER_BIT,  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {},
-	    {},
+	    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, {},
 	    m_lightmap_texture->GetDstMemoryBarriers({region}, VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
 	                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 	                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
@@ -63,7 +64,6 @@ void GlobalTexture::create_lightmap_texture(const std::shared_ptr<myvk::CommandP
 void GlobalTexture::create_block_texture(const std::shared_ptr<myvk::CommandPool> &command_pool) {
 	int x, y, c;
 
-#include <client/texture/block_texture_png.inl>
 	stbi_uc *img = stbi_load_from_memory(kBlockTexturePng, sizeof(kBlockTexturePng), &x, &y, &c, 4);
 	std::shared_ptr<myvk::Buffer> staging =
 	    myvk::Buffer::CreateStaging(command_pool->GetDevicePtr(), img, img + x * y * 4);

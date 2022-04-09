@@ -1,0 +1,47 @@
+// clang-format off
+kNone = 0,
+kStone,
+kCobblestone,
+kDirt,
+kGrassPlainTop,
+kGrassPlainSide,
+kGrassSavannaTop,
+kGrassSavannaSide,
+kGrassTropicalTop,
+kGrassTropicalSide,
+kGrassBorealTop,
+kGrassBorealSide,
+kSand,
+kGravel,
+kGlass,
+kSnow,
+kBlueIce,
+kIce,
+kSandstone,
+kWater,
+
+	// TREE
+kAcaciaLeaves,
+kAcaciaLog,
+kAcaciaLogTop,
+kAcaciaPlank,
+
+kJungleLeaves,
+kJungleLog,
+kJungleLogTop,
+kJunglePlank,
+
+kOakLeaves,
+kOakLog,
+kOakLogTop,
+kOakPlank,
+
+kSpruceLeaves,
+kSpruceLog,
+kSpruceLogTop,
+kSprucePlank,
+
+kBirchLeaves,
+kBirchLog,
+kBirchLogTop,
+kBirchPlank

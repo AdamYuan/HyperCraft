@@ -118,14 +118,13 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 					const Block a = get_block(x[0] + q[0], x[1] + q[1], x[2] + q[2]);
 					const Block b = get_block(x[0], x[1], x[2]);
 
-					if (x[axis] != 0 && a.ShowFace(b)) {
-						BlockFace f = axis << 1;
+					BlockFace f;
+					if (x[axis] != 0 && a.ShowFace((f = axis << 1), b)) {
 						texture_mask[counter] = a.GetTexture(f);
 						face_inv_mask[counter] = false;
 						init_light4(light_mask + counter, f, (int_fast8_t)(x[0] + q[0]), (int_fast8_t)(x[1] + q[1]),
 						            (int_fast8_t)(x[2] + q[2]));
-					} else if (Chunk::kSize != x[axis] && b.ShowFace(a)) {
-						BlockFace f = (axis << 1) | 1;
+					} else if (Chunk::kSize != x[axis] && b.ShowFace((f = (axis << 1) | 1), a)) {
 						texture_mask[counter] = b.GetTexture(f);
 						face_inv_mask[counter] = true;
 						init_light4(light_mask + counter, f, (int_fast8_t)(x[0]), (int_fast8_t)(x[1]),
@@ -184,38 +183,36 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						                    uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
 						                    uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset,
 						                    quad_face,
-						                    quad_light.m_ao[0],
-						                    quad_light.m_sunlight[0],
-						                    quad_light.m_torchlight[0],
+						                    quad_light.ao[0],
+						                    quad_light.sunlight[0],
+						                    quad_light.torchlight[0],
 						                    quad_texture.GetID()},
 						    v01 = {uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
-						           quad_light.m_ao[1],
-						           quad_light.m_sunlight[1],
-						           quad_light.m_torchlight[1],
+						           quad_light.ao[1],
+						           quad_light.sunlight[1],
+						           quad_light.torchlight[1],
 						           quad_texture.GetID()},
 						    v10 = {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
-						           quad_light.m_ao[2],
-						           quad_light.m_sunlight[2],
-						           quad_light.m_torchlight[2],
+						           quad_light.ao[2],
+						           quad_light.sunlight[2],
+						           quad_light.torchlight[2],
 						           quad_texture.GetID()},
 						    v11 = {uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
 						           quad_face,
-						           quad_light.m_ao[3],
-						           quad_light.m_sunlight[3],
-						           quad_light.m_torchlight[3],
+						           quad_light.ao[3],
+						           quad_light.sunlight[3],
+						           quad_light.torchlight[3],
 						           quad_texture.GetID()};
 
-#include <client/texture/block_texture_transparency.inl>
-						MeshGenInfo &info =
-						    kBlockTextureTransparency[quad_texture.GetID()] ? transparent_mesh_info : opaque_mesh_info;
+						MeshGenInfo &info = quad_texture.IsTransparent() ? transparent_mesh_info : opaque_mesh_info;
 						// if indices would exceed, restart
 						uint16_t cur_vertex = info.vertices.size();
 						if (cur_vertex + 4 > UINT16_MAX) {
@@ -354,7 +351,7 @@ void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int
 		pass[2] = get_block(x + kLookup3v[face][v][2][0], y + kLookup3v[face][v][2][1], z + kLookup3v[face][v][2][2])
 		              .GetIndirectLightPass();
 
-		light4->m_ao.Set(v, (!pass[0] && !pass[2] ? 0u : 3u - !pass[0] - !pass[1] - !pass[2]));
+		light4->ao.Set(v, (!pass[0] && !pass[2] ? 0u : 3u - !pass[0] - !pass[1] - !pass[2]));
 
 		// smooth the LightLvl using the average value
 		uint32_t counter = 1;
@@ -384,8 +381,8 @@ void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int
 				torchlight_sum += light.GetTorchlight();
 			}
 		}
-		light4->m_sunlight[v] = (sunlight_sum << 2u) / counter;
-		light4->m_torchlight[v] = (torchlight_sum << 2u) / counter;
+		light4->sunlight[v] = (sunlight_sum << 2u) / counter;
+		light4->torchlight[v] = (torchlight_sum << 2u) / counter;
 	}
 }
 
