@@ -107,6 +107,33 @@ private:
 		};
 	};
 
+	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
+	inline static constexpr BlockMeshFace kCrossMeshFaces[] = {
+	    {BlockFaces::kFront,
+	     {TexID},
+	     {{8 - Radius, 0, 8 - Radius, 1},
+	      {8 + Radius, 0, 8 + Radius, 1},
+	      {8 + Radius, Height, 8 + Radius},
+	      {8 - Radius, Height, 8 - Radius}}},
+	    {BlockFaces::kLeft,
+	     {TexID},
+	     {{8 - Radius, 0, 8 + Radius, 1},
+	      {8 + Radius, 0, 8 - Radius, 1},
+	      {8 + Radius, Height, 8 - Radius},
+	      {8 - Radius, Height, 8 + Radius}}},
+	};
+	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
+	inline static constexpr BlockMesh kCrossMesh = {kCrossMeshFaces<TexID, Radius, Height>,
+	                                                std::size(kCrossMeshFaces<TexID, Radius, Height>),
+	                                                {{8 - Radius, 0, 8 - Radius}, {8 + Radius, Height, 8 + Radius}}};
+
+	inline static constexpr BlockProperty kGrassProperties[] = {
+	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassPlain, 8, 16>},
+	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassSavanna, 8, 16>},
+	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassTropical, 8, 16>},
+	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassBoreal, 8, 16>},
+	};
+
 	inline static constexpr BlockProperty kGrassBlockProperties[] = {
 	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassPlainSide,
@@ -166,33 +193,13 @@ private:
 	    {"Birch Plank", BLOCK_TEXTURE_SAME(BlockTextures::kBirchPlank), false, false},   //
 	};
 
-	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
-	inline static constexpr BlockMeshFace kCrossMeshFaces[] = {
-	    {BlockFaces::kFront,
-	     {TexID},
-	     {{8 - Radius, 0, 8 - Radius},
-	      {8 + Radius, 0, 8 + Radius},
-	      {8 + Radius, Height, 8 + Radius},
-	      {8 - Radius, Height, 8 - Radius}}},
-	    {BlockFaces::kLeft,
-	     {TexID},
-	     {{8 - Radius, 0, 8 + Radius},
-	      {8 + Radius, 0, 8 - Radius},
-	      {8 + Radius, Height, 8 - Radius},
-	      {8 - Radius, Height, 8 + Radius}}},
-	};
-	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
-	inline static constexpr BlockMesh kCrossMesh = {kCrossMeshFaces<TexID, Radius, Height>,
-	                                                std::size(kCrossMeshFaces<TexID, Radius, Height>),
-	                                                {{8 - Radius, 0, 8 - Radius}, {8 + Radius, Height, 8 + Radius}}};
-
 	inline static constexpr BlockProperty kProperties[] = {
 	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},                  //
 	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false},             //
 	    {"Cobblestone", BLOCK_TEXTURE_SAME(BlockTextures::kCobblestone), false, false}, //
 	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},               //
 	    BLOCK_PROPERTY_META_ARRAY("Grass Block", kGrassBlockProperties),
-	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrass, 8, 16>},
+	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
 	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
 	    {"Dead Bush", {}, true, true, kCrossMesh<BlockTextures::kDeadBush, 8, 16>},
 	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), false, false},       //

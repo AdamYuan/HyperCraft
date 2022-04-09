@@ -336,15 +336,20 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 					info->decorations.GenBirchTree(rand_gen, x, y, z);
 				else
 					info->decorations.GenOakTree(rand_gen, x, y, z);
-			}
+			} else if (rand % 273 == 0)
+				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kPlain});
 		} break;
 		case Biomes::kBorealForest: {
 			if (rand % 120 == 0)
 				info->decorations.GenSpruceTree(rand_gen, x, y, z);
+			else if (rand % 87 == 0)
+				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kBoreal});
 		} break;
 		case Biomes::kTropicalForest: {
-			if (rand % 80 == 0)
+			if (rand % 57 == 0)
 				info->decorations.GenJungleTree(rand_gen, x, y, z);
+			else if (rand % 127 == 0)
+				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kTropical});
 		} break;
 		case Biomes::kPlain: {
 			if (rand % 1000 == 0) {
@@ -352,18 +357,22 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 					info->decorations.GenBirchTree(rand_gen, x, y, z);
 				else
 					info->decorations.GenOakTree(rand_gen, x, y, z);
-			} else if (rand_gen() % 50 == 0) {
-				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, 0});
+			} else if (rand % 227 == 0) {
+				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kPlain});
 			}
 		} break;
 		case Biomes::kDesert: {
-			if (rand % 500 == 0) {
+			if (rand % 473 == 0) {
 				info->decorations.SetBlock(x, y + 1, z, Blocks::kDeadBush);
 			}
 		} break;
 		case Biomes::kSavanna: {
 			if (rand % 1200 == 0)
 				info->decorations.GenAcaciaTree(rand_gen, x, y, z);
+			else if (rand % 257 == 0)
+				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kSavanna});
+			else if (rand % 537 == 0)
+				info->decorations.SetBlock(x, y + 1, z, Blocks::kDeadBush);
 		} break;
 		default:
 			break;

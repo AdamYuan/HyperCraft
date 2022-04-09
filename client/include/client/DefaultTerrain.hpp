@@ -96,7 +96,7 @@ private:
 
 	// Noise generators
 	static constexpr float kBiomeNoiseFrequency = 0.005f, kBiomeCellLookupFrequency = 0.1f,
-	                       kHeightNoiseFrequency = 0.001f, kCaveNoiseFrequency = 0.01f;
+	                       kHeightNoiseFrequency = 0.001f, kCaveNoiseFrequency = 0.005f;
 
 	FastNoise::SmartNode<FastNoise::Perlin> m_biome_precipitation_noise;
 	FastNoise::SmartNode<FastNoise::SeedOffset> m_biome_temperature_noise;
