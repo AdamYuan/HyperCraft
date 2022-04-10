@@ -22,7 +22,8 @@ struct BlockMeshVertex {
 	uint8_t ao{3};
 };
 struct BlockMeshFace {
-	BlockFace face{std::numeric_limits<BlockFace>::max()};
+	uint8_t axis;
+	BlockFace light_face{}, render_face{};
 	BlockTexture texture{};
 	BlockMeshVertex vertices[4]{};
 };
@@ -36,22 +37,51 @@ struct BlockMesh {
 
 // predefined block meshes
 struct BlockMeshes {
-	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
+	template <BlockTexID TexID, uint8_t Radius, uint8_t Low, uint8_t High, bool DoubleSide = false,
+	          BlockFace LightFace = BlockFaces::kTop, typename = std::enable_if_t<Radius <= 8>>
 	inline static constexpr BlockMesh kCross = {{
-	                                                {BlockFaces::kFront,
+	                                                {0,
+	                                                 LightFace,
+	                                                 BlockFaces::kLeft,
 	                                                 {TexID},
-	                                                 {{8 - Radius, 0, 8 - Radius, 1},
-	                                                  {8 + Radius, 0, 8 + Radius, 1},
-	                                                  {8 + Radius, Height, 8 + Radius},
-	                                                  {8 - Radius, Height, 8 - Radius}}},
-	                                                {BlockFaces::kLeft,
+	                                                 {
+	                                                     {8 - Radius, Low, 8 - Radius, 1},
+	                                                     {8 + Radius, Low, 8 + Radius, 1},
+	                                                     {8 + Radius, High, 8 + Radius},
+	                                                     {8 - Radius, High, 8 - Radius},
+	                                                 }},
+	                                                {2,
+	                                                 LightFace,
+	                                                 BlockFaces::kBack,
 	                                                 {TexID},
-	                                                 {{8 - Radius, 0, 8 + Radius, 1},
-	                                                  {8 + Radius, 0, 8 - Radius, 1},
-	                                                  {8 + Radius, Height, 8 - Radius},
-	                                                  {8 - Radius, Height, 8 + Radius}}},
+	                                                 {
+	                                                     {8 - Radius, Low, 8 + Radius, 1},
+	                                                     {8 + Radius, Low, 8 - Radius, 1},
+	                                                     {8 + Radius, High, 8 - Radius},
+	                                                     {8 - Radius, High, 8 + Radius},
+	                                                 }},
+	                                                {0,
+	                                                 LightFace,
+	                                                 BlockFaces::kRight,
+	                                                 {TexID},
+	                                                 {
+	                                                     {8 - Radius, High, 8 - Radius},
+	                                                     {8 + Radius, High, 8 + Radius},
+	                                                     {8 + Radius, Low, 8 + Radius, 1},
+	                                                     {8 - Radius, Low, 8 - Radius, 1},
+	                                                 }},
+	                                                {2,
+	                                                 LightFace,
+	                                                 BlockFaces::kFront,
+	                                                 {TexID},
+	                                                 {
+	                                                     {8 - Radius, High, 8 + Radius},
+	                                                     {8 + Radius, High, 8 - Radius},
+	                                                     {8 + Radius, Low, 8 - Radius, 1},
+	                                                     {8 - Radius, Low, 8 + Radius, 1},
+	                                                 }},
 	                                            },
-	                                            2};
+	                                            DoubleSide ? 4 : 2};
 };
 
 #endif

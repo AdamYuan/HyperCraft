@@ -52,3 +52,4 @@ kBirchPlank,
 
 kDeadBush,
 kVine,
+kApple,

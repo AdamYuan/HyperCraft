@@ -310,20 +310,34 @@ private:
 
 		template <typename RNG>
 		inline auto GenOakTree(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
+			bool apple = rng() % 8 == 0;
 			int32_t trunk_height = rng() % 5 + 5;
 			int32_t main_crown_size = rng() % 3 + 1;
 			for (int32_t i = 0; i < trunk_height + main_crown_size; ++i)
 				SetBlock(x, i + y, z, {Blocks::kLog, BlockMetas::Tree::kOak});
 			set_block_cluster(x, y + trunk_height, z, main_crown_size, {Blocks::kLeaves, BlockMetas::Tree::kOak});
 
+			if (apple && main_crown_size > 1) {
+				for (uint32_t i = 0; i < main_crown_size * 2; ++i)
+					SetBlock(x - main_crown_size + 1 + (int32_t)(rng() % (main_crown_size * 2 - 1)),
+					         y + trunk_height - main_crown_size + 2 - (int32_t)(rng() % 3),
+					         z - main_crown_size + 1 + (int32_t)(rng() % (main_crown_size * 2 - 1)), Blocks::kApple);
+			}
 			uint32_t branch_count = rng() % 3 + 4;
 			for (uint32_t i = 0; i < branch_count; ++i) {
 				int32_t branch_height = std::max(trunk_height - 4 + (int32_t)(rng() % 6), 4), bry = y + branch_height;
+				int32_t crown_size = rng() % 2 + 1;
 
 				glm::i32vec3 d = {rng() % 5 - 2, rng() % 4 + 1, rng() % 5 - 2};
 				set_block_line(x, bry, z, d.x, d.y, d.z, {Blocks::kLog, BlockMetas::Tree::kOak});
-				set_block_cluster(x + d.x, bry + d.y, z + d.z, rng() % 2 + 1,
-				                  {Blocks::kLeaves, BlockMetas::Tree::kOak});
+				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kOak});
+
+				if (apple && crown_size > 1) {
+					for (uint32_t j = 0; j < crown_size * 2; ++j)
+						SetBlock(x + d.x - crown_size + 1 + (int32_t)(rng() % (crown_size * 2 - 1)),
+						         bry + d.y - crown_size + 2 - (int32_t)(rng() % 3),
+						         z + d.z - crown_size + 1 + (int32_t)(rng() % (crown_size * 2 - 1)), Blocks::kApple);
+				}
 			}
 		}
 

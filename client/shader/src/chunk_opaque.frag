@@ -18,6 +18,8 @@ const vec3 kFaceNormal[6] = {vec3(1, 0, 0),  vec3(-1, 0, 0), vec3(0, 1, 0),
 
 void main() {
 	vec4 tex = texture(uBlockTexture, vec3(vTexcoord, vTexture));
+	if (tex.a < 0.5)
+		discard;
 	vec3 color = tex.rgb;
 	color *= vAO * texture(uLightmapTexture, vec3(vTorchlight, vSunlight, 0.0)).xyz;
 	color *= max(dot(kFaceNormal[vFace], normalize(vec3(10, 5, 3))), 0) * 0.5 + 0.5;

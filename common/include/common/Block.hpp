@@ -70,7 +70,10 @@ struct Blocks {
 		// TREE
 		kLeaves,
 		kLog,
-		kPlank
+		kPlank,
+
+		// Decorations
+		kApple
 	};
 };
 
@@ -97,10 +100,10 @@ private:
 	};
 
 	inline static constexpr BlockProperty kGrassProperties[] = {
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassPlain, 8, 16>},
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassSavanna, 8, 16>},
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassTropical, 8, 16>},
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassBoreal, 8, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassPlain, 8, 0, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassSavanna, 8, 0, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassTropical, 8, 0, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassBoreal, 8, 0, 16>},
 	};
 
 	inline static constexpr BlockProperty kGrassBlockProperties[] = {
@@ -170,7 +173,7 @@ private:
 	    BLOCK_PROPERTY_META_ARRAY("Grass Block", kGrassBlockProperties),
 	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
 	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
-	    {"Dead Bush", {}, true, true, BlockMeshes::kCross<BlockTextures::kDeadBush, 8, 16>},
+	    {"Dead Bush", {}, true, true, BlockMeshes::kCross<BlockTextures::kDeadBush, 8, 0, 16>},
 	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), false, false},       //
 	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
 	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
@@ -181,6 +184,7 @@ private:
 	    BLOCK_PROPERTY_META_ARRAY("Leaves", kLeavesProperties),
 	    BLOCK_PROPERTY_META_FUNCTION("Log", get_log_property),
 	    BLOCK_PROPERTY_META_ARRAY("Plank", kPlankProperties),
+	    {"Apple", {}, true, true, BlockMeshes::kCross<BlockTextures::kApple, 5, 1, 15, true, BlockFaces::kBottom>},
 	};
 
 	inline constexpr const BlockProperty *get_generic_property() const { return kProperties + m_id; }

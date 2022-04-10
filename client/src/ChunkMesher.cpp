@@ -109,23 +109,27 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 		ChunkIndex2XYZ(idx, glm::value_ptr(pos));
 		glm::u32vec3 base = (glm::u32vec3)pos << ChunkMeshVertex::kUnitBitOffset;
 
-		BlockFace cur_face = std::numeric_limits<BlockFace>::max();
-		uint_fast8_t cur_axis{}, u_axis{}, v_axis{};
+		BlockFace cur_light_face = std::numeric_limits<BlockFace>::max();
+		uint8_t cur_light_axis{}, u_light_axis{}, v_light_axis{};
 		Light4 low_light4{}, high_light4{};
 		for (uint32_t i = 0; i < mesh->face_count; ++i) {
 			const BlockMeshFace *mesh_face = mesh->faces + i;
 
-			if (mesh_face->face != cur_face) {
-				cur_face = mesh_face->face;
-				cur_axis = cur_face >> 1u;
-				u_axis = (cur_axis + 1) % 3;
-				v_axis = (cur_axis + 2) % 3;
-				if (cur_face & 1)
-					std::swap(u_axis, v_axis);
+			if (mesh_face->light_face != cur_light_face) {
+				cur_light_face = mesh_face->light_face;
+				cur_light_axis = cur_light_face >> 1u;
+				u_light_axis = (cur_light_axis + 1) % 3;
+				v_light_axis = (cur_light_axis + 2) % 3;
+				if (cur_light_face & 1u)
+					std::swap(u_light_axis, v_light_axis);
 
-				light4_init(&high_light4, cur_face, pos.x, pos.y, pos.z);
-				auto nei_pos = BlockFaceProceed(pos, BlockFaceOpposite(cur_face));
-				light4_init(&low_light4, cur_face, nei_pos.x, nei_pos.y, nei_pos.z);
+				auto op_nei_pos = BlockFaceProceed(pos, BlockFaceOpposite(cur_light_face)),
+				     nei_pos = BlockFaceProceed(pos, cur_light_face);
+				light4_init(&low_light4, cur_light_face, op_nei_pos.x, op_nei_pos.y, op_nei_pos.z);
+				if (get_block(nei_pos.x, nei_pos.y, nei_pos.z).GetIndirectLightPass())
+					light4_init(&high_light4, cur_light_face, pos.x, pos.y, pos.z);
+				else
+					high_light4 = low_light4;
 			}
 
 			MeshGenInfo &info = mesh_face->texture.IsTransparent() ? transparent_mesh_info : opaque_mesh_info;
@@ -140,15 +144,15 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 
 			for (const auto &vert : mesh_face->vertices) {
 				info.aabb.Merge({base.x + vert.x, base.y + vert.y, base.z + vert.z});
-				uint8_t du = vert.pos[u_axis], dv = vert.pos[v_axis],
-				        dw = std::min(vert.pos[cur_axis], (uint8_t)ChunkMeshVertex::kUnitOffset);
-				if (cur_face & 1u)
+				uint8_t du = vert.pos[u_light_axis], dv = vert.pos[v_light_axis],
+				        dw = std::min(vert.pos[cur_light_axis], (uint8_t)ChunkMeshVertex::kUnitOffset);
+				if (cur_light_face & 1u)
 					dw = ChunkMeshVertex::kUnitOffset - (int32_t)dw;
 				uint8_t ao = vert.ao, sunlight, torchlight;
 				light4_interpolate(low_light4, high_light4, du, dv, dw, &ao, &sunlight, &torchlight);
 				info.vertices.push_back((ChunkMeshVertex){base.x + vert.x, base.y + vert.y, base.z + vert.z,
-				                                          mesh_face->face, ao, sunlight, torchlight,
-				                                          mesh_face->texture.GetID()});
+				                                          mesh_face->axis, mesh_face->render_face, ao, sunlight,
+				                                          torchlight, mesh_face->texture.GetID()});
 			}
 
 			info.indices.push_back(cur_vertex);
@@ -244,6 +248,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						ChunkMeshVertex v00{uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
 						                    uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
 						                    uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset,
+						                    axis,
 						                    quad_face,
 						                    quad_light.ao[0],
 						                    quad_light.sunlight[0],
@@ -252,6 +257,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						    v01 = {uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset,
+						           axis,
 						           quad_face,
 						           quad_light.ao[1],
 						           quad_light.sunlight[1],
@@ -260,6 +266,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						    v10 = {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
+						           axis,
 						           quad_face,
 						           quad_light.ao[2],
 						           quad_light.sunlight[2],
@@ -268,6 +275,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						    v11 = {uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
 						           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
+						           axis,
 						           quad_face,
 						           quad_light.ao[3],
 						           quad_light.sunlight[3],

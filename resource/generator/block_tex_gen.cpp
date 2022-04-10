@@ -5,6 +5,7 @@
 #include <cctype>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <vector>
 
 #include <png.h>
@@ -12,6 +13,12 @@
 
 #include "bytes_to_array.hpp"
 #include "write_png.hpp"
+
+enum ID {
+#include <block_texture_enum.inl>
+};
+
+std::set<uint32_t> preserved_opaque_texture = {ID::kApple};
 
 std::string make_texture_filename(std::string_view x) {
 	std::string ret;
@@ -36,10 +43,6 @@ int main(int argc, char **argv) {
 
 	if (argc != 2)
 		return EXIT_FAILURE;
-
-	enum ID {
-#include <block_texture_enum.inl>
-	};
 
 	constexpr auto &names = magic_enum::enum_names<ID>();
 	const int texture_count = names.size() - 1;
@@ -81,12 +84,13 @@ int main(int argc, char **argv) {
 			return EXIT_FAILURE;
 		}
 		bool transparent = false;
-		for (int p = 0; p < x * x; ++p) {
-			if (img[(p << 2) | 3] != 255) {
-				transparent = true;
-				break;
+		if (preserved_opaque_texture.find(current_texture + 1) == preserved_opaque_texture.end())
+			for (int p = 0; p < x * x; ++p) {
+				if (img[(p << 2) | 3] != 255) {
+					transparent = true;
+					break;
+				}
 			}
-		}
 		combined_transparency.push_back(transparent);
 		std::cout << " transparent: " << transparent << std::endl;
 		std::copy(img, img + x * x * 4, combined_texture.data() + (current_texture++) * x * x * 4);

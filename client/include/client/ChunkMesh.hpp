@@ -12,11 +12,11 @@
 struct ChunkMeshVertex { // Compressed mesh vertex for chunk
 	static constexpr uint32_t kUnitBitOffset = 4u;
 	static constexpr uint32_t kUnitOffset = 1u << kUnitBitOffset;
-	// x, y, z, face, AO, sunlight, torchlight; resource, u, v
-	uint32_t x10_y10_z10, tex8_face3_ao2_sl6_tl6;
-	ChunkMeshVertex(uint32_t x10, uint32_t y10, uint32_t z10, BlockFace face, uint8_t ao, uint8_t sunlight,
-	                uint8_t torchlight, BlockTexID tex)
-	    : x10_y10_z10(x10 | (y10 << 10u) | (z10 << 20u)),
+	// x, y, z, axis, face, AO, sunlight, torchlight; resource, u, v
+	uint32_t x10_y10_z10_axis2, tex8_face3_ao2_sl6_tl6;
+	ChunkMeshVertex(uint32_t x10, uint32_t y10, uint32_t z10, uint8_t axis, BlockFace face, uint8_t ao,
+	                uint8_t sunlight, uint8_t torchlight, BlockTexID tex)
+	    : x10_y10_z10_axis2(x10 | (y10 << 10u) | (z10 << 20u) | (axis << 30u)),
 	      tex8_face3_ao2_sl6_tl6((tex - 1u) | (face << 8u) | (ao << 11u) | (sunlight << 13u) | (torchlight << 19u)) {}
 };
 
