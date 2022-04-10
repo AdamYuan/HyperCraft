@@ -99,41 +99,65 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 	opaque_mesh_info.transparent = false;
 	transparent_mesh_info.transparent = true;
 
+	// deal with custom block mesh
 	for (uint32_t idx = 0; idx < kChunkSize * kChunkSize * kChunkSize; ++idx) {
 		Block b = m_chunk_ptr->GetBlock(idx);
-		if (b.HaveCustomMesh()) {
-			const BlockMesh *mesh = b.GetCustomMesh();
-			glm::u32vec3 base;
-			ChunkIndex2XYZ(idx, glm::value_ptr(base));
-			base <<= ChunkMeshVertex::kUnitBitOffset;
-			for (uint32_t i = 0; i < mesh->face_count; ++i) {
-				const BlockMeshFace *mesh_face = mesh->faces + i;
+		if (!b.HaveCustomMesh())
+			continue;
+		const BlockMesh *mesh = b.GetCustomMesh();
+		glm::vec<3, int_fast8_t> pos{};
+		ChunkIndex2XYZ(idx, glm::value_ptr(pos));
+		glm::u32vec3 base = (glm::u32vec3)pos << ChunkMeshVertex::kUnitBitOffset;
 
-				MeshGenInfo &info = mesh_face->texture.IsTransparent() ? transparent_mesh_info : opaque_mesh_info;
-				// if indices would exceed, restart
-				uint16_t cur_vertex = info.vertices.size();
-				if (cur_vertex + 4 > UINT16_MAX) {
-					bool trans = info.transparent;
-					ret.push_back(std::move(info));
-					info = MeshGenInfo{};
-					info.transparent = trans;
-				}
+		BlockFace cur_face = std::numeric_limits<BlockFace>::max();
+		uint_fast8_t cur_axis{}, u_axis{}, v_axis{};
+		Light4 low_light4{}, high_light4{};
+		for (uint32_t i = 0; i < mesh->face_count; ++i) {
+			const BlockMeshFace *mesh_face = mesh->faces + i;
 
-				// TODO: light value interpolation
-				for (const auto &v : mesh_face->vertices) {
-					info.aabb.Merge({base.x + v.x, base.y + v.y, base.z + v.z});
-					info.vertices.push_back((ChunkMeshVertex){base.x + v.x, base.y + v.y, base.z + v.z, mesh_face->face,
-					                                          v.ao, 63, 63, mesh_face->texture.GetID()});
-				}
+			if (mesh_face->face != cur_face) {
+				cur_face = mesh_face->face;
+				cur_axis = cur_face >> 1u;
+				u_axis = (cur_axis + 1) % 3;
+				v_axis = (cur_axis + 2) % 3;
+				if (cur_face & 1)
+					std::swap(u_axis, v_axis);
 
-				info.indices.push_back(cur_vertex);
-				info.indices.push_back(cur_vertex + 1);
-				info.indices.push_back(cur_vertex + 2);
-
-				info.indices.push_back(cur_vertex);
-				info.indices.push_back(cur_vertex + 2);
-				info.indices.push_back(cur_vertex + 3);
+				light4_init(&high_light4, cur_face, pos.x, pos.y, pos.z);
+				auto nei_pos = BlockFaceProceed(pos, BlockFaceOpposite(cur_face));
+				light4_init(&low_light4, cur_face, nei_pos.x, nei_pos.y, nei_pos.z);
 			}
+
+			MeshGenInfo &info = mesh_face->texture.IsTransparent() ? transparent_mesh_info : opaque_mesh_info;
+			// if indices would exceed, restart
+			uint16_t cur_vertex = info.vertices.size();
+			if (cur_vertex + 4 > UINT16_MAX) {
+				bool trans = info.transparent;
+				ret.push_back(std::move(info));
+				info = MeshGenInfo{};
+				info.transparent = trans;
+			}
+
+			for (const auto &vert : mesh_face->vertices) {
+				info.aabb.Merge({base.x + vert.x, base.y + vert.y, base.z + vert.z});
+				uint8_t du = vert.pos[u_axis], dv = vert.pos[v_axis],
+				        dw = std::min(vert.pos[cur_axis], (uint8_t)ChunkMeshVertex::kUnitOffset);
+				if (cur_face & 1u)
+					dw = ChunkMeshVertex::kUnitOffset - (int32_t)dw;
+				uint8_t ao = vert.ao, sunlight, torchlight;
+				light4_interpolate(low_light4, high_light4, du, dv, dw, &ao, &sunlight, &torchlight);
+				info.vertices.push_back((ChunkMeshVertex){base.x + vert.x, base.y + vert.y, base.z + vert.z,
+				                                          mesh_face->face, ao, sunlight, torchlight,
+				                                          mesh_face->texture.GetID()});
+			}
+
+			info.indices.push_back(cur_vertex);
+			info.indices.push_back(cur_vertex + 1);
+			info.indices.push_back(cur_vertex + 2);
+
+			info.indices.push_back(cur_vertex);
+			info.indices.push_back(cur_vertex + 2);
+			info.indices.push_back(cur_vertex + 3);
 		}
 	}
 
@@ -160,12 +184,12 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 					if (x[axis] != 0 && a.ShowFace((f = axis << 1), b)) {
 						texture_mask[counter] = a.GetTexture(f);
 						face_inv_mask[counter] = false;
-						init_light4(light_mask + counter, f, (int_fast8_t)(x[0] + q[0]), (int_fast8_t)(x[1] + q[1]),
+						light4_init(light_mask + counter, f, (int_fast8_t)(x[0] + q[0]), (int_fast8_t)(x[1] + q[1]),
 						            (int_fast8_t)(x[2] + q[2]));
 					} else if (Chunk::kSize != x[axis] && b.ShowFace((f = (axis << 1) | 1), a)) {
 						texture_mask[counter] = b.GetTexture(f);
 						face_inv_mask[counter] = true;
-						init_light4(light_mask + counter, f, (int_fast8_t)(x[0]), (int_fast8_t)(x[1]),
+						light4_init(light_mask + counter, f, (int_fast8_t)(x[0]), (int_fast8_t)(x[1]),
 						            (int_fast8_t)(x[2]));
 					} else
 						texture_mask[counter] = 0;
@@ -216,7 +240,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						// TODO: process resource rotation
 						// if (quad_texture.GetRotation() == )
 
-						BlockFace quad_face = ((axis << 1) | quad_face_inv);
+						BlockFace quad_face = (axis << 1) | quad_face_inv;
 						ChunkMeshVertex v00{uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
 						                    uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
 						                    uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset,
@@ -322,7 +346,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 	return ret;
 }
 
-void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int_fast8_t y, int_fast8_t z) const {
+void ChunkMesher::light4_init(Light4 *light4, BlockFace face, int_fast8_t x, int_fast8_t y, int_fast8_t z) const {
 	//  structure of the neighbour arrays
 	// y
 	// |
@@ -427,6 +451,38 @@ void ChunkMesher::init_light4(Light4 *light4, BlockFace face, int_fast8_t x, int
 		light4->sunlight[v] = (sunlight_sum << 2u) / counter;
 		light4->torchlight[v] = (torchlight_sum << 2u) / counter;
 	}
+}
+
+void ChunkMesher::light4_interpolate(const ChunkMesher::Light4 &low_light, const ChunkMesher::Light4 &high_light,
+                                     uint8_t du, uint8_t dv, uint8_t dw, uint8_t *ao, uint8_t *sunlight,
+                                     uint8_t *torchlight) {
+#define LERP(a, b, t) ((uint32_t)(a) * (ChunkMeshVertex::kUnitOffset - (uint32_t)(t)) + (uint32_t)(b) * (uint32_t)(t))
+#define CEIL(a, b) ((a) / (b) + ((a) % (b) ? 1 : 0))
+	// deal with AO only when vertex is on top
+	if (dw == ChunkMeshVertex::kUnitOffset) {
+		uint32_t ao_sum =
+		    LERP(LERP(high_light.ao[0], high_light.ao[1], du), LERP(high_light.ao[3], high_light.ao[2], du), dv);
+		// don't care about the macro cost since this will be optimized
+		*ao = CEIL(ao_sum, ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset);
+	}
+
+	uint32_t sunlight_sum = LERP(LERP(LERP(low_light.sunlight[0], low_light.sunlight[1], du),
+	                                  LERP(low_light.sunlight[3], low_light.sunlight[2], du), dv),
+	                             LERP(LERP(high_light.sunlight[0], high_light.sunlight[1], du),
+	                                  LERP(high_light.sunlight[3], high_light.sunlight[2], du), dv),
+	                             dw);
+	*sunlight =
+	    CEIL(sunlight_sum, ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset);
+	uint32_t torchlight_sum = LERP(LERP(LERP(low_light.torchlight[0], low_light.torchlight[1], du),
+	                                    LERP(low_light.torchlight[3], low_light.torchlight[2], du), dv),
+	                               LERP(LERP(high_light.torchlight[0], high_light.torchlight[1], du),
+	                                    LERP(high_light.torchlight[3], high_light.torchlight[2], du), dv),
+	                               dw);
+	*torchlight = CEIL(torchlight_sum,
+	                   ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset);
+
+#undef CEIL
+#undef LERP
 }
 
 void ChunkMesher::Run() {

@@ -2,39 +2,30 @@
 #define CUBECRAFT3_COMMON_BLOCK_HPP
 
 #include <cinttypes>
-#include <common/AABB.hpp>
 #include <common/Endian.hpp>
 #include <iterator>
+#include <limits>
+#include <resource/mesh/BlockMesh.hpp>
 #include <resource/texture/BlockTexture.hpp>
 #include <type_traits>
 
-using BlockFace = uint8_t;
-struct BlockFaces {
-	enum FACE : BlockFace { kRight = 0, kLeft, kTop, kBottom, kFront, kBack };
-};
+#include <glm/glm.hpp>
+
 inline constexpr BlockFace BlockFaceOpposite(BlockFace f) { return f ^ 1u; }
 template <typename T>
 inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type BlockFaceProceed(T *xyz, BlockFace f) {
 	xyz[f >> 1] += 1 - ((f & 1) << 1);
 }
 
+template <typename T>
+inline constexpr typename std::enable_if<std::is_integral<T>::value, glm::vec<3, T>>::type
+BlockFaceProceed(glm::vec<3, T> xyz, BlockFace f) {
+	xyz[f >> 1] += 1 - ((f & 1) << 1);
+	return xyz;
+}
+
 using BlockID = uint8_t;
 using BlockMeta = uint8_t;
-
-// TODO: custom block mesh
-struct BlockMeshVertex {
-	uint8_t x{}, y{}, z{}, ao{3};
-};
-struct BlockMeshFace {
-	BlockFace face{};
-	BlockTexture texture{};
-	BlockMeshVertex vertices[4]{};
-};
-struct BlockMesh {
-	const BlockMeshFace *faces{nullptr};
-	uint32_t face_count{};
-	AABB<uint8_t> aabb;
-};
 
 struct BlockProperty {
 	const char *name{"Unnamed"};
@@ -57,8 +48,6 @@ struct BlockProperty {
 	{ generic_name, {}, {}, {}, {}, meta_prop_array, sizeof(meta_prop_array) / sizeof(BlockProperty) }
 #define BLOCK_PROPERTY_META_FUNCTION(generic_name, meta_prop_func) \
 	{ generic_name, {}, {}, {}, {}, nullptr, 0, meta_prop_func }
-#define BLOCK_MESH_ARRAY(face_array) \
-	(BlockMesh) { face_array, sizeof(face_array) / sizeof(BlockMeshFace) }
 
 struct Blocks {
 	enum ID : BlockID {
@@ -107,31 +96,11 @@ private:
 		};
 	};
 
-	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
-	inline static constexpr BlockMeshFace kCrossMeshFaces[] = {
-	    {BlockFaces::kFront,
-	     {TexID},
-	     {{8 - Radius, 0, 8 - Radius, 1},
-	      {8 + Radius, 0, 8 + Radius, 1},
-	      {8 + Radius, Height, 8 + Radius},
-	      {8 - Radius, Height, 8 - Radius}}},
-	    {BlockFaces::kLeft,
-	     {TexID},
-	     {{8 - Radius, 0, 8 + Radius, 1},
-	      {8 + Radius, 0, 8 - Radius, 1},
-	      {8 + Radius, Height, 8 - Radius},
-	      {8 - Radius, Height, 8 + Radius}}},
-	};
-	template <BlockTexID TexID, uint8_t Radius, uint8_t Height, typename = std::enable_if_t<Radius <= 8>>
-	inline static constexpr BlockMesh kCrossMesh = {kCrossMeshFaces<TexID, Radius, Height>,
-	                                                std::size(kCrossMeshFaces<TexID, Radius, Height>),
-	                                                {{8 - Radius, 0, 8 - Radius}, {8 + Radius, Height, 8 + Radius}}};
-
 	inline static constexpr BlockProperty kGrassProperties[] = {
-	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassPlain, 8, 16>},
-	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassSavanna, 8, 16>},
-	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassTropical, 8, 16>},
-	    {"Grass", {}, true, true, kCrossMesh<BlockTextures::kGrassBoreal, 8, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassPlain, 8, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassSavanna, 8, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassTropical, 8, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassBoreal, 8, 16>},
 	};
 
 	inline static constexpr BlockProperty kGrassBlockProperties[] = {
@@ -201,7 +170,7 @@ private:
 	    BLOCK_PROPERTY_META_ARRAY("Grass Block", kGrassBlockProperties),
 	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
 	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
-	    {"Dead Bush", {}, true, true, kCrossMesh<BlockTextures::kDeadBush, 8, 16>},
+	    {"Dead Bush", {}, true, true, BlockMeshes::kCross<BlockTextures::kDeadBush, 8, 16>},
 	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), false, false},       //
 	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
 	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
@@ -270,6 +239,5 @@ public:
 #undef BLOCK_PROPERTY_ARRAY_SIZE
 #undef BLOCK_PROPERTY_META_ARRAY
 #undef BLOCK_PROPERTY_META_FUNCTION
-#undef BLOCK_MESH_ARRAY
 
 #endif
