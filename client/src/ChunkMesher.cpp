@@ -132,7 +132,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 					high_light4 = low_light4;
 			}
 
-			MeshGenInfo &info = mesh_face->texture.IsTransparent() ? transparent_mesh_info : opaque_mesh_info;
+			MeshGenInfo &info = mesh_face->texture.UseTransparentPass() ? transparent_mesh_info : opaque_mesh_info;
 			// if indices would exceed, restart
 			uint16_t cur_vertex = info.vertices.size();
 			if (cur_vertex + 4 > UINT16_MAX) {
@@ -176,6 +176,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 		thread_local static Light4 light_mask[Chunk::kSize * Chunk::kSize]{};
 
 		// Compute texture_mask
+		// TODO: enable dual-side textures in a slice
 		q[axis] = -1;
 		for (x[axis] = 0; x[axis] <= Chunk::kSize; ++x[axis]) {
 			uint32_t counter = 0;
@@ -282,7 +283,8 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						           quad_light.torchlight[3],
 						           quad_texture.GetID()};
 
-						MeshGenInfo &info = quad_texture.IsTransparent() ? transparent_mesh_info : opaque_mesh_info;
+						MeshGenInfo &info =
+						    quad_texture.UseTransparentPass() ? transparent_mesh_info : opaque_mesh_info;
 						// if indices would exceed, restart
 						uint16_t cur_vertex = info.vertices.size();
 						if (cur_vertex + 4 > UINT16_MAX) {
@@ -414,41 +416,49 @@ void ChunkMesher::light4_init(Light4 *light4, BlockFace face, int_fast8_t x, int
 	                                                {{0, 1, -1}, {1, 1, -1}, {1, 0, -1}},
 	                                                {{0, -1, -1}, {1, -1, -1}, {1, 0, -1}}}};
 
-	bool pass[3];
+	bool indirect_pass[3], direct_pass[4];
 
 	// TODO: optimize this
 
 	for (uint32_t v = 0; v < 4; ++v) {
-		pass[0] = get_block(x + kLookup3v[face][v][0][0], y + kLookup3v[face][v][0][1], z + kLookup3v[face][v][0][2])
-		              .GetIndirectLightPass();
-		pass[1] = get_block(x + kLookup3v[face][v][1][0], y + kLookup3v[face][v][1][1], z + kLookup3v[face][v][1][2])
-		              .GetIndirectLightPass();
-		pass[2] = get_block(x + kLookup3v[face][v][2][0], y + kLookup3v[face][v][2][1], z + kLookup3v[face][v][2][2])
-		              .GetIndirectLightPass();
+		for (uint32_t b = 0; b < 3; ++b) {
+			Block blk =
+			    get_block(x + kLookup3v[face][v][b][0], y + kLookup3v[face][v][b][1], z + kLookup3v[face][v][b][2]);
+			indirect_pass[b] = blk.GetIndirectLightPass();
+			direct_pass[b] = blk.GetDirectLightPass() || blk == Blocks::kWater;
+		}
+		{
+			Block blk = get_block(x + kLookup1v[face][0], y + kLookup1v[face][1], z + kLookup1v[face][2]);
+			direct_pass[3] = blk.GetDirectLightPass() || blk == Blocks::kWater;
+		}
 
-		light4->ao.Set(v, (!pass[0] && !pass[2] ? 0u : 3u - !pass[0] - !pass[1] - !pass[2]));
+		uint32_t ao =
+		    (!direct_pass[0] && !direct_pass[2]) || (!direct_pass[1] && !direct_pass[3])
+		        ? 0u
+		        : (uint32_t)std::max(3 - !direct_pass[0] - !direct_pass[1] - !direct_pass[2] - !direct_pass[3], 0);
+		light4->ao.Set(v, ao);
 
 		// smooth the LightLvl using the average value
 		uint32_t counter = 1;
 		Light light = m_light_buffer[chunk_xyz_extended15_to_index(x + kLookup1v[face][0], y + kLookup1v[face][1],
 		                                                           z + kLookup1v[face][2])];
 		uint32_t sunlight_sum = light.GetSunlight(), torchlight_sum = light.GetTorchlight();
-		if (pass[0] || pass[2]) {
-			if (pass[0]) {
+		if (indirect_pass[0] || indirect_pass[2]) {
+			if (indirect_pass[0]) {
 				++counter;
 				light = m_light_buffer[chunk_xyz_extended15_to_index(
 				    x + kLookup3v[face][v][0][0], y + kLookup3v[face][v][0][1], z + kLookup3v[face][v][0][2])];
 				sunlight_sum += light.GetSunlight();
 				torchlight_sum += light.GetTorchlight();
 			}
-			if (pass[1]) {
+			if (indirect_pass[1]) {
 				++counter;
 				light = m_light_buffer[chunk_xyz_extended15_to_index(
 				    x + kLookup3v[face][v][1][0], y + kLookup3v[face][v][1][1], z + kLookup3v[face][v][1][2])];
 				sunlight_sum += light.GetSunlight();
 				torchlight_sum += light.GetTorchlight();
 			}
-			if (pass[2]) {
+			if (indirect_pass[2]) {
 				++counter;
 				light = m_light_buffer[chunk_xyz_extended15_to_index(
 				    x + kLookup3v[face][v][2][0], y + kLookup3v[face][v][2][1], z + kLookup3v[face][v][2][2])];
@@ -464,14 +474,16 @@ void ChunkMesher::light4_init(Light4 *light4, BlockFace face, int_fast8_t x, int
 void ChunkMesher::light4_interpolate(const ChunkMesher::Light4 &low_light, const ChunkMesher::Light4 &high_light,
                                      uint8_t du, uint8_t dv, uint8_t dw, uint8_t *ao, uint8_t *sunlight,
                                      uint8_t *torchlight) {
-#define LERP(a, b, t) ((uint32_t)(a) * (ChunkMeshVertex::kUnitOffset - (uint32_t)(t)) + (uint32_t)(b) * (uint32_t)(t))
+// don't care about the macro cost since this will be optimized
+#define LERP(a, b, t) \
+	((uint32_t)(a)*uint32_t((int32_t)ChunkMeshVertex::kUnitOffset - (int32_t)(t)) + (uint32_t)(b) * (uint32_t)(t))
 #define CEIL(a, b) ((a) / (b) + ((a) % (b) ? 1 : 0))
-	// deal with AO only when vertex is on top
-	if (dw == ChunkMeshVertex::kUnitOffset) {
-		uint32_t ao_sum =
-		    LERP(LERP(high_light.ao[0], high_light.ao[1], du), LERP(high_light.ao[3], high_light.ao[2], du), dv);
-		// don't care about the macro cost since this will be optimized
-		*ao = CEIL(ao_sum, ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset);
+
+	if (*ao == 4) {
+		uint32_t ao_sum = LERP(
+		    LERP(LERP(low_light.ao[0], low_light.ao[1], du), LERP(low_light.ao[3], low_light.ao[2], du), dv),
+		    LERP(LERP(high_light.ao[0], high_light.ao[1], du), LERP(high_light.ao[3], high_light.ao[2], du), dv), dw);
+		*ao = CEIL(ao_sum, ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset * ChunkMeshVertex::kUnitOffset);
 	}
 
 	uint32_t sunlight_sum = LERP(LERP(LERP(low_light.sunlight[0], low_light.sunlight[1], du),

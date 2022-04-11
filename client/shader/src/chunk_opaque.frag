@@ -16,9 +16,11 @@ layout(location = 0) out vec3 oOpaque;
 const vec3 kFaceNormal[6] = {vec3(1, 0, 0),  vec3(-1, 0, 0), vec3(0, 1, 0),
                              vec3(0, -1, 0), vec3(0, 0, 1),  vec3(0, 0, -1)};
 
+#define DISCARD_THRESHOLD 0.0625
 void main() {
 	vec4 tex = texture(uBlockTexture, vec3(vTexcoord, vTexture));
-	if (tex.a < 0.5)
+	if (tex.a <= DISCARD_THRESHOLD ||
+	    (tex.a != 1.0 && textureLod(uBlockTexture, vec3(vTexcoord, vTexture), 0.0).a <= DISCARD_THRESHOLD))
 		discard;
 	vec3 color = tex.rgb;
 	color *= vAO * texture(uLightmapTexture, vec3(vTorchlight, vSunlight, 0.0)).xyz;

@@ -53,3 +53,7 @@ kBirchPlank,
 kDeadBush,
 kVine,
 kApple,
+
+kCactusTop,
+kCactusSide,
+kCactusBottom

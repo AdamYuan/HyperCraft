@@ -25,6 +25,10 @@ public:
 #include <generated/block_texture_transparency.inl>
 		return kBlockTextureTransparency[GetID()];
 	}
+	inline constexpr bool UseTransparentPass() const {
+#include <generated/block_texture_transparency.inl>
+		return kBlockTextureTransPass[GetID()];
+	}
 
 	bool operator==(BlockTexture r) const { return m_data == r.m_data; }
 	bool operator!=(BlockTexture r) const { return m_data != r.m_data; }

@@ -18,7 +18,7 @@ enum ID {
 #include <block_texture_enum.inl>
 };
 
-std::set<uint32_t> preserved_opaque_texture = {ID::kApple};
+std::set<uint32_t> preserved_opaque_pass_textures = {ID::kApple, ID::kCactusSide, ID::kCactusBottom, ID::kCactusTop};
 
 std::string make_texture_filename(std::string_view x) {
 	std::string ret;
@@ -37,6 +37,7 @@ std::string make_texture_filename(std::string_view x) {
 	return ret;
 }
 
+// TODO: precompute texture coverage table (to cull unnecessary faces)
 int main(int argc, char **argv) {
 	--argc;
 	++argv;
@@ -51,7 +52,7 @@ int main(int argc, char **argv) {
 	std::vector<stbi_uc> combined_texture;
 	int texture_size = -1;
 
-	std::vector<bool> combined_transparency;
+	std::vector<bool> combined_transparency, combined_tran_pass;
 
 	for (const auto &i : names) {
 		if (i == "kNone")
@@ -83,16 +84,21 @@ int main(int argc, char **argv) {
 			stbi_image_free(img);
 			return EXIT_FAILURE;
 		}
-		bool transparent = false;
-		if (preserved_opaque_texture.find(current_texture + 1) == preserved_opaque_texture.end())
-			for (int p = 0; p < x * x; ++p) {
-				if (img[(p << 2) | 3] != 255) {
-					transparent = true;
-					break;
-				}
+		bool transparent = false, trans_pass = false;
+		for (int p = 0; p < x * x; ++p) {
+			if (img[(p << 2) | 3] != 255) {
+				transparent = true;
+				break;
 			}
+		}
+
+		if (transparent &&
+		    preserved_opaque_pass_textures.find(current_texture + 1) == preserved_opaque_pass_textures.end())
+			trans_pass = true;
+
 		combined_transparency.push_back(transparent);
-		std::cout << " transparent: " << transparent << std::endl;
+		combined_tran_pass.push_back(trans_pass);
+		std::cout << " transparent: " << transparent << ", use_trans_pass: " << trans_pass << std::endl;
 		std::copy(img, img + x * x * 4, combined_texture.data() + (current_texture++) * x * x * 4);
 	}
 
@@ -110,6 +116,11 @@ int main(int argc, char **argv) {
 	output.open(argv[1]);
 	output << "constexpr bool kBlockTextureTransparency[] = { 1, ";
 	for (bool b : combined_transparency)
+		output << b << ", ";
+	output << "};\n";
+
+	output << "constexpr bool kBlockTextureTransPass[] = { 1, ";
+	for (bool b : combined_tran_pass)
 		output << b << ", ";
 	output << "};\n";
 

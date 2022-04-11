@@ -362,9 +362,10 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 			}
 		} break;
 		case Biomes::kDesert: {
-			if (rand % 473 == 0) {
+			if (rand % 473 == 0)
 				info->decorations.SetBlock(x, y + 1, z, Blocks::kDeadBush);
-			}
+			else if (y >= 4 && rand % 837 == 0)
+				info->decorations.GenCactus(rand_gen, x, y + 1, z);
 		} break;
 		case Biomes::kSavanna: {
 			if (rand % 1200 == 0)

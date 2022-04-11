@@ -73,7 +73,8 @@ struct Blocks {
 		kPlank,
 
 		// Decorations
-		kApple
+		kApple,
+		kCactus
 	};
 };
 
@@ -100,10 +101,10 @@ private:
 	};
 
 	inline static constexpr BlockProperty kGrassProperties[] = {
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassPlain, 8, 0, 16>},
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassSavanna, 8, 0, 16>},
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassTropical, 8, 0, 16>},
-	    {"Grass", {}, true, true, BlockMeshes::kCross<BlockTextures::kGrassBoreal, 8, 0, 16>},
+	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassPlain, 8, 0, 16)},
+	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassSavanna, 8, 0, 16)},
+	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassTropical, 8, 0, 16)},
+	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassBoreal, 8, 0, 16)},
 	};
 
 	inline static constexpr BlockProperty kGrassBlockProperties[] = {
@@ -173,7 +174,7 @@ private:
 	    BLOCK_PROPERTY_META_ARRAY("Grass Block", kGrassBlockProperties),
 	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
 	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
-	    {"Dead Bush", {}, true, true, BlockMeshes::kCross<BlockTextures::kDeadBush, 8, 0, 16>},
+	    {"Dead Bush", {}, true, true, BlockMeshes::Cross(BlockTextures::kDeadBush, 8, 0, 16)},
 	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), false, false},       //
 	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
 	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
@@ -184,7 +185,9 @@ private:
 	    BLOCK_PROPERTY_META_ARRAY("Leaves", kLeavesProperties),
 	    BLOCK_PROPERTY_META_FUNCTION("Log", get_log_property),
 	    BLOCK_PROPERTY_META_ARRAY("Plank", kPlankProperties),
-	    {"Apple", {}, true, true, BlockMeshes::kCross<BlockTextures::kApple, 5, 1, 15, true, BlockFaces::kBottom>},
+	    {"Apple", {}, true, true, BlockMeshes::Cross(BlockTextures::kApple, 5, 1, 15, true, BlockFaces::kBottom)},
+	    {"CactusSides", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop), true,
+	     false, BlockMeshes::CactusSides()},
 	};
 
 	inline constexpr const BlockProperty *get_generic_property() const { return kProperties + m_id; }
@@ -227,11 +230,11 @@ public:
 
 	inline constexpr bool ShowFace(BlockFace face, Block neighbour) const {
 		BlockTexture tex = GetTexture(face), nei_tex = neighbour.GetTexture(BlockFaceOpposite(face));
-		if (tex.Empty() || tex.GetID() == nei_tex.GetID())
+		if (tex.Empty() || tex == nei_tex)
 			return false;
 		if (!tex.IsTransparent() && !nei_tex.IsTransparent())
 			return false;
-		return !tex.IsTransparent() || nei_tex.Empty() || neighbour.GetID() == Blocks::kWater; // or is liquid
+		return !tex.IsTransparent() || nei_tex.IsTransparent() || neighbour.GetID() == Blocks::kWater; // or is fluid
 	}
 
 	bool operator==(Block r) const { return m_data == r.m_data; }

@@ -333,7 +333,7 @@ private:
 				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kOak});
 
 				if (apple && crown_size > 1) {
-					for (uint32_t j = 0; j < crown_size * 2; ++j)
+					for (uint32_t j = 0; j < crown_size; ++j)
 						SetBlock(x + d.x - crown_size + 1 + (int32_t)(rng() % (crown_size * 2 - 1)),
 						         bry + d.y - crown_size + 2 - (int32_t)(rng() % 3),
 						         z + d.z - crown_size + 1 + (int32_t)(rng() % (crown_size * 2 - 1)), Blocks::kApple);
@@ -378,6 +378,14 @@ private:
 				set_block_disc(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kAcacia});
 				if (rng() % (4 - crown_size) == 0 && crown_size > 1)
 					set_block_disc(x + d.x, bry + d.y + 1, z + d.z, 1, {Blocks::kLeaves, BlockMetas::Tree::kAcacia});
+			}
+		}
+
+		template <typename RNG>
+		inline auto GenCactus(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
+			int32_t height = rng() % 3 + 2;
+			for (int32_t i = 0; i < height; ++i) {
+				SetBlock(x, i + y, z, Blocks::kCactus);
 			}
 		}
 	};
