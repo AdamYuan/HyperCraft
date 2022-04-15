@@ -35,10 +35,11 @@ endif ()
 
 add_library(CubeCraft3_resource_header INTERFACE
         include/resource/texture/BlockTexture.hpp
+        include/resource/texture/MiscTexture.hpp
         ${GENERATED_DIR}/block_texture_png.inl
         ${GENERATED_DIR}/block_texture_transparency.inl
         ${GENERATED_DIR}/misc_texture_png.inl
-        include/resource/texture/MiscTexture.hpp include/resource/mesh/BlockMesh.hpp)
+        )
 target_include_directories(CubeCraft3_resource_header INTERFACE include internal)
 
 add_library(CubeCraft3_resource INTERFACE)

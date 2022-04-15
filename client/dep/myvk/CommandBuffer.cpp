@@ -253,7 +253,7 @@ void CommandBuffer::CmdDrawIndirectCount(const std::shared_ptr<BufferBase> &buff
 }
 
 void CommandBuffer::CmdDrawIndexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index,
-                                   uint32_t vertex_offset, uint32_t first_instance) const {
+                                   int32_t vertex_offset, uint32_t first_instance) const {
 	vkCmdDrawIndexed(m_command_buffer, index_count, instance_count, first_index, vertex_offset, first_instance);
 }
 void CommandBuffer::CmdDrawIndexedIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset,
@@ -321,7 +321,7 @@ void CommandBuffer::CmdGenerateMipmap2D(const std::shared_ptr<ImageBase> &image,
 		    image->GetMemoryBarriers({subresource}, src_access_mask, dst_access_mask, old_layout, new_layout));
 		return;
 	}
-	int32_t mip_width = image->GetExtent().width, mip_height = image->GetExtent().height;
+	auto mip_width = (int32_t)image->GetExtent().width, mip_height = (int32_t)image->GetExtent().height;
 	for (uint32_t i = 1; i < image->GetMipLevels(); ++i) {
 		VkImageBlit blit{};
 		blit.srcOffsets[0] = {0, 0, 0};

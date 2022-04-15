@@ -122,9 +122,9 @@ private:
 		std::unordered_map<glm::i32vec3, Block> m_blocks;
 		int32_t m_y_min{INT32_MAX}, m_y_max{INT32_MIN};
 		inline constexpr static bool block_cover(Block old, Block cur) {
-			return old.GetTransparent() == cur.GetTransparent()
+			return old.GetIndirectLightPass() == cur.GetIndirectLightPass()
 			           ? (old.GetID() == cur.GetID() ? cur.GetMeta() > old.GetMeta() : cur.GetID() > old.GetID())
-			           : cur.GetTransparent() < old.GetTransparent();
+			           : cur.GetIndirectLightPass() < old.GetIndirectLightPass();
 		}
 
 	public:
@@ -152,7 +152,7 @@ private:
 		}
 		inline void PopToLightMap(int32_t light_map[kChunkSize * kChunkSize]) const {
 			for (const auto &i : m_blocks) {
-				if (!i.second.GetDirectLightPass()) {
+				if (!i.second.GetDirectSunlightPass()) {
 					uint32_t idx = i.first.z * kChunkSize + i.first.x;
 					light_map[idx] = std::max(light_map[idx], i.first.y);
 				}
@@ -219,6 +219,16 @@ private:
 					}
 		}
 
+		template <typename T> inline static uint8_t get_branch_axis(const glm::vec<3, T> &vec) {
+			uint8_t ret = 1;
+			auto ud = glm::abs(vec);
+			if (ud.x > ud.y && ud.x > ud.z)
+				ret = 0;
+			else if (ud.z > ud.y)
+				ret = 2;
+			return ret;
+		}
+
 	public:
 		const DecorationInfo &GetInfo(uint32_t index) const { return m_decorations[index]; }
 		inline void SetBlock(int32_t x, int32_t y, int32_t z, Block b) {
@@ -235,7 +245,7 @@ private:
 			// trunk
 			int32_t trunk_height = rng() % 22 + 8;
 			for (int32_t i = 0; i < trunk_height; ++i)
-				SetBlock(x, i + y, z, {Blocks::kLog, BlockMetas::Tree::kJungle});
+				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kJungle, 1));
 
 			// root
 			int32_t root_height = trunk_height / 5 - rng() % 2, root_radius = root_height;
@@ -243,8 +253,10 @@ private:
 				float a = float(rng() % 20) / 10 * 3.14;
 				glm::i32vec3 d = {int32_t((float)root_radius * std::cos(a)), -int32_t(rng() % 2) - root_height - 3,
 				                  int32_t((float)root_radius * std::sin(a))};
+
 				if (d.x || d.z)
-					set_block_line(x, y + root_height, z, d.x, d.y, d.z, {Blocks::kLog, BlockMetas::Tree::kJungle});
+					set_block_line(x, y + root_height, z, d.x, d.y, d.z,
+					               Block::MakeTreeLog(BlockMetas::Tree::kJungle, 1));
 				else
 					break;
 			}
@@ -273,7 +285,8 @@ private:
 				if (rng() % 2 && rng() % (branch_range + 1) >= i) {
 					int32_t bry = y + trunk_height - crown_thickness / 2 - i;
 					glm::i32vec3 d = {rng() % 9 - 4, rng() % 5 - 1, rng() % 9 - 4};
-					set_block_line(x, bry, z, d.x, d.y, d.z, {Blocks::kLog, BlockMetas::Tree::kJungle});
+					set_block_line(x, bry, z, d.x, d.y, d.z,
+					               Block::MakeTreeLog(BlockMetas::Tree::kJungle, get_branch_axis(d)));
 					int32_t r = i < branch_range / 2 ? rng() % 2 + 1 : 1;
 					set_block_cluster(x + d.x, bry + d.y, z + d.z, r, {Blocks::kLeaves, BlockMetas::Tree::kJungle});
 				}
@@ -284,7 +297,7 @@ private:
 		inline auto GenSpruceTree(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
 			int32_t trunk_height = rng() % 10 + 12;
 			for (int32_t i = 0; i < trunk_height; ++i)
-				SetBlock(x, i + y, z, {Blocks::kLog, BlockMetas::Tree::kSpruce});
+				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kSpruce, 1));
 
 			int32_t branch_range = 2 * trunk_height / 3 + rng() % 3;
 			int32_t bottom_radius = std::min(branch_range / 3 + int32_t(rng() % 2), 3);
@@ -301,7 +314,7 @@ private:
 					glm::i32vec3 d = {int32_t((float)r * std::cos(a)), -r / 2, int32_t((float)r * std::sin(a))};
 					if (d.x || d.z)
 						set_block_line(x, y + trunk_height - i - 1, z, d.x, d.y, d.z,
-						               {Blocks::kLog, BlockMetas::Tree::kSpruce});
+						               Block::MakeTreeLog(BlockMetas::Tree::kSpruce, get_branch_axis(d)));
 					else
 						break;
 				}
@@ -314,7 +327,7 @@ private:
 			int32_t trunk_height = rng() % 5 + 5;
 			int32_t main_crown_size = rng() % 3 + 1;
 			for (int32_t i = 0; i < trunk_height + main_crown_size; ++i)
-				SetBlock(x, i + y, z, {Blocks::kLog, BlockMetas::Tree::kOak});
+				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kOak, 1));
 			set_block_cluster(x, y + trunk_height, z, main_crown_size, {Blocks::kLeaves, BlockMetas::Tree::kOak});
 
 			if (apple && main_crown_size > 1) {
@@ -329,7 +342,8 @@ private:
 				int32_t crown_size = rng() % 2 + 1;
 
 				glm::i32vec3 d = {rng() % 5 - 2, rng() % 4 + 1, rng() % 5 - 2};
-				set_block_line(x, bry, z, d.x, d.y, d.z, {Blocks::kLog, BlockMetas::Tree::kOak});
+				set_block_line(x, bry, z, d.x, d.y, d.z,
+				               Block::MakeTreeLog(BlockMetas::Tree::kOak, get_branch_axis(d)));
 				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kOak});
 
 				if (apple && crown_size > 1) {
@@ -346,7 +360,7 @@ private:
 			int32_t trunk_height = rng() % 6 + 10;
 			int32_t main_crown_size = rng() % 2 + 1;
 			for (int32_t i = 0; i < trunk_height + main_crown_size; ++i)
-				SetBlock(x, i + y, z, {Blocks::kLog, BlockMetas::Tree::kBirch});
+				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kBirch, 1));
 			set_block_cluster(x, y + trunk_height, z, main_crown_size, {Blocks::kLeaves, BlockMetas::Tree::kBirch});
 
 			uint32_t branch_count = rng() % 2 + 4;
@@ -355,7 +369,8 @@ private:
 
 				glm::i32vec3 d = {rng() % 9 - 4, rng() % 3, rng() % 9 - 4};
 				int32_t crown_size = (d.x * d.x + d.y * d.y + d.z * d.z >= 9) ? 2 : (rng() % 2 + 1);
-				set_block_line(x, bry, z, d.x, d.y, d.z, {Blocks::kLog, BlockMetas::Tree::kBirch});
+				set_block_line(x, bry, z, d.x, d.y, d.z,
+				               Block::MakeTreeLog(BlockMetas::Tree::kBirch, get_branch_axis(d)));
 				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kBirch});
 			}
 		}
@@ -364,14 +379,15 @@ private:
 		inline auto GenAcaciaTree(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
 			int32_t trunk_height = rng() % 4 + 4;
 			for (int32_t i = 0; i < trunk_height; ++i)
-				SetBlock(x, i + y, z, {Blocks::kLog, BlockMetas::Tree::kAcacia});
+				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kAcacia, 1));
 
 			uint32_t branch_count = rng() % 4 + 2;
 			for (uint32_t i = 0; i < branch_count; ++i) {
 				int32_t branch_height = trunk_height - 1 + rng() % 2, bry = y + branch_height;
 
 				glm::i32vec3 d = {rng() % 7 - 3, rng() % 3 + 1, rng() % 7 - 3};
-				set_block_line(x, bry, z, d.x, d.y, d.z, {Blocks::kLog, BlockMetas::Tree::kAcacia});
+				set_block_line(x, bry, z, d.x, d.y, d.z,
+				               Block::MakeTreeLog(BlockMetas::Tree::kAcacia, get_branch_axis(d)));
 
 				// generate crown
 				int32_t crown_size = rng() % 3 + 1;

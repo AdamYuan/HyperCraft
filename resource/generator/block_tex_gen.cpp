@@ -20,6 +20,13 @@ enum ID {
 
 std::set<uint32_t> preserved_opaque_pass_textures = {ID::kApple, ID::kCactusSide, ID::kCactusBottom, ID::kCactusTop};
 
+inline int simple_msb(int x) {
+	int ret = 0;
+	while (x >>= 1)
+		++ret;
+	return ret;
+}
+
 std::string make_texture_filename(std::string_view x) {
 	std::string ret;
 	bool first_upper = true;
@@ -50,7 +57,7 @@ int main(int argc, char **argv) {
 	int current_texture = 0;
 
 	std::vector<stbi_uc> combined_texture;
-	int texture_size = -1;
+	int texture_size = -1, mipmaps = -1;
 
 	std::vector<bool> combined_transparency, combined_tran_pass;
 
@@ -72,11 +79,12 @@ int main(int argc, char **argv) {
 			return EXIT_FAILURE;
 		}
 		if (texture_size == -1) {
-			texture_size = x;
 			if (x & (x - 1)) {
-				printf("texture size (%dx%d) os not power of 2", x, x);
+				printf("texture size (%dx%d) is not power of 2", x, x);
 				return EXIT_FAILURE;
 			}
+			texture_size = x;
+			mipmaps = simple_msb(texture_size);
 			combined_texture.resize(texture_count * texture_size * texture_size * 4);
 		} else if (texture_size != x) {
 			printf("texture size is not normalized (%s is %dx%d differ from %dx%d)\n", str.c_str(), x, y, texture_size,

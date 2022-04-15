@@ -150,9 +150,9 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 					dw = ChunkMeshVertex::kUnitOffset - (int32_t)dw;
 				uint8_t ao = vert.ao, sunlight, torchlight;
 				light4_interpolate(low_light4, high_light4, du, dv, dw, &ao, &sunlight, &torchlight);
-				info.vertices.push_back((ChunkMeshVertex){base.x + vert.x, base.y + vert.y, base.z + vert.z,
-				                                          mesh_face->axis, mesh_face->render_face, ao, sunlight,
-				                                          torchlight, mesh_face->texture.GetID()});
+				info.vertices.emplace_back(base.x + vert.x, base.y + vert.y, base.z + vert.z, mesh_face->axis,
+				                           mesh_face->render_face, ao, sunlight, torchlight, mesh_face->texture.GetID(),
+				                           mesh_face->texture.GetTransformation());
 			}
 
 			info.indices.push_back(cur_vertex);
@@ -245,44 +245,6 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						// TODO: process resource rotation
 						// if (quad_texture.GetRotation() == )
 
-						BlockFace quad_face = (axis << 1) | quad_face_inv;
-						ChunkMeshVertex v00{uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
-						                    uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
-						                    uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset,
-						                    axis,
-						                    quad_face,
-						                    quad_light.ao[0],
-						                    quad_light.sunlight[0],
-						                    quad_light.torchlight[0],
-						                    quad_texture.GetID()},
-						    v01 = {uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
-						           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
-						           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset,
-						           axis,
-						           quad_face,
-						           quad_light.ao[1],
-						           quad_light.sunlight[1],
-						           quad_light.torchlight[1],
-						           quad_texture.GetID()},
-						    v10 = {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
-						           uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
-						           uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
-						           axis,
-						           quad_face,
-						           quad_light.ao[2],
-						           quad_light.sunlight[2],
-						           quad_light.torchlight[2],
-						           quad_texture.GetID()},
-						    v11 = {uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
-						           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
-						           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
-						           axis,
-						           quad_face,
-						           quad_light.ao[3],
-						           quad_light.sunlight[3],
-						           quad_light.torchlight[3],
-						           quad_texture.GetID()};
-
 						MeshGenInfo &info =
 						    quad_texture.UseTransparentPass() ? transparent_mesh_info : opaque_mesh_info;
 						// if indices would exceed, restart
@@ -300,10 +262,30 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 						                  uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
 						                  uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset}});
 
-						info.vertices.push_back(v00);
-						info.vertices.push_back(v01);
-						info.vertices.push_back(v10);
-						info.vertices.push_back(v11);
+						BlockFace quad_face = (axis << 1) | quad_face_inv;
+						info.vertices.emplace_back(uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset, axis, quad_face,
+						                           quad_light.ao[0], quad_light.sunlight[0], quad_light.torchlight[0],
+						                           quad_texture.GetID(), quad_texture.GetTransformation());
+						info.vertices.emplace_back(uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset, axis,
+						                           quad_face, quad_light.ao[1], quad_light.sunlight[1],
+						                           quad_light.torchlight[1], quad_texture.GetID(),
+						                           quad_texture.GetTransformation());
+						info.vertices.emplace_back(uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
+						                           axis, quad_face, quad_light.ao[2], quad_light.sunlight[2],
+						                           quad_light.torchlight[2], quad_texture.GetID(),
+						                           quad_texture.GetTransformation());
+						info.vertices.emplace_back(uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+						                           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset, axis,
+						                           quad_face, quad_light.ao[3], quad_light.sunlight[3],
+						                           quad_light.torchlight[3], quad_texture.GetID(),
+						                           quad_texture.GetTransformation());
 
 						if (quad_light.GetFlip()) {
 							// 11--------10
@@ -425,11 +407,11 @@ void ChunkMesher::light4_init(Light4 *light4, BlockFace face, int_fast8_t x, int
 			Block blk =
 			    get_block(x + kLookup3v[face][v][b][0], y + kLookup3v[face][v][b][1], z + kLookup3v[face][v][b][2]);
 			indirect_pass[b] = blk.GetIndirectLightPass();
-			direct_pass[b] = blk.GetDirectLightPass() || blk == Blocks::kWater;
+			direct_pass[b] = blk.GetDirectSunlightPass() || blk == Blocks::kWater;
 		}
 		{
 			Block blk = get_block(x + kLookup1v[face][0], y + kLookup1v[face][1], z + kLookup1v[face][2]);
-			direct_pass[3] = blk.GetDirectLightPass() || blk == Blocks::kWater;
+			direct_pass[3] = blk.GetDirectSunlightPass() || blk == Blocks::kWater;
 		}
 
 		uint32_t ao =

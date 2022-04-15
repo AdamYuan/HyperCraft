@@ -304,7 +304,7 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		uint16_t rand = rand_gen();
 		info->meta[index] = rand;
 
-		if constexpr (!Block{Blocks::kWater, 0}.GetDirectLightPass()) {
+		if constexpr (!Block{Blocks::kWater, 0}.GetDirectSunlightPass()) {
 			if (info->is_ocean[index] && info->height_map[index] < 0)
 				info->is_ground[index] = false;
 			else
@@ -385,7 +385,7 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 	thread_local static float deep_cave_output[kTestDepth];
 	std::copy(std::begin(info->height_map), std::end(info->height_map), info->light_map);
 	for (uint32_t index = 0; index < kChunkSize * kChunkSize; ++index) {
-		if constexpr (!Block{Blocks::kWater, 0}.GetDirectLightPass()) {
+		if constexpr (!Block{Blocks::kWater, 0}.GetDirectSunlightPass()) {
 			if (info->is_ocean[index] && info->height_map[index] < 0) {
 				info->light_map[index] = 0;
 				continue;
@@ -439,7 +439,7 @@ void DefaultTerrain::DecorationInfo::PopToChunk(const std::shared_ptr<Chunk> &ch
 			continue;
 		uint32_t idx = Chunk::XYZ2Index(i.first.x, y, i.first.z);
 		// TODO: better override condition
-		if (!i.second.GetTransparent() || chunk_ptr->GetBlock(idx) == Blocks::kAir ||
+		if (!i.second.GetIndirectLightPass() || chunk_ptr->GetBlock(idx) == Blocks::kAir ||
 		    chunk_ptr->GetBlock(idx) == Blocks::kWater || i.second.GetID() == Blocks::kAir ||
 		    i.second.GetID() == Blocks::kWater)
 			chunk_ptr->SetBlock(idx, i.second);

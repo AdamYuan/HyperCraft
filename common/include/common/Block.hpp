@@ -2,27 +2,12 @@
 #define CUBECRAFT3_COMMON_BLOCK_HPP
 
 #include <cinttypes>
+#include <common/BlockMesh.hpp>
 #include <common/Endian.hpp>
 #include <iterator>
 #include <limits>
-#include <resource/mesh/BlockMesh.hpp>
 #include <resource/texture/BlockTexture.hpp>
 #include <type_traits>
-
-#include <glm/glm.hpp>
-
-inline constexpr BlockFace BlockFaceOpposite(BlockFace f) { return f ^ 1u; }
-template <typename T>
-inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type BlockFaceProceed(T *xyz, BlockFace f) {
-	xyz[f >> 1] += 1 - ((f & 1) << 1);
-}
-
-template <typename T>
-inline constexpr typename std::enable_if<std::is_integral<T>::value, glm::vec<3, T>>::type
-BlockFaceProceed(glm::vec<3, T> xyz, BlockFace f) {
-	xyz[f >> 1] += 1 - ((f & 1) << 1);
-	return xyz;
-}
 
 using BlockID = uint8_t;
 using BlockMeta = uint8_t;
@@ -30,13 +15,56 @@ using BlockMeta = uint8_t;
 struct BlockProperty {
 	const char *name{"Unnamed"};
 	BlockTexture textures[6]{};
-	bool transparent{false}, light_pass{false};
+	bool indirect_light_pass{false}, direct_sunlight_pass{false};
 	BlockMesh custom_mesh;
 	// META path #1: array to properties
 	const BlockProperty *meta_property_array{nullptr};
 	BlockMeta meta_property_array_count{};
 	// META path #2: function pointer
 	const BlockProperty *(*meta_property_func)(BlockMeta meta){nullptr};
+
+	inline constexpr BlockProperty RotateCW(uint8_t axis) const {
+		if (axis == 0) {
+			return {name,
+			        {
+			            textures[0].RotateCW(),
+			            textures[1].RotateCCW(),
+			            textures[BlockFaces::kFront],
+			            textures[BlockFaces::kBack],
+			            textures[BlockFaces::kBottom],
+			            textures[BlockFaces::kTop],
+			        },
+			        indirect_light_pass,
+			        direct_sunlight_pass,
+			        custom_mesh};
+		} else if (axis == 1) {
+			return {name,
+			        {
+			            textures[BlockFaces::kBack],
+			            textures[BlockFaces::kFront],
+			            textures[2].RotateCW(),
+			            textures[3].RotateCCW(),
+			            textures[BlockFaces::kRight],
+			            textures[BlockFaces::kLeft],
+			        },
+			        indirect_light_pass,
+			        direct_sunlight_pass,
+			        custom_mesh};
+		} else {
+			return {name,
+			        {
+			            textures[BlockFaces::kTop],
+			            textures[BlockFaces::kBottom],
+			            textures[BlockFaces::kLeft].TransSwapUV(),
+			            textures[BlockFaces::kRight].TransSwapUV(),
+			            textures[4].RotateCW(),
+			            textures[5].RotateCCW(),
+			        },
+			        indirect_light_pass,
+			        direct_sunlight_pass,
+			        custom_mesh};
+		}
+	}
 };
 
 #define BLOCK_TEXTURE_SAME(x) \
@@ -88,6 +116,12 @@ struct BlockMetas {
 };
 
 class Block {
+public:
+	inline static constexpr Block MakeTreeLog(BlockMeta tree_meta, uint8_t axis = 1) {
+		axis = (axis + 1u) % 3u;
+		return {Blocks::kLog, (BlockMeta)(tree_meta | (axis << 4u))};
+	}
+
 private:
 	union {
 		uint16_t m_data;
@@ -153,9 +187,20 @@ private:
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kBirchLogTop, BlockTextures::kBirchLog, BlockTextures::kBirchLogTop),
 	     false, false}, //
 	};
+	inline static constexpr BlockProperty kLogPropertiesX[] = {
+	    kLogProperties[0].RotateCW(2), kLogProperties[1].RotateCW(2), kLogProperties[2].RotateCW(2),
+	    kLogProperties[3].RotateCW(2), kLogProperties[4].RotateCW(2)};
+	inline static constexpr BlockProperty kLogPropertiesZ[] = {
+	    kLogProperties[0].RotateCW(0), kLogProperties[1].RotateCW(0), kLogProperties[2].RotateCW(0),
+	    kLogProperties[3].RotateCW(0), kLogProperties[4].RotateCW(0)};
+	static_assert(sizeof(kLogProperties) == sizeof(kLogPropertiesX));
+	static_assert(sizeof(kLogProperties) == sizeof(kLogPropertiesZ));
+
 	inline static constexpr const BlockProperty *get_log_property(BlockMeta meta) {
 		// TODO: deal with log rotation
-		return kLogProperties + (meta < BLOCK_PROPERTY_ARRAY_SIZE(kLogProperties) ? meta : 0);
+		constexpr const BlockProperty *kLogAxis[3] = {kLogPropertiesZ, kLogPropertiesX, kLogProperties};
+		uint8_t axis = meta >> 4u, type = meta & 0xfu;
+		return kLogAxis[axis < 3 ? axis : 0] + (type < BLOCK_PROPERTY_ARRAY_SIZE(kLogProperties) ? type : 0);
 	}
 
 	inline static constexpr BlockProperty kPlankProperties[] = {
@@ -218,15 +263,10 @@ public:
 	inline constexpr const char *GetGenericName() const { return get_generic_property()->name; }
 	inline constexpr const char *GetName() const { return get_property()->name; }
 	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->textures[face]; }
-	inline constexpr bool GetTransparent() const { return get_property()->transparent; }
 	// inline constexpr bool GetLightPass() const { return get_property()->m_light_pass; }
 	// Direct Light: vertical sunlight
-	inline constexpr bool GetDirectLightPass() const {
-		return get_property()->light_pass && get_property()->transparent;
-	}
-	inline constexpr bool GetIndirectLightPass() const {
-		return get_property()->transparent || get_property()->light_pass;
-	}
+	inline constexpr bool GetDirectSunlightPass() const { return get_property()->direct_sunlight_pass; }
+	inline constexpr bool GetIndirectLightPass() const { return get_property()->indirect_light_pass; }
 
 	inline constexpr bool ShowFace(BlockFace face, Block neighbour) const {
 		BlockTexture tex = GetTexture(face), nei_tex = neighbour.GetTexture(BlockFaceOpposite(face));

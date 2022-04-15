@@ -4,7 +4,14 @@
 #include <cinttypes>
 
 using BlockTexID = uint16_t;
-using BlockTexRot = uint8_t;
+using BlockTexTrans = uint8_t;
+
+struct BlockTextures {
+	enum : BlockTexID {
+#include <block_texture_enum.inl>
+	};
+	enum : BlockTexTrans { kTransSwapUV = 1u, kTransNegU = 2u, kTransNegV = 4u };
+};
 
 class BlockTexture {
 private:
@@ -13,10 +20,10 @@ private:
 public:
 	inline constexpr BlockTexture() : m_data{} {}
 	inline constexpr BlockTexture(BlockTexID id) : m_data{id} {}
-	inline constexpr BlockTexture(BlockTexID id, BlockTexRot rot) : m_data((rot << 14u) | id) {}
+	inline constexpr BlockTexture(BlockTexID id, BlockTexTrans trans) : m_data((trans << 13u) | id) {}
 
-	inline constexpr BlockTexRot GetRotation() const { return m_data >> 14u; }
-	inline constexpr BlockTexID GetID() const { return m_data & 0x3fffu; }
+	inline constexpr BlockTexTrans GetTransformation() const { return m_data >> 13u; }
+	inline constexpr BlockTexID GetID() const { return m_data & 0x1fffu; }
 
 	inline constexpr uint16_t GetData() const { return m_data; }
 	inline constexpr bool Empty() const { return m_data == 0; }
@@ -30,17 +37,32 @@ public:
 		return kBlockTextureTransPass[GetID()];
 	}
 
+	inline constexpr BlockTexture RotateCW() const {
+		return {GetID(),
+		        (BlockTexTrans)(GetTransformation() ^ (BlockTextures::kTransSwapUV | BlockTextures::kTransNegU))};
+	}
+
+	inline constexpr BlockTexture RotateCCW() const {
+		return {GetID(),
+		        (BlockTexTrans)(GetTransformation() ^ (BlockTextures::kTransSwapUV | BlockTextures::kTransNegV))};
+	}
+
+	inline constexpr BlockTexture TransSwapUV() const {
+		return {GetID(), (BlockTexTrans)(GetTransformation() ^ BlockTextures::kTransSwapUV)};
+	}
+
+	inline constexpr BlockTexture TransNegU() const {
+		return {GetID(), (BlockTexTrans)(GetTransformation() ^ BlockTextures::kTransNegU)};
+	}
+
+	inline constexpr BlockTexture TransNegV() const {
+		return {GetID(), (BlockTexTrans)(GetTransformation() ^ BlockTextures::kTransNegV)};
+	}
+
 	bool operator==(BlockTexture r) const { return m_data == r.m_data; }
 	bool operator!=(BlockTexture r) const { return m_data != r.m_data; }
 };
 
 #include <generated/block_texture_png.inl>
-
-struct BlockTextures {
-	enum : BlockTexID {
-#include <block_texture_enum.inl>
-	};
-	enum ROT : BlockTexRot { kRot0 = 0, kRot90, kRot180, kRot270 };
-};
 
 #endif

@@ -27,7 +27,7 @@ layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMesh
 const float kAOCurve[4] = {0.54, 0.7569, 0.87, 1.0};
 
 void main() {
-	uint x10_y10_z10_axis2 = aVertData.x, tex8_face3_ao2_sl6_tl6 = aVertData.y;
+	uint x10_y10_z10_axis2 = aVertData.x, tex10_trans3_face3_ao2_sl6_tl6 = aVertData.y;
 
 	vec3 pos;
 	pos.x = int(x10_y10_z10_axis2 & 0x3ffu) * 0.0625;
@@ -44,16 +44,25 @@ void main() {
 	                 - uViewPosition.xyz;
 	gl_Position = uViewProjection * vec4(pos + translate, 1.0f);
 
-	vTexture = tex8_face3_ao2_sl6_tl6 & 0xffu;
-	tex8_face3_ao2_sl6_tl6 >>= 8u;
+	vTexture = tex10_trans3_face3_ao2_sl6_tl6 & 0x3ffu;
+	tex10_trans3_face3_ao2_sl6_tl6 >>= 10u;
 
-	vFace = tex8_face3_ao2_sl6_tl6 & 0x7u;
-	tex8_face3_ao2_sl6_tl6 >>= 3u;
+	// Texture transformation
+	if ((tex10_trans3_face3_ao2_sl6_tl6 & 1u) != 0)
+		vTexcoord = vTexcoord.yx;
+	if ((tex10_trans3_face3_ao2_sl6_tl6 & 2u) != 0)
+		vTexcoord.x = -vTexcoord.x;
+	if ((tex10_trans3_face3_ao2_sl6_tl6 & 4u) != 0)
+		vTexcoord.y = -vTexcoord.y;
+	tex10_trans3_face3_ao2_sl6_tl6 >>= 3u;
 
-	vAO = kAOCurve[tex8_face3_ao2_sl6_tl6 & 0x3u];
-	tex8_face3_ao2_sl6_tl6 >>= 2u;
+	vFace = tex10_trans3_face3_ao2_sl6_tl6 & 0x7u;
+	tex10_trans3_face3_ao2_sl6_tl6 >>= 3u;
 
-	vSunlight = float(tex8_face3_ao2_sl6_tl6 & 0x3fu) / 63.0;
-	tex8_face3_ao2_sl6_tl6 >>= 6u;
-	vTorchlight = float(tex8_face3_ao2_sl6_tl6 & 0x3fu) / 63.0;
+	vAO = kAOCurve[tex10_trans3_face3_ao2_sl6_tl6 & 0x3u];
+	tex10_trans3_face3_ao2_sl6_tl6 >>= 2u;
+
+	vSunlight = float(tex10_trans3_face3_ao2_sl6_tl6 & 0x3fu) / 63.0;
+	tex10_trans3_face3_ao2_sl6_tl6 >>= 6u;
+	vTorchlight = float(tex10_trans3_face3_ao2_sl6_tl6 & 0x3fu) / 63.0;
 }

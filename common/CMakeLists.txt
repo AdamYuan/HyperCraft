@@ -13,6 +13,8 @@ target_include_directories(CubeCraft3_common_header INTERFACE include dep)
 add_library(CubeCraft3_common STATIC
         include/common/Endian.hpp
         include/common/Block.hpp
+        include/common/BlockMesh.hpp
+        include/common/BlockFace.hpp
         include/common/Light.hpp
         include/common/Message.hpp
         include/common/ByteStream.hpp
@@ -20,7 +22,9 @@ add_library(CubeCraft3_common STATIC
         include/common/WorldDatabase.hpp
         include/common/AABB.hpp
         include/common/Position.hpp
-        include/common/Biome.hpp include/common/Size.hpp)
+        include/common/Biome.hpp
+        include/common/Size.hpp
+        )
 
 include(TestBigEndian)
 TEST_BIG_ENDIAN(IS_BIG_ENDIAN)

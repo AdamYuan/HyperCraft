@@ -115,7 +115,7 @@ public:
 	                          const std::shared_ptr<BufferBase> &count_buffer, VkDeviceSize count_buffer_offset,
 	                          uint32_t max_draw_count, uint32_t stride = sizeof(VkDrawIndirectCommand)) const;
 
-	void CmdDrawIndexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, uint32_t vertex_offset,
+	void CmdDrawIndexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index, int32_t vertex_offset,
 	                    uint32_t first_instance) const;
 
 	void CmdDrawIndexedIndirect(const std::shared_ptr<BufferBase> &buffer, VkDeviceSize offset, uint32_t draw_count,
