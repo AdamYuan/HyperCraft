@@ -23,7 +23,7 @@ private:
 	    {Biomes::kGlacier, Biomes::kTundra, Biomes::kDesert, Biomes::kDesert},
 	    {Biomes::kGlacier, Biomes::kSavanna, Biomes::kSavanna, Biomes::kDesert},
 	    {Biomes::kTundra, Biomes::kPlain, Biomes::kPlain, Biomes::kForest},
-	    {Biomes::kBorealForest, Biomes::kForest, Biomes::kForest, Biomes::kTropicalForest}};
+	    {Biomes::kBorealForest, Biomes::kPlain, Biomes::kForest, Biomes::kTropicalForest}};
 
 	inline static constexpr Biome biome_map_scaled(uint32_t x, uint32_t y) {
 		x /= kSampleScale;
@@ -70,7 +70,7 @@ private:
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
 		return biome_map_scaled(ix, iy);
 	}
-	inline static constexpr int32_t get_height(float precipitation, float temperature, float height) {
+	inline static constexpr float convert_height(float precipitation, float temperature, float height) {
 		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale,
 		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale, z = height * kOceanSampleScale;
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
@@ -87,16 +87,26 @@ private:
 		      b111 = biome_height_transform(biome_map_scaled(ix + 1, iy + 1, iz + 1), height);
 
 #define LERP(a, b, t) (a + t * (b - a))
-		float fh = LERP(LERP(LERP(b000, b100, tx), LERP(b010, b110, tx), ty),
-		                LERP(LERP(b001, b101, tx), LERP(b011, b111, tx), ty), tz) *
-		           (float)kHeightRange;
-		return fh >= 0 ? (int32_t)fh + 1 : (int32_t)fh;
+		return LERP(LERP(LERP(b000, b100, tx), LERP(b010, b110, tx), ty),
+		            LERP(LERP(b001, b101, tx), LERP(b011, b111, tx), ty), tz) *
+		       (float)kHeightRange;
 #undef LERP
+	}
+	inline static float river_function(float x) { return 0.5f * glm::tanh(10.0f * x - 8.0f) + 0.5f; }
+	inline static float river_get_depth(float height) {
+		return std::max(glm::tanh(2.0f * height) * 32.0f + 4.0f, 0.0f);
+	}
+	inline static float river_depth_modifier(float x, float d) {
+		return glm::exp(-(1.0f / (float)(d * d)) * (x) * (x)) * d;
+	}
+	inline static float river_terrain_height_modifier(float x, float d) {
+		return x >= 0.0f ? glm::exp(-(1.0f / (float)(kHeightRange * kHeightRange)) * x * x)
+		                 : 0.0f; // glm::exp(-(1.0f / (float)(d * d)) * x * x);
 	}
 
 	// Noise generators
 	static constexpr float kBiomeNoiseFrequency = 0.005f, kBiomeCellLookupFrequency = 0.1f,
-	                       kHeightNoiseFrequency = 0.001f, kCaveNoiseFrequency = 0.005f;
+	                       kHeightNoiseFrequency = 0.001f, kCaveNoiseFrequency = 0.01f;
 
 	FastNoise::SmartNode<FastNoise::Perlin> m_biome_precipitation_noise;
 	FastNoise::SmartNode<FastNoise::SeedOffset> m_biome_temperature_noise;
@@ -109,6 +119,16 @@ private:
 	    m_biome_precipitation_cache, m_biome_temperature_cache;
 
 	FastNoise::SmartNode<> m_cave_noise;
+
+	// FastNoise::SmartNode<FastNoise::DomainScale> m_river_mask_noise;
+	FastNoise::SmartNode<FastNoise::Remap> m_river_mask_remap;
+	FastNoise::SmartNode<FastNoise::Min> m_river_mask_min;
+	FastNoise::SmartNode<FastNoise::CellularDistance> m_river_cell;
+	FastNoise::SmartNode<FastNoise::Multiply> m_river_multiply;
+	FastNoise::SmartNode<FastNoise::Max> m_river_max;
+	// FastNoise::SmartNode<FastNoise::Remap> m_river_bias_x_remap, m_river_bias_y_remap;
+	FastNoise::SmartNode<FastNoise::FractalFBm> m_river_bias_x, m_river_bias_y;
+	FastNoise::SmartNode<FastNoise::DomainOffset> m_river_offset;
 
 	FastNoise::SmartNode<FastNoise::FractalFBm> m_height_noise;
 	FastNoise::SmartNode<FastNoise::GeneratorCache> m_height_noise_cache;

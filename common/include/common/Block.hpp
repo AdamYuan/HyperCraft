@@ -274,6 +274,8 @@ public:
 			return false;
 		if (!tex.IsTransparent() && !nei_tex.IsTransparent())
 			return false;
+		if (tex.GetID() == BlockTextures::kWater && nei_tex.GetID() != BlockTextures::kNone)
+			return false;
 		return !tex.IsTransparent() || nei_tex.IsTransparent() || neighbour.GetID() == Blocks::kWater; // or is fluid
 	}
 
