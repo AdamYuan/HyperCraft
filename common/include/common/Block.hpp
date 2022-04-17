@@ -102,7 +102,8 @@ struct Blocks {
 
 		// Decorations
 		kApple,
-		kCactus
+		kCactus,
+		kVine
 	};
 };
 
@@ -211,6 +212,17 @@ private:
 	    {"Birch Plank", BLOCK_TEXTURE_SAME(BlockTextures::kBirchPlank), false, false},   //
 	};
 
+	template <const char *Name, BlockTexID TexID, uint8_t Dist = 1>
+	inline static constexpr BlockProperty kInnerSurfaceProperties[] = {
+	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 0, Dist)},
+	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 1, Dist)},
+	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 2, Dist)},
+	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 3, Dist)},
+	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 4, Dist)},
+	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 5, Dist)},
+	};
+
+	inline static constexpr const char kVineName[] = "Vine";
 	inline static constexpr BlockProperty kProperties[] = {
 	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},                  //
 	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false},             //
@@ -233,6 +245,7 @@ private:
 	    {"Apple", {}, true, true, BlockMeshes::Cross(BlockTextures::kApple, 5, 1, 15, true, BlockFaces::kBottom)},
 	    {"CactusSides", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop), true,
 	     false, BlockMeshes::CactusSides()},
+	    BLOCK_PROPERTY_META_ARRAY("Vine", (kInnerSurfaceProperties<kVineName, BlockTextures::kVine>)),
 	};
 
 	inline constexpr const BlockProperty *get_generic_property() const { return kProperties + m_id; }

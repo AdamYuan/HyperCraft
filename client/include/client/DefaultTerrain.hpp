@@ -94,7 +94,7 @@ private:
 	inline static float river_get_depth(float height) {
 		return glm::max((1.5f * glm::tanh(height) + glm::cos(height * 20.0f) * 0.1f) * 40.0f, 4.0f);
 	}
-	inline static float river_function(float river_val) { return 0.5f * glm::tanh(9.0f * river_val - 7.0f) + 0.5f; }
+	inline static float river_function(float river_val) { return 0.5f * glm::tanh(7.0f * river_val - 5.0f) + 0.5f; }
 	inline static float river_depth_coef(float mheight, float river_depth) {
 		return glm::exp(-((mheight >= 0.0f ? 0.5f : 0.0625f) / river_depth * river_depth) * mheight * mheight) *
 		       river_depth;
@@ -129,7 +129,6 @@ private:
 	FastNoise::SmartNode<FastNoise::CellularDistance> m_river_cell;
 	FastNoise::SmartNode<FastNoise::Multiply> m_river_multiply;
 	FastNoise::SmartNode<FastNoise::Max> m_river_max;
-	// FastNoise::SmartNode<FastNoise::Remap> m_river_bias_x_remap, m_river_bias_y_remap;
 	FastNoise::SmartNode<FastNoise::FractalFBm> m_river_bias_x, m_river_bias_y;
 	FastNoise::SmartNode<FastNoise::DomainOffset> m_river_offset;
 
@@ -267,8 +266,15 @@ private:
 		inline auto GenJungleTree(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
 			// trunk
 			int32_t trunk_height = rng() % 22 + 8;
-			for (int32_t i = 0; i < trunk_height; ++i)
-				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kJungle, 1));
+			for (int32_t i = 0; i < trunk_height; ++i) {
+				glm::i32vec3 pos = {x, i + y, z};
+				SetBlock(pos.x, pos.y, pos.z, Block::MakeTreeLog(BlockMetas::Tree::kJungle, 1));
+				BlockFace vine_face = rng() % 6;
+				if ((vine_face >> 1) == 1) // ignore y axis
+					continue;
+				glm::i32vec3 vine_pos = BlockFaceProceed(pos, vine_face);
+				SetBlock(vine_pos.x, vine_pos.y, vine_pos.z, {Blocks::kVine, vine_face});
+			}
 
 			// root
 			int32_t root_height = trunk_height / 5 - rng() % 2, root_radius = root_height;
@@ -285,6 +291,7 @@ private:
 			}
 
 			// crown
+			// TODO: add vine for crown and branches
 			int32_t crown_thickness = std::clamp(trunk_height / 7, 2, 4) + rng() % 2,
 			        crown_radius = std::max(crown_thickness - (int32_t)(rng() % 2), 2);
 			set_block_disc(x, y + trunk_height, z, crown_radius / 2, {Blocks::kLeaves, BlockMetas::Tree::kJungle});
@@ -302,6 +309,28 @@ private:
 				}
 			}
 
+			// hanging vines for main crown
+			for (int32_t i = 0; i < crown_radius * 3; ++i) {
+				glm::i32vec3 vine_begin = {0, y + trunk_height - 1, 0};
+
+				// first use it as face +/- flag, then as block face
+				BlockFace vine_face = rng() & 1;
+				if (rng() & 1) {
+					vine_begin.z = vine_face ? z - crown_radius : z + crown_radius;
+					vine_begin.x = x - crown_radius + 1 + int32_t(rng() % (crown_radius * 2 - 1));
+					vine_face |= BlockFaces::kFront;
+				} else {
+					vine_begin.x = vine_face ? x - crown_radius : x + crown_radius;
+					vine_begin.z = z - crown_radius + 1 + int32_t(rng() % (crown_radius * 2 - 1));
+					vine_face |= BlockFaces::kRight;
+				}
+
+				int32_t vine_length = rng() % trunk_height;
+				for (int32_t l = 0; l < vine_length; ++l) {
+					SetBlock(vine_begin.x, vine_begin.y - l, vine_begin.z, {Blocks::kVine, vine_face});
+				}
+			}
+
 			// branches
 			int32_t branch_range = 2 * trunk_height / 3 + rng() % 3;
 			for (int32_t i = 1; i <= branch_range; ++i) {
@@ -312,6 +341,13 @@ private:
 					               Block::MakeTreeLog(BlockMetas::Tree::kJungle, get_branch_axis(d)));
 					int32_t r = i < branch_range / 2 ? rng() % 2 + 1 : 1;
 					set_block_cluster(x + d.x, bry + d.y, z + d.z, r, {Blocks::kLeaves, BlockMetas::Tree::kJungle});
+
+					int32_t vine_rng = rng();
+					int32_t vine_length = vine_rng % trunk_height;
+					BlockFace vine_face = (vine_rng & 1) | ((vine_rng & 2) ? BlockFaces::kRight : BlockFaces::kFront);
+					for (int32_t l = 0; l < vine_length; ++l) {
+						SetBlock(x + d.x, bry + d.y - r - 1, z + d.z, {Blocks::kVine, vine_face});
+					}
 				}
 			}
 		}
