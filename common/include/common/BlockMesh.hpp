@@ -137,7 +137,8 @@ struct BlockMeshes {
 		        1};
 	}
 
-	inline static constexpr BlockMesh InnerSurface(BlockTexID tex_id, BlockFace face, uint8_t dist = 1) {
+	inline static constexpr BlockMesh InnerSurface(BlockTexID tex_id, BlockFace face, bool double_face = false,
+	                                               uint8_t dist = 1) {
 		uint8_t axis = face >> 1, u = (axis + 1) % 3, v = (axis + 2) % 3;
 		uint8_t du[3] = {0}, dv[3] = {0}, x[3] = {};
 		if (face & 1u) {
@@ -159,8 +160,18 @@ struct BlockMeshes {
 		                 {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]},
 		                 {x[0] + dv[0], x[1] + dv[1], x[2] + dv[2]},
 		             }},
+		            {axis,
+		             face,
+		             (BlockFace)(face ^ 1u),
+		             {tex_id},
+		             {
+		                 {x[0], x[1], x[2]},
+		                 {x[0] + dv[0], x[1] + dv[1], x[2] + dv[2]},
+		                 {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]},
+		                 {x[0] + du[0], x[1] + du[1], x[2] + du[2]},
+		             }},
 		        },
-		        1u,
+		        double_face ? 2u : 1u,
 		        {{{x[0], x[1], x[2]}, {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]}}},
 		        1u};
 	}

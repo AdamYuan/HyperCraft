@@ -18,7 +18,8 @@ enum ID {
 #include <block_texture_enum.inl>
 };
 
-std::set<uint32_t> preserved_opaque_pass_textures = {ID::kApple, ID::kCactusSide, ID::kCactusBottom, ID::kCactusTop};
+std::set<uint32_t> preserved_opaque_pass_textures = {
+    ID::kApple, ID::kVine, ID::kCactusSide, ID::kCactusBottom, ID::kCactusTop, ID::kRedMushroom, ID::kBrownMushroom};
 
 inline int simple_msb(int x) {
 	int ret = 0;

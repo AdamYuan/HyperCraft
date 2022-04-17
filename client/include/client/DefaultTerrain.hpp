@@ -33,10 +33,7 @@ private:
 	inline static constexpr Biome biome_map_scaled(uint32_t x, uint32_t y, int32_t z) {
 		return z <= 0 ? Biomes::kOcean : biome_map_scaled(x, y);
 	}
-	inline static constexpr float biome_prop_remap(float prop) {
-		return std::clamp(prop, -0.5f, 0.5f) +
-		       0.5f; // prop + 1.0f) * 0.5f; //((prop >= 0.0f ? std::sqrt(prop) : -std::sqrt(-prop)) + 1.0f) * 0.5f;
-	}
+	inline static constexpr float biome_prop_remap(float prop) { return std::clamp(prop, -0.4f, 0.4f) * 1.25f + 0.5f; }
 	inline static constexpr float cubic(float x, float a, float b, float c) {
 		return x * x * x * a + x * x * b + x * c;
 	}
@@ -65,8 +62,8 @@ private:
 		}
 	}
 	inline static constexpr Biome get_biome(float precipitation, float temperature) {
-		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale + 0.5f,
-		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale + 0.5f;
+		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale,
+		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale;
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
 		return biome_map_scaled(ix, iy);
 	}
@@ -96,7 +93,7 @@ private:
 	}
 	inline static float river_function(float river_val) { return 0.5f * glm::tanh(7.0f * river_val - 5.0f) + 0.5f; }
 	inline static float river_depth_coef(float mheight, float river_depth) {
-		return glm::exp(-((mheight >= 0.0f ? 0.5f : 0.0625f) / river_depth * river_depth) * mheight * mheight) *
+		return glm::exp(-((mheight >= 0.0f ? 0.5f : 0.01f) / river_depth * river_depth) * mheight * mheight) *
 		       river_depth;
 	}
 	inline static float river_terrain_coef(float height) {
@@ -291,6 +288,7 @@ private:
 			}
 
 			// crown
+			glm::i32vec3 vine_begin{};
 			// TODO: add vine for crown and branches
 			int32_t crown_thickness = std::clamp(trunk_height / 7, 2, 4) + rng() % 2,
 			        crown_radius = std::max(crown_thickness - (int32_t)(rng() % 2), 2);
@@ -302,25 +300,26 @@ private:
 					set_block_disc(x, y + trunk_height - i, z, crown_radius,
 					               {Blocks::kLeaves, BlockMetas::Tree::kJungle});
 				}
+				vine_begin.y = y + trunk_height - 2;
 			} else {
 				for (int32_t i = 1; i < crown_thickness; ++i) {
 					set_block_disc(x, y + trunk_height - i, z, crown_radius,
 					               {Blocks::kLeaves, BlockMetas::Tree::kJungle});
 				}
+				vine_begin.y = y + trunk_height - 1;
 			}
 
 			// hanging vines for main crown
 			for (int32_t i = 0; i < crown_radius * 3; ++i) {
-				glm::i32vec3 vine_begin = {0, y + trunk_height - 1, 0};
 
 				// first use it as face +/- flag, then as block face
 				BlockFace vine_face = rng() & 1;
 				if (rng() & 1) {
-					vine_begin.z = vine_face ? z - crown_radius : z + crown_radius;
+					vine_begin.z = vine_face ? z - crown_radius - 1 : z + crown_radius + 1;
 					vine_begin.x = x - crown_radius + 1 + int32_t(rng() % (crown_radius * 2 - 1));
 					vine_face |= BlockFaces::kFront;
 				} else {
-					vine_begin.x = vine_face ? x - crown_radius : x + crown_radius;
+					vine_begin.x = vine_face ? x - crown_radius - 1 : x + crown_radius + 1;
 					vine_begin.z = z - crown_radius + 1 + int32_t(rng() % (crown_radius * 2 - 1));
 					vine_face |= BlockFaces::kRight;
 				}

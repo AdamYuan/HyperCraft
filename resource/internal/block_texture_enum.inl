@@ -56,4 +56,7 @@ kApple,
 
 kCactusTop,
 kCactusSide,
-kCactusBottom
+kCactusBottom,
+
+kRedMushroom,
+kBrownMushroom
