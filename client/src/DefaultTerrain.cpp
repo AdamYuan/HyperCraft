@@ -231,10 +231,6 @@ void DefaultTerrain::initialize_biome_noise() {
 	m_biome_temperature_cache->SetSource(m_biome_temperature_offset);
 
 	// River Noise
-	/* m_river_mask_noise = FastNoise::New<FastNoise::DomainScale>();
-	m_river_mask_noise->SetSource(m_biome_precipitation_noise);
-	m_river_mask_noise->SetScale(1.0f); */
-
 	m_river_mask_remap = FastNoise::New<FastNoise::Remap>();
 	m_river_mask_remap->SetSource(m_biome_precipitation_noise);
 	m_river_mask_remap->SetRemap(0.0f, 0.2f, 0.0f, 1.0f);
@@ -340,14 +336,12 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		x = index % kChunkSize;
 		z = index / kChunkSize;
 
-		float height = height_output[index];
-		float river_depth = river_get_depth(height);
-		float converted_height =
-		    convert_height(biome_precipitation_output[index], biome_temperature_output[index], height);
-		converted_height *= (1.0f - river_output[index] * river_terrain_height_modifier(converted_height, river_depth));
-		info->height_map[index] = ceil32(converted_height);
-		info->height_map[index] -=
-		    floor32(river_function(river_output[index]) * river_depth_modifier(converted_height, river_depth));
+		float origin_height = height_output[index];
+		float river_depth = river_get_depth(origin_height);
+		float final_height = river_modify_range_height(
+		    river_output[index], river_depth,
+		    biome_modify_height(biome_precipitation_output[index], biome_temperature_output[index], origin_height));
+		info->height_map[index] = ceil32(final_height);
 
 		info->max_height = std::max(info->max_height, info->height_map[index]);
 		info->biome_map[index] =

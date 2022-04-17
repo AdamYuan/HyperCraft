@@ -70,7 +70,7 @@ private:
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
 		return biome_map_scaled(ix, iy);
 	}
-	inline static constexpr float convert_height(float precipitation, float temperature, float height) {
+	inline static constexpr float biome_modify_height(float precipitation, float temperature, float height) {
 		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale,
 		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale, z = height * kOceanSampleScale;
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
@@ -88,20 +88,24 @@ private:
 
 #define LERP(a, b, t) (a + t * (b - a))
 		return LERP(LERP(LERP(b000, b100, tx), LERP(b010, b110, tx), ty),
-		            LERP(LERP(b001, b101, tx), LERP(b011, b111, tx), ty), tz) *
-		       (float)kHeightRange;
+		            LERP(LERP(b001, b101, tx), LERP(b011, b111, tx), ty), tz);
 #undef LERP
 	}
-	inline static float river_function(float x) { return 0.5f * glm::tanh(10.0f * x - 8.0f) + 0.5f; }
 	inline static float river_get_depth(float height) {
-		return std::max(glm::tanh(2.0f * height) * 32.0f + 4.0f, 0.0f);
+		return glm::max((1.5f * glm::tanh(height) + glm::cos(height * 20.0f) * 0.1f) * 40.0f, 4.0f);
 	}
-	inline static float river_depth_modifier(float x, float d) {
-		return glm::exp(-(1.0f / (float)(d * d)) * (x) * (x)) * d;
+	inline static float river_function(float river_val) { return 0.5f * glm::tanh(9.0f * river_val - 7.0f) + 0.5f; }
+	inline static float river_depth_coef(float mheight, float river_depth) {
+		return glm::exp(-((mheight >= 0.0f ? 0.5f : 0.0625f) / river_depth * river_depth) * mheight * mheight) *
+		       river_depth;
 	}
-	inline static float river_terrain_height_modifier(float x, float d) {
-		return x >= 0.0f ? glm::exp(-(1.0f / (float)(kHeightRange * kHeightRange)) * x * x)
-		                 : 0.0f; // glm::exp(-(1.0f / (float)(d * d)) * x * x);
+	inline static float river_terrain_coef(float height) {
+		return height >= 0.0f ? glm::exp(-(height * height)) : 0.0f;
+	}
+
+	inline static float river_modify_range_height(float river_val, float river_depth, float height) {
+		height *= (1.0f - river_val * river_terrain_coef(height)) * (float)kHeightRange;
+		return height - river_function(river_val) * river_depth_coef(height, river_depth);
 	}
 
 	// Noise generators
@@ -120,7 +124,6 @@ private:
 
 	FastNoise::SmartNode<> m_cave_noise;
 
-	// FastNoise::SmartNode<FastNoise::DomainScale> m_river_mask_noise;
 	FastNoise::SmartNode<FastNoise::Remap> m_river_mask_remap;
 	FastNoise::SmartNode<FastNoise::Min> m_river_mask_min;
 	FastNoise::SmartNode<FastNoise::CellularDistance> m_river_cell;
