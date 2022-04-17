@@ -89,12 +89,12 @@ private:
 #undef LERP
 	}
 	inline static float river_get_depth(float height) {
-		return glm::max((1.5f * glm::tanh(height) + glm::cos(height * 20.0f) * 0.1f) * 40.0f, 4.0f);
+		return glm::max((1.5f * glm::tanh(height) + glm::cos(height * 10.0f) * 0.125f) * 40.0f, 5.0f);
 	}
 	inline static float river_function(float river_val) { return 0.5f * glm::tanh(7.0f * river_val - 5.0f) + 0.5f; }
 	inline static float river_depth_coef(float mheight, float river_depth) {
-		return glm::exp(-((mheight >= 0.0f ? 0.5f : 0.01f) / river_depth * river_depth) * mheight * mheight) *
-		       river_depth;
+		return mheight < 0.0f ? glm::max(river_depth + mheight, 0.0f)
+		                      : glm::exp(-(0.5f / river_depth * river_depth) * mheight * mheight) * river_depth;
 	}
 	inline static float river_terrain_coef(float height) {
 		return height >= 0.0f ? glm::exp(-(height * height)) : 0.0f;
