@@ -18,8 +18,10 @@ enum ID {
 #include <block_texture_enum.inl>
 };
 
-std::set<uint32_t> preserved_opaque_pass_textures = {
-    ID::kApple, ID::kVine, ID::kCactusSide, ID::kCactusBottom, ID::kCactusTop, ID::kRedMushroom, ID::kBrownMushroom};
+std::set<uint32_t> transparent_pass_textures = {
+    ID::kWater, ID::kAcaciaLeaves, ID::kBirchLeaves, ID::kJungleLeaves, ID::kSpruceLeaves,  ID::kOakLeaves,
+    ID::kIce,   ID::kGrassBoreal,  ID::kGrassPlain,  ID::kGrassSavanna, ID::kGrassTropical,
+};
 
 inline int simple_msb(int x) {
 	int ret = 0;
@@ -101,8 +103,7 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		if (transparent &&
-		    preserved_opaque_pass_textures.find(current_texture + 1) == preserved_opaque_pass_textures.end())
+		if (transparent && transparent_pass_textures.find(current_texture + 1) != transparent_pass_textures.end())
 			trans_pass = true;
 
 		combined_transparency.push_back(transparent);

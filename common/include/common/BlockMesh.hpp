@@ -88,7 +88,7 @@ struct BlockMeshes {
 		        {{{1, 0, 1}, {15, 16, 15}}},
 		        1};
 	}
-	inline static constexpr BlockMesh Cross(BlockTexID tex_id, int radius, int low, int high, bool double_side = false,
+	inline static constexpr BlockMesh Cross(BlockTexID tex_id, int radius, int low, int high,
 	                                        BlockFace light_face = BlockFaces::kTop) {
 		return {{
 		            {0,
@@ -132,13 +132,12 @@ struct BlockMeshes {
 		                 {8 - radius, low, 8 + radius},
 		             }},
 		        },
-		        double_side ? 4u : 2u,
+		        BlockTexture{tex_id}.UseTransparentPass() ? 2u : 4u,
 		        {{{8 - radius, low, 8 - radius}, {8 + radius, high, 8 + radius}}},
 		        1};
 	}
 
-	inline static constexpr BlockMesh InnerSurface(BlockTexID tex_id, BlockFace face, bool double_face = false,
-	                                               uint8_t dist = 1) {
+	inline static constexpr BlockMesh InnerSurface(BlockTexID tex_id, BlockFace face, uint8_t dist = 1) {
 		uint8_t axis = face >> 1, u = (axis + 1) % 3, v = (axis + 2) % 3;
 		uint8_t du[3] = {0}, dv[3] = {0}, x[3] = {};
 		if (face & 1u) {
@@ -171,7 +170,7 @@ struct BlockMeshes {
 		                 {x[0] + du[0], x[1] + du[1], x[2] + du[2]},
 		             }},
 		        },
-		        double_face ? 2u : 1u,
+		        BlockTexture{tex_id}.UseTransparentPass() ? 1u : 2u,
 		        {{{x[0], x[1], x[2]}, {x[0] + du[0] + dv[0], x[1] + du[1] + dv[1], x[2] + du[2] + dv[2]}}},
 		        1u};
 	}

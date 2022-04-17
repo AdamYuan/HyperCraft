@@ -103,7 +103,9 @@ struct Blocks {
 		// Decorations
 		kApple,
 		kCactus,
-		kVine
+		kVine,
+		kRedMushroom,
+		kBrownMushroom,
 	};
 };
 
@@ -242,10 +244,12 @@ private:
 	    BLOCK_PROPERTY_META_ARRAY("Leaves", kLeavesProperties),
 	    BLOCK_PROPERTY_META_FUNCTION("Log", get_log_property),
 	    BLOCK_PROPERTY_META_ARRAY("Plank", kPlankProperties),
-	    {"Apple", {}, true, true, BlockMeshes::Cross(BlockTextures::kApple, 5, 1, 15, true, BlockFaces::kBottom)},
+	    {"Apple", {}, true, true, BlockMeshes::Cross(BlockTextures::kApple, 5, 1, 15, BlockFaces::kBottom)},
 	    {"CactusSides", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop), true,
 	     false, BlockMeshes::CactusSides()},
 	    BLOCK_PROPERTY_META_ARRAY("Vine", (kInnerSurfaceProperties<kVineName, BlockTextures::kVine>)),
+	    {"Red Mushroom", {}, true, true, BlockMeshes::Cross(BlockTextures::kRedMushroom, 5, 0, 12, true)},
+	    {"Brow Mushroom", {}, true, true, BlockMeshes::Cross(BlockTextures::kBrownMushroom, 6, 0, 9, true)},
 	};
 
 	inline constexpr const BlockProperty *get_generic_property() const { return kProperties + m_id; }
