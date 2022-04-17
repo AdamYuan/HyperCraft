@@ -68,8 +68,8 @@ private:
 		return biome_map_scaled(ix, iy);
 	}
 	inline static constexpr float biome_modify_height(float precipitation, float temperature, float height) {
-		float x = biome_prop_remap(precipitation) * kBiomeMapSize * kSampleScale,
-		      y = biome_prop_remap(temperature) * kBiomeMapSize * kSampleScale, z = height * kOceanSampleScale;
+		float x = biome_prop_remap(precipitation) * (kBiomeMapSize - 1) * kSampleScale,
+		      y = biome_prop_remap(temperature) * (kBiomeMapSize - 1) * kSampleScale, z = height * kOceanSampleScale;
 		auto ix = (uint32_t)x, iy = (uint32_t)y;
 		int32_t iz = z >= 0 ? (int32_t)z : (int32_t)z - 1;
 		float tx = x - float(ix), ty = y - float(iy), tz = z - float(iz);
