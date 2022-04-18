@@ -390,18 +390,26 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 					info->decorations.GenOakTree(rand_gen, x, y, z);
 			} else if (rand % 273 == 0)
 				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kPlain});
+			else if (rand % 647 == 0)
+				info->decorations.SetBlock(x, y + 1, z,
+				                           (rand_gen() & 1u) ? Blocks::kRedMushroom : Blocks::kBrownMushroom);
 		} break;
 		case Biomes::kBorealForest: {
 			if (rand % 120 == 0)
 				info->decorations.GenSpruceTree(rand_gen, x, y, z);
 			else if (rand % 87 == 0)
 				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kBoreal});
+			else if (rand % 437 == 0)
+				info->decorations.SetBlock(x, y + 1, z, Blocks::kBrownMushroom);
 		} break;
 		case Biomes::kTropicalForest: {
 			if (rand % 57 == 0)
 				info->decorations.GenJungleTree(rand_gen, x, y, z);
 			else if (rand % 127 == 0)
 				info->decorations.SetBlock(x, y + 1, z, {Blocks::kGrass, BlockMetas::Grass::kTropical});
+			else if (rand % 117 == 0)
+				info->decorations.SetBlock(x, y + 1, z,
+				                           (rand_gen() & 1u) ? Blocks::kRedMushroom : Blocks::kBrownMushroom);
 		} break;
 		case Biomes::kPlain: {
 			if (rand % 1000 == 0) {

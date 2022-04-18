@@ -310,11 +310,13 @@ private:
 			}
 
 			// hanging vines for main crown
-			for (int32_t i = 0; i < crown_radius * 3; ++i) {
+			int32_t vine_times = rng() % 3 + 1;
+			for (int32_t i = 0; i < crown_radius * vine_times; ++i) {
 
 				// first use it as face +/- flag, then as block face
-				BlockFace vine_face = rng() & 1;
-				if (rng() & 1) {
+				auto vine_rng = rng();
+				BlockFace vine_face = vine_rng & 1u;
+				if (vine_rng & 2) {
 					vine_begin.z = vine_face ? z - crown_radius - 1 : z + crown_radius + 1;
 					vine_begin.x = x - crown_radius + 1 + int32_t(rng() % (crown_radius * 2 - 1));
 					vine_face |= BlockFaces::kFront;
@@ -324,7 +326,7 @@ private:
 					vine_face |= BlockFaces::kRight;
 				}
 
-				int32_t vine_length = rng() % trunk_height;
+				int32_t vine_length = (vine_rng >> 2u) % trunk_height;
 				for (int32_t l = 0; l < vine_length; ++l) {
 					SetBlock(vine_begin.x, vine_begin.y - l, vine_begin.z, {Blocks::kVine, vine_face});
 				}

@@ -104,7 +104,7 @@ struct BlockMeshes {
 		            {2,
 		             light_face,
 		             BlockFaces::kBack,
-		             {tex_id},
+		             {tex_id, BlockTextures::kTransNegU},
 		             {
 		                 {8 - radius, low, 8 + radius},
 		                 {8 + radius, low, 8 - radius},
@@ -124,7 +124,7 @@ struct BlockMeshes {
 		            {2,
 		             light_face,
 		             BlockFaces::kFront,
-		             {tex_id},
+		             {tex_id, BlockTextures::kTransNegU},
 		             {
 		                 {8 - radius, high, 8 + radius},
 		                 {8 + radius, high, 8 - radius},
