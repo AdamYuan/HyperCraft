@@ -7,8 +7,10 @@ add_subdirectory(glfw)
 add_subdirectory(FastNoise2)
 
 add_library(client_dep STATIC
+        vk_mem_alloc.h
         vk_mem_alloc.cpp
 
+        volk.h
         volk.c
 
         # IMGUI
