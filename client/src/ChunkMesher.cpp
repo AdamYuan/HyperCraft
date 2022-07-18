@@ -171,13 +171,15 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 
 		uint_fast8_t x[3]{0};
 		int_fast8_t q[3]{0};
-		thread_local static BlockTexture texture_mask[Chunk::kSize * Chunk::kSize]{};
-		thread_local static std::bitset<Chunk::kSize * Chunk::kSize> face_inv_mask{};
-		thread_local static Light4 light_mask[Chunk::kSize * Chunk::kSize]{};
+		thread_local static BlockTexture texture_mask[2][Chunk::kSize * Chunk::kSize]{};
+		// thread_local static std::bitset<Chunk::kSize * Chunk::kSize> face_inv_mask{};
+		thread_local static Light4 light_mask[2][Chunk::kSize * Chunk::kSize]{};
 
 		// Compute texture_mask
 		// TODO: enable dual-side textures in a slice
+		uint8_t face_mask = 0;
 		q[axis] = -1;
+		std::fill(texture_mask[0], texture_mask[1] + kChunkSize * kChunkSize, 0);
 		for (x[axis] = 0; x[axis] <= Chunk::kSize; ++x[axis]) {
 			uint32_t counter = 0;
 			for (x[v] = 0; x[v] < Chunk::kSize; ++x[v]) {
@@ -187,145 +189,150 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 
 					BlockFace f;
 					if (x[axis] != 0 && a.ShowFace((f = axis << 1), b)) {
-						texture_mask[counter] = a.GetTexture(f);
-						face_inv_mask[counter] = false;
-						light4_init(light_mask + counter, f, (int_fast8_t)(x[0] + q[0]), (int_fast8_t)(x[1] + q[1]),
+						texture_mask[0][counter] = a.GetTexture(f);
+						face_mask |= 1u;
+						light4_init(light_mask[0] + counter, f, (int_fast8_t)(x[0] + q[0]), (int_fast8_t)(x[1] + q[1]),
 						            (int_fast8_t)(x[2] + q[2]));
-					} else if (Chunk::kSize != x[axis] && b.ShowFace((f = (axis << 1) | 1), a)) {
-						texture_mask[counter] = b.GetTexture(f);
-						face_inv_mask[counter] = true;
-						light4_init(light_mask + counter, f, (int_fast8_t)(x[0]), (int_fast8_t)(x[1]),
+					}
+					if (Chunk::kSize != x[axis] && b.ShowFace((f = (axis << 1) | 1), a)) {
+						texture_mask[1][counter] = b.GetTexture(f);
+						face_mask |= 2u;
+						light4_init(light_mask[1] + counter, f, (int_fast8_t)(x[0]), (int_fast8_t)(x[1]),
 						            (int_fast8_t)(x[2]));
-					} else
-						texture_mask[counter] = 0;
+					}
 				}
 			}
 
 			// Generate mesh for texture_mask using lexicographic ordering
-			counter = 0;
-			for (uint_fast8_t j = 0; j < Chunk::kSize; ++j) {
-				for (uint_fast8_t i = 0; i < Chunk::kSize;) {
-					const BlockTexture quad_texture = texture_mask[counter];
-					if (!quad_texture.Empty()) {
-						const bool quad_face_inv = face_inv_mask[counter];
-						const Light4 quad_light = light_mask[counter];
-						// Compute width
-						uint_fast8_t width, height;
-						for (width = 1; quad_texture == texture_mask[counter + width] &&
-						                quad_face_inv == face_inv_mask[counter + width] &&
-						                quad_light == light_mask[counter + width] && i + width < Chunk::kSize;
-						     ++width)
-							;
+			for (uint32_t quad_face_inv = 0; quad_face_inv < 2; ++quad_face_inv) {
+				if (!(face_mask & (1u << quad_face_inv)))
+					continue;
+				counter = 0;
+				auto local_texture_mask = texture_mask[quad_face_inv];
+				auto local_light_mask = light_mask[quad_face_inv];
+				for (uint_fast8_t j = 0; j < Chunk::kSize; ++j) {
+					for (uint_fast8_t i = 0; i < Chunk::kSize;) {
+						const BlockTexture quad_texture = local_texture_mask[counter];
+						if (!quad_texture.Empty()) {
+							const Light4 quad_light = local_light_mask[counter];
+							// Compute width
+							uint_fast8_t width, height;
+							for (width = 1; quad_texture == local_texture_mask[counter + width] &&
+							                quad_light == local_light_mask[counter + width] && i + width < Chunk::kSize;
+							     ++width)
+								;
 
-						// Compute height
-						for (height = 1; j + height < Chunk::kSize; ++height)
-							for (uint_fast8_t k = 0; k < width; ++k) {
-								uint32_t idx = counter + k + height * Chunk::kSize;
-								if (quad_texture != texture_mask[idx] || quad_face_inv != face_inv_mask[idx] ||
-								    quad_light != light_mask[idx]) {
-									goto end_height_loop;
+							// Compute height
+							for (height = 1; j + height < Chunk::kSize; ++height)
+								for (uint_fast8_t k = 0; k < width; ++k) {
+									uint32_t idx = counter + k + height * Chunk::kSize;
+									if (quad_texture != local_texture_mask[idx] ||
+									    quad_light != local_light_mask[idx]) {
+										goto end_height_loop;
+									}
 								}
+						end_height_loop:
+
+							// Add quad
+							x[u] = i;
+							x[v] = j;
+
+							uint_fast8_t du[3] = {0}, dv[3] = {0};
+
+							if (quad_face_inv) {
+								du[v] = height;
+								dv[u] = width;
+							} else {
+								dv[v] = height;
+								du[u] = width;
 							}
-					end_height_loop:
 
-						// Add quad
-						x[u] = i;
-						x[v] = j;
+							// TODO: process resource rotation
+							// if (quad_texture.GetRotation() == )
 
-						uint_fast8_t du[3] = {0}, dv[3] = {0};
+							MeshGenInfo &info =
+							    quad_texture.UseTransparentPass() ? transparent_mesh_info : opaque_mesh_info;
+							// if indices would exceed, restart
+							uint16_t cur_vertex = info.vertices.size();
+							if (cur_vertex + 4 > UINT16_MAX) {
+								bool trans = info.transparent;
+								ret.push_back(std::move(info));
+								info = MeshGenInfo{};
+								info.transparent = trans;
+							}
+							info.aabb.Merge({{uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
+							                  uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
+							                  uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset},
+							                 {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+							                  uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+							                  uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset}});
 
-						if (quad_face_inv) {
-							du[v] = height;
-							dv[u] = width;
+							BlockFace quad_face = (axis << 1) | quad_face_inv;
+							info.vertices.emplace_back(uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
+							                           uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
+							                           uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset, axis,
+							                           quad_face, quad_light.ao[0], quad_light.sunlight[0],
+							                           quad_light.torchlight[0], quad_texture.GetID(),
+							                           quad_texture.GetTransformation());
+							info.vertices.emplace_back(uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
+							                           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
+							                           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset, axis,
+							                           quad_face, quad_light.ao[1], quad_light.sunlight[1],
+							                           quad_light.torchlight[1], quad_texture.GetID(),
+							                           quad_texture.GetTransformation());
+							info.vertices.emplace_back(
+							    uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+							    uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+							    uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset, axis, quad_face,
+							    quad_light.ao[2], quad_light.sunlight[2], quad_light.torchlight[2],
+							    quad_texture.GetID(), quad_texture.GetTransformation());
+							info.vertices.emplace_back(uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
+							                           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
+							                           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset, axis,
+							                           quad_face, quad_light.ao[3], quad_light.sunlight[3],
+							                           quad_light.torchlight[3], quad_texture.GetID(),
+							                           quad_texture.GetTransformation());
+
+							if (quad_light.GetFlip()) {
+								// 11--------10
+								//|       / |
+								//|    /    |
+								//| /       |
+								// 00--------01
+								info.indices.push_back(cur_vertex);
+								info.indices.push_back(cur_vertex + 1);
+								info.indices.push_back(cur_vertex + 2);
+
+								info.indices.push_back(cur_vertex);
+								info.indices.push_back(cur_vertex + 2);
+								info.indices.push_back(cur_vertex + 3);
+							} else {
+								// 11--------10
+								//| \       |
+								//|    \    |
+								//|       \ |
+								// 00--------01
+								info.indices.push_back(cur_vertex + 1);
+								info.indices.push_back(cur_vertex + 2);
+								info.indices.push_back(cur_vertex + 3);
+
+								info.indices.push_back(cur_vertex);
+								info.indices.push_back(cur_vertex + 1);
+								info.indices.push_back(cur_vertex + 3);
+							}
+
+							for (uint_fast8_t a = 0; a < height; ++a) {
+								auto *base_ptr = local_texture_mask + counter + kChunkSize * a;
+								std::fill(base_ptr, base_ptr + width, 0);
+							}
+
+							// Increase counters
+							i += width;
+							counter += width;
 						} else {
-							dv[v] = height;
-							du[u] = width;
+							++i;
+							++counter;
 						}
-
-						// TODO: process resource rotation
-						// if (quad_texture.GetRotation() == )
-
-						MeshGenInfo &info =
-						    quad_texture.UseTransparentPass() ? transparent_mesh_info : opaque_mesh_info;
-						// if indices would exceed, restart
-						uint16_t cur_vertex = info.vertices.size();
-						if (cur_vertex + 4 > UINT16_MAX) {
-							bool trans = info.transparent;
-							ret.push_back(std::move(info));
-							info = MeshGenInfo{};
-							info.transparent = trans;
-						}
-						info.aabb.Merge({{uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
-						                  uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
-						                  uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset},
-						                 {uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
-						                  uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
-						                  uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset}});
-
-						BlockFace quad_face = (axis << 1) | quad_face_inv;
-						info.vertices.emplace_back(uint32_t(x[0]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[1]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[2]) << ChunkMeshVertex::kUnitBitOffset, axis, quad_face,
-						                           quad_light.ao[0], quad_light.sunlight[0], quad_light.torchlight[0],
-						                           quad_texture.GetID(), quad_texture.GetTransformation());
-						info.vertices.emplace_back(uint32_t(x[0] + du[0]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[1] + du[1]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[2] + du[2]) << ChunkMeshVertex::kUnitBitOffset, axis,
-						                           quad_face, quad_light.ao[1], quad_light.sunlight[1],
-						                           quad_light.torchlight[1], quad_texture.GetID(),
-						                           quad_texture.GetTransformation());
-						info.vertices.emplace_back(uint32_t(x[0] + du[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[1] + du[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[2] + du[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset,
-						                           axis, quad_face, quad_light.ao[2], quad_light.sunlight[2],
-						                           quad_light.torchlight[2], quad_texture.GetID(),
-						                           quad_texture.GetTransformation());
-						info.vertices.emplace_back(uint32_t(x[0] + dv[0]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[1] + dv[1]) << ChunkMeshVertex::kUnitBitOffset,
-						                           uint32_t(x[2] + dv[2]) << ChunkMeshVertex::kUnitBitOffset, axis,
-						                           quad_face, quad_light.ao[3], quad_light.sunlight[3],
-						                           quad_light.torchlight[3], quad_texture.GetID(),
-						                           quad_texture.GetTransformation());
-
-						if (quad_light.GetFlip()) {
-							// 11--------10
-							//|       / |
-							//|    /    |
-							//| /       |
-							// 00--------01
-							info.indices.push_back(cur_vertex);
-							info.indices.push_back(cur_vertex + 1);
-							info.indices.push_back(cur_vertex + 2);
-
-							info.indices.push_back(cur_vertex);
-							info.indices.push_back(cur_vertex + 2);
-							info.indices.push_back(cur_vertex + 3);
-						} else {
-							// 11--------10
-							//| \       |
-							//|    \    |
-							//|       \ |
-							// 00--------01
-							info.indices.push_back(cur_vertex + 1);
-							info.indices.push_back(cur_vertex + 2);
-							info.indices.push_back(cur_vertex + 3);
-
-							info.indices.push_back(cur_vertex);
-							info.indices.push_back(cur_vertex + 1);
-							info.indices.push_back(cur_vertex + 3);
-						}
-
-						for (uint_fast8_t a = 0; a < height; ++a) {
-							auto *base_ptr = texture_mask + counter + kChunkSize * a;
-							std::fill(base_ptr, base_ptr + width, 0);
-						}
-
-						// Increase counters
-						i += width;
-						counter += width;
-					} else {
-						++i;
-						++counter;
 					}
 				}
 			}
