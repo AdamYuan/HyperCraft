@@ -12,10 +12,20 @@
 using BlockID = uint8_t;
 using BlockMeta = uint8_t;
 
+using BlockTransparency = uint8_t;
+struct BlockTransparencies {
+	enum : uint8_t { kOpaque = 0, kSemiTransparent, kTransparent };
+};
+using BlockCollisionMask = uint8_t;
+struct BlockCollisionBits {
+	enum : uint8_t { kNone = 1 << 0, kSolid = 1 << 1, kLiquid = 1 << 2 };
+};
 struct BlockProperty {
 	const char *name{"Unnamed"};
 	BlockTexture textures[6]{};
-	bool indirect_light_pass{false}, vertical_light_pass{false};
+	// bool indirect_light_pass{false}, vertical_light_pass{false};
+	BlockTransparency transparency{BlockTransparencies::kOpaque};
+	BlockCollisionMask collision_mask{BlockCollisionBits::kSolid};
 	BlockMesh custom_mesh;
 	// META path #1: array to properties
 	const BlockProperty *meta_property_array{nullptr};
@@ -34,8 +44,8 @@ struct BlockProperty {
 			            textures[BlockFaces::kBottom],
 			            textures[BlockFaces::kTop],
 			        },
-			        indirect_light_pass,
-			        vertical_light_pass,
+			        transparency,
+			        collision_mask,
 			        custom_mesh};
 		} else if (axis == 1) {
 			return {name,
@@ -47,8 +57,8 @@ struct BlockProperty {
 			            textures[BlockFaces::kRight],
 			            textures[BlockFaces::kLeft],
 			        },
-			        indirect_light_pass,
-			        vertical_light_pass,
+			        transparency,
+			        collision_mask,
 			        custom_mesh};
 		} else {
 			return {name,
@@ -60,8 +70,8 @@ struct BlockProperty {
 			            textures[4].RotateCW(),
 			            textures[5].RotateCCW(),
 			        },
-			        indirect_light_pass,
-			        vertical_light_pass,
+			        transparency,
+			        collision_mask,
 			        custom_mesh};
 		}
 	}
@@ -138,57 +148,78 @@ private:
 	};
 
 	inline static constexpr BlockProperty kGrassProperties[] = {
-	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassPlain, 8, 0, 16)},
-	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassSavanna, 8, 0, 16)},
-	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassTropical, 8, 0, 16)},
-	    {"Grass", {}, true, true, BlockMeshes::Cross(BlockTextures::kGrassBoreal, 8, 0, 16)},
+	    {"Grass",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kGrassPlain, 8, 0, 16)},
+	    {"Grass",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kGrassSavanna, 8, 0, 16)},
+	    {"Grass",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kGrassTropical, 8, 0, 16)},
+	    {"Grass",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kGrassBoreal, 8, 0, 16)},
 	};
 
 	inline static constexpr BlockProperty kGrassBlockProperties[] = {
 	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassPlainSide,
 	                                BlockTextures::kGrassPlainTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassSavannaSide,
 	                                BlockTextures::kGrassSavannaTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassTropicalSide,
 	                                BlockTextures::kGrassTropicalTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    {"Grass Block",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kDirt, BlockTextures::kGrassBorealSide,
 	                                BlockTextures::kGrassBorealTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	};
 	inline static constexpr BlockProperty kLeavesProperties[] = {
-	    {"Oak Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kOakLeaves), true, false},       //
-	    {"Acacia Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaLeaves), true, false}, //
-	    {"Jungle Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kJungleLeaves), true, false}, //
-	    {"Spruce Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kSpruceLeaves), true, false}, //
-	    {"Birch Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kBirchLeaves), true, false},   //
+	    {"Oak Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kOakLeaves), BlockTransparencies::kSemiTransparent,
+	     BlockCollisionBits::kSolid}, //
+	    {"Acacia Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaLeaves), BlockTransparencies::kSemiTransparent,
+	     BlockCollisionBits::kSolid}, //
+	    {"Jungle Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kJungleLeaves), BlockTransparencies::kSemiTransparent,
+	     BlockCollisionBits::kSolid}, //
+	    {"Spruce Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kSpruceLeaves), BlockTransparencies::kSemiTransparent,
+	     BlockCollisionBits::kSolid}, //
+	    {"Birch Leaves", BLOCK_TEXTURE_SAME(BlockTextures::kBirchLeaves), BlockTransparencies::kSemiTransparent,
+	     BlockCollisionBits::kSolid}, //
 	};
 
 	inline static constexpr BlockProperty kLogProperties[] = {
 	    {"Oak Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kOakLogTop, BlockTextures::kOakLog, BlockTextures::kOakLogTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    {"Acacia Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kAcaciaLogTop, BlockTextures::kAcaciaLog,
 	                                BlockTextures::kAcaciaLogTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    {"Jungle Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kJungleLogTop, BlockTextures::kJungleLog,
 	                                BlockTextures::kJungleLogTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    {"Spruce Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kSpruceLogTop, BlockTextures::kSpruceLog,
 	                                BlockTextures::kSpruceLogTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    {"Birch Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kBirchLogTop, BlockTextures::kBirchLog, BlockTextures::kBirchLogTop),
-	     false, false}, //
+	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	};
 	inline static constexpr BlockProperty kLogPropertiesX[] = {
 	    kLogProperties[0].RotateCW(2), kLogProperties[1].RotateCW(2), kLogProperties[2].RotateCW(2),
@@ -207,49 +238,103 @@ private:
 	}
 
 	inline static constexpr BlockProperty kPlankProperties[] = {
-	    {"Oak Plank", BLOCK_TEXTURE_SAME(BlockTextures::kOakPlank), false, false},       //
-	    {"Acacia Plank", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaPlank), false, false}, //
-	    {"Jungle Plank", BLOCK_TEXTURE_SAME(BlockTextures::kJunglePlank), false, false}, //
-	    {"Spruce Plank", BLOCK_TEXTURE_SAME(BlockTextures::kSprucePlank), false, false}, //
-	    {"Birch Plank", BLOCK_TEXTURE_SAME(BlockTextures::kBirchPlank), false, false},   //
+	    {"Oak Plank", BLOCK_TEXTURE_SAME(BlockTextures::kOakPlank), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Acacia Plank", BLOCK_TEXTURE_SAME(BlockTextures::kAcaciaPlank), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Jungle Plank", BLOCK_TEXTURE_SAME(BlockTextures::kJunglePlank), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Spruce Plank", BLOCK_TEXTURE_SAME(BlockTextures::kSprucePlank), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Birch Plank", BLOCK_TEXTURE_SAME(BlockTextures::kBirchPlank), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
 	};
 
 	template <const char *Name, BlockTexID TexID, uint8_t Dist = 1>
 	inline static constexpr BlockProperty kInnerSurfaceProperties[] = {
-	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 0, Dist)},
-	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 1, Dist)},
-	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 2, Dist)},
-	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 3, Dist)},
-	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 4, Dist)},
-	    {Name, {}, true, true, BlockMeshes::InnerSurface(TexID, 5, Dist)},
+	    {Name,
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::InnerSurface(TexID, 0, Dist)},
+	    {Name,
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::InnerSurface(TexID, 1, Dist)},
+	    {Name,
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::InnerSurface(TexID, 2, Dist)},
+	    {Name,
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::InnerSurface(TexID, 3, Dist)},
+	    {Name,
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::InnerSurface(TexID, 4, Dist)},
+	    {Name,
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::InnerSurface(TexID, 5, Dist)},
 	};
 
 	inline static constexpr const char kVineName[] = "Vine";
 	inline static constexpr BlockProperty kProperties[] = {
-	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), true, true},                  //
-	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), false, false},             //
-	    {"Cobblestone", BLOCK_TEXTURE_SAME(BlockTextures::kCobblestone), false, false}, //
-	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), false, false},               //
+	    {"Air", BLOCK_TEXTURE_SAME(BlockTextures::kNone), BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone}, //
+	    {"Stone", BLOCK_TEXTURE_SAME(BlockTextures::kStone), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Cobblestone", BLOCK_TEXTURE_SAME(BlockTextures::kCobblestone), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid},                                                                                 //
+	    {"Dirt", BLOCK_TEXTURE_SAME(BlockTextures::kDirt), BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
 	    BLOCK_PROPERTY_META_ARRAY("Grass Block", kGrassBlockProperties),
 	    BLOCK_PROPERTY_META_ARRAY("Grass", kGrassProperties),
-	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), false, false}, //
-	    {"Dead Bush", {}, true, true, BlockMeshes::Cross(BlockTextures::kDeadBush, 8, 0, 16)},
-	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), false, false},       //
-	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), true, true},           //
-	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), false, false},           //
-	    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), false, false},    //
-	    {"Ice", BLOCK_TEXTURE_SAME(BlockTextures::kIce), true, false},              //
-	    {"Sandstone", BLOCK_TEXTURE_SAME(BlockTextures::kSandstone), false, false}, //
-	    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), true, false},          //
+	    {"Sand", BLOCK_TEXTURE_SAME(BlockTextures::kSand), BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
+	    {"Dead Bush",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kDeadBush, 8, 0, 16)},
+	    {"Gravel", BLOCK_TEXTURE_SAME(BlockTextures::kGravel), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Glass", BLOCK_TEXTURE_SAME(BlockTextures::kGlass), BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kSolid},                                                                                 //
+	    {"Snow", BLOCK_TEXTURE_SAME(BlockTextures::kSnow), BlockTransparencies::kOpaque, BlockCollisionBits::kSolid}, //
+	    {"Blue Ice", BLOCK_TEXTURE_SAME(BlockTextures::kBlueIce), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Ice", BLOCK_TEXTURE_SAME(BlockTextures::kIce), BlockTransparencies::kSemiTransparent,
+	     BlockCollisionBits::kSolid}, //
+	    {"Sandstone", BLOCK_TEXTURE_SAME(BlockTextures::kSandstone), BlockTransparencies::kOpaque,
+	     BlockCollisionBits::kSolid}, //
+	    {"Water", BLOCK_TEXTURE_SAME(BlockTextures::kWater), BlockTransparencies::kSemiTransparent,
+	     BlockCollisionBits::kLiquid}, //
 	    BLOCK_PROPERTY_META_ARRAY("Leaves", kLeavesProperties),
 	    BLOCK_PROPERTY_META_FUNCTION("Log", get_log_property),
 	    BLOCK_PROPERTY_META_ARRAY("Plank", kPlankProperties),
-	    {"Apple", {}, true, true, BlockMeshes::Cross(BlockTextures::kApple, 5, 1, 15, BlockFaces::kBottom)},
-	    {"Cactus", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop), true, false,
-	     BlockMeshes::CactusSides()},
+	    {"Apple",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kApple, 5, 1, 15, BlockFaces::kBottom)},
+	    {"Cactus", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop),
+	     BlockTransparencies::kSemiTransparent, BlockCollisionBits::kSolid, BlockMeshes::CactusSides()},
 	    BLOCK_PROPERTY_META_ARRAY("Vine", (kInnerSurfaceProperties<kVineName, BlockTextures::kVine>)),
-	    {"Red Mushroom", {}, true, true, BlockMeshes::Cross(BlockTextures::kRedMushroom, 5, 0, 12, true)},
-	    {"Brow Mushroom", {}, true, true, BlockMeshes::Cross(BlockTextures::kBrownMushroom, 6, 0, 9, true)},
+	    {"Red Mushroom",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kRedMushroom, 5, 0, 12, true)},
+	    {"Brow Mushroom",
+	     {},
+	     BlockTransparencies::kTransparent,
+	     BlockCollisionBits::kNone,
+	     BlockMeshes::Cross(BlockTextures::kBrownMushroom, 6, 0, 9, true)},
 	};
 
 	inline constexpr const BlockProperty *get_generic_property() const { return kProperties + m_id; }
@@ -286,8 +371,13 @@ public:
 	inline constexpr const char *GetName() const { return get_property()->name; }
 	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->textures[face]; }
 	// Vertical Sunlight
-	inline constexpr bool GetVerticalLightPass() const { return get_property()->vertical_light_pass; }
-	inline constexpr bool GetIndirectLightPass() const { return get_property()->indirect_light_pass; }
+	inline constexpr BlockTransparency GetTransparency() const { return get_property()->transparency; }
+	inline constexpr bool GetVerticalLightPass() const {
+		return GetTransparency() == BlockTransparencies::kTransparent;
+	}
+	inline constexpr bool GetIndirectLightPass() const { return GetTransparency() != BlockTransparencies::kOpaque; }
+
+	inline constexpr BlockCollisionMask GetCollisionMask() const { return get_property()->collision_mask; }
 
 	inline constexpr bool ShowFace(BlockFace face, Block neighbour) const {
 		BlockTexture tex = GetTexture(face), nei_tex = neighbour.GetTexture(BlockFaceOpposite(face));
