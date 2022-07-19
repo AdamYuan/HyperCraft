@@ -26,11 +26,15 @@ public:
 	inline constexpr BlockTexID GetID() const { return m_data & 0x1fffu; }
 
 	inline constexpr uint16_t GetData() const { return m_data; }
-	inline constexpr bool Empty() const { return m_data == 0; }
+	inline constexpr bool Empty() const { return GetID() == 0; }
 
 	inline constexpr bool IsTransparent() const {
 #include <generated/block_texture_transparency.inl>
 		return kBlockTextureTransparency[GetID()];
+	}
+	inline constexpr bool IsLiquid() const {
+#include <generated/block_texture_transparency.inl>
+		return kBlockTextureLiquid[GetID()];
 	}
 	inline constexpr bool UseTransparentPass() const {
 #include <generated/block_texture_transparency.inl>

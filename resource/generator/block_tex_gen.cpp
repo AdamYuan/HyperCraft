@@ -2,6 +2,10 @@
 #define MAGIC_ENUM_RANGE_MAX 256
 #include <magic_enum.hpp>
 
+constexpr int kTextureSize = 16;
+constexpr int kTextureLength = kTextureSize * kTextureSize;
+
+#include <bitset>
 #include <cctype>
 #include <fstream>
 #include <iostream>
@@ -22,15 +26,9 @@ std::set<uint32_t> transparent_pass_textures = {
     ID::kWater, ID::kAcaciaLeaves, ID::kBirchLeaves, ID::kJungleLeaves, ID::kSpruceLeaves,  ID::kOakLeaves,
     ID::kIce,   ID::kGrassBoreal,  ID::kGrassPlain,  ID::kGrassSavanna, ID::kGrassTropical,
 };
+std::set<uint32_t> liquid_textures = {ID::kWater};
 
-inline int simple_msb(int x) {
-	int ret = 0;
-	while (x >>= 1)
-		++ret;
-	return ret;
-}
-
-std::string make_texture_filename(std::string_view x) {
+inline std::string make_texture_filename(std::string_view x) {
 	std::string ret;
 	bool first_upper = true;
 	for (auto i = x.begin() + 1; i != x.end(); ++i) {
@@ -47,6 +45,34 @@ std::string make_texture_filename(std::string_view x) {
 	return ret;
 }
 
+class Texture {
+private:
+	int m_id{};
+	stbi_uc *m_bytes{};
+	bool m_transparent{};
+	// std::bitset<kTextureLength> m_opaque_mask{};
+
+public:
+	Texture() { m_transparent = true; }
+	Texture(int id, stbi_uc *bytes) : m_id{id}, m_bytes{bytes} {
+		m_transparent = false;
+		for (int p = 0; p < kTextureLength; ++p)
+			if (m_bytes[(p << 2) | 3] != 255) {
+				m_transparent = true;
+				break;
+			}
+	}
+	inline const stbi_uc *GetBytes() const { return m_bytes; }
+	inline int GetID() const { return m_id; }
+	inline bool IsEmpty() const { return m_id == 0; }
+	inline bool IsTransparent() const { return m_transparent; }
+	inline bool UseTransPass() const {
+		return IsTransparent() && transparent_pass_textures.find(m_id) != transparent_pass_textures.end();
+	}
+	inline bool IsLiquid() const { return liquid_textures.find(m_id) != liquid_textures.end(); }
+	// inline bool Occupy(const Texture &r) const { return (m_opaque_mask | r.m_opaque_mask) == m_opaque_mask; }
+};
+
 // TODO: precompute texture coverage table (to cull unnecessary faces)
 int main(int argc, char **argv) {
 	--argc;
@@ -59,10 +85,9 @@ int main(int argc, char **argv) {
 	const int texture_count = names.size() - 1;
 	int current_texture = 0;
 
-	std::vector<stbi_uc> combined_texture;
-	int texture_size = -1, mipmaps = -1;
-
-	std::vector<bool> combined_transparency, combined_tran_pass;
+	std::vector<Texture> textures;
+	textures.emplace_back();
+	std::vector<stbi_uc> combined_texture(kTextureLength * 4 * texture_count);
 
 	for (const auto &i : names) {
 		if (i == "kNone")
@@ -78,42 +103,20 @@ int main(int argc, char **argv) {
 		}
 		if (x != y) {
 			printf("texture %s (%dx%d) is not a cube\n", str.c_str(), x, y);
-			stbi_image_free(img);
 			return EXIT_FAILURE;
 		}
-		if (texture_size == -1) {
-			if (x & (x - 1)) {
-				printf("texture size (%dx%d) is not power of 2", x, x);
-				return EXIT_FAILURE;
-			}
-			texture_size = x;
-			mipmaps = simple_msb(texture_size);
-			combined_texture.resize(texture_count * texture_size * texture_size * 4);
-		} else if (texture_size != x) {
-			printf("texture size is not normalized (%s is %dx%d differ from %dx%d)\n", str.c_str(), x, y, texture_size,
-			       texture_size);
-			stbi_image_free(img);
+		if (x != kTextureSize) {
+			printf("texture size (%dx%d) is not %dx%d", x, x, kTextureSize, kTextureSize);
 			return EXIT_FAILURE;
 		}
-		bool transparent = false, trans_pass = false;
-		for (int p = 0; p < x * x; ++p) {
-			if (img[(p << 2) | 3] != 255) {
-				transparent = true;
-				break;
-			}
-		}
-
-		if (transparent && transparent_pass_textures.find(current_texture + 1) != transparent_pass_textures.end())
-			trans_pass = true;
-
-		combined_transparency.push_back(transparent);
-		combined_tran_pass.push_back(trans_pass);
-		std::cout << " transparent: " << transparent << ", use_trans_pass: " << trans_pass << std::endl;
+		textures.emplace_back(current_texture + 1, img);
+		auto &tex = textures.back();
+		std::cout << std::endl;
 		std::copy(img, img + x * x * 4, combined_texture.data() + (current_texture++) * x * x * 4);
 	}
 
 	std::vector<unsigned char> png_buffer =
-	    WritePngToMemory(texture_size, texture_size * texture_count, combined_texture.data());
+	    WritePngToMemory(kTextureSize, kTextureSize * texture_count, combined_texture.data());
 
 	printf("PNG size: %f KB\n", png_buffer.size() / 1024.0f);
 
@@ -124,14 +127,19 @@ int main(int argc, char **argv) {
 	// transparency
 	output.close();
 	output.open(argv[1]);
-	output << "constexpr bool kBlockTextureTransparency[] = { 1, ";
-	for (bool b : combined_transparency)
-		output << b << ", ";
+	output << "constexpr bool kBlockTextureTransparency[] = {";
+	for (const auto &t : textures)
+		output << t.IsTransparent() << ",";
 	output << "};\n";
 
-	output << "constexpr bool kBlockTextureTransPass[] = { 1, ";
-	for (bool b : combined_tran_pass)
-		output << b << ", ";
+	output << "constexpr bool kBlockTextureTransPass[] = {";
+	for (const auto &t : textures)
+		output << t.UseTransPass() << ",";
+	output << "};\n";
+
+	output << "constexpr bool kBlockTextureLiquid[] = {";
+	for (const auto &t : textures)
+		output << t.IsLiquid() << ",";
 	output << "};\n";
 
 	return EXIT_SUCCESS;

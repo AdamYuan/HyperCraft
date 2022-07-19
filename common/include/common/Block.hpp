@@ -291,9 +291,9 @@ public:
 			return false;
 		if (!tex.IsTransparent() && !nei_tex.IsTransparent())
 			return false;
-		if (tex.GetID() == BlockTextures::kWater && nei_tex.GetID() != BlockTextures::kNone)
+		if (tex.IsLiquid() && !nei_tex.Empty())
 			return false;
-		return !tex.IsTransparent() || nei_tex.IsTransparent() || neighbour.GetID() == Blocks::kWater; // or is fluid
+		return !tex.IsTransparent() || nei_tex.IsTransparent() || nei_tex.IsLiquid();
 	}
 
 	bool operator==(Block r) const { return m_data == r.m_data; }

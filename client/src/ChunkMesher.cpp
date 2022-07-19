@@ -204,7 +204,7 @@ std::vector<ChunkMesher::MeshGenInfo> ChunkMesher::generate_mesh() const {
 			}
 
 			// Generate mesh for texture_mask using lexicographic ordering
-			for (uint32_t quad_face_inv = 0; quad_face_inv < 2; ++quad_face_inv) {
+			for (uint_fast8_t quad_face_inv = 0; quad_face_inv < 2; ++quad_face_inv) {
 				if (!(face_mask & (1u << quad_face_inv)))
 					continue;
 				counter = 0;

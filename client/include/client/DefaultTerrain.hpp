@@ -97,7 +97,7 @@ private:
 		                      : glm::exp(-(0.5f / river_depth * river_depth) * mheight * mheight) * river_depth;
 	}
 	inline static float river_terrain_coef(float height) {
-		return height >= 0.0f ? glm::exp(-(height * height)) : 0.0f;
+		return height >= 0.0f ? glm::exp(-0.4f * (height * height)) : 0.0f;
 	}
 
 	inline static float river_modify_range_height(float river_val, float river_depth, float height) {

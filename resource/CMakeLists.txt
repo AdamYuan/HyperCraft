@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(CubeCraft3)
 
+set(CMAKE_CXX_STANDARD 17)
+
 file(GLOB BLOCK_TEXTURES texture/block/*.png)
 file(GLOB MISC_TEXTURES texture/misc/*.png)
 

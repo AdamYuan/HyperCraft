@@ -231,8 +231,12 @@ void DefaultTerrain::initialize_biome_noise() {
 	m_biome_temperature_cache->SetSource(m_biome_temperature_offset);
 
 	// River Noise
+	FastNoise::SmartNode<FastNoise::SeedOffset> river_mask_offset = FastNoise::New<FastNoise::SeedOffset>();
+	river_mask_offset->SetSource(m_biome_precipitation_noise);
+	river_mask_offset->SetOffset(12313);
+
 	m_river_mask_remap = FastNoise::New<FastNoise::Remap>();
-	m_river_mask_remap->SetSource(m_biome_precipitation_noise);
+	m_river_mask_remap->SetSource(river_mask_offset);
 	m_river_mask_remap->SetRemap(0.0f, 0.2f, 0.0f, 1.0f);
 
 	m_river_mask_min = FastNoise::New<FastNoise::Min>();
