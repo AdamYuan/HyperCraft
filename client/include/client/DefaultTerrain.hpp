@@ -171,7 +171,7 @@ private:
 		}
 		inline void PopToLightMap(int32_t light_map[kChunkSize * kChunkSize]) const {
 			for (const auto &i : m_blocks) {
-				if (!i.second.GetDirectSunlightPass()) {
+				if (!i.second.GetVerticalLightPass()) {
 					uint32_t idx = i.first.z * kChunkSize + i.first.x;
 					light_map[idx] = std::max(light_map[idx], i.first.y);
 				}

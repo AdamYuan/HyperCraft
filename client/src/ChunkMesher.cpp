@@ -414,11 +414,11 @@ void ChunkMesher::light4_init(Light4 *light4, BlockFace face, int_fast8_t x, int
 			Block blk =
 			    get_block(x + kLookup3v[face][v][b][0], y + kLookup3v[face][v][b][1], z + kLookup3v[face][v][b][2]);
 			indirect_pass[b] = blk.GetIndirectLightPass();
-			direct_pass[b] = blk.GetDirectSunlightPass() || blk == Blocks::kWater;
+			direct_pass[b] = blk.GetVerticalLightPass() || blk == Blocks::kWater;
 		}
 		{
 			Block blk = get_block(x + kLookup1v[face][0], y + kLookup1v[face][1], z + kLookup1v[face][2]);
-			direct_pass[3] = blk.GetDirectSunlightPass() || blk == Blocks::kWater;
+			direct_pass[3] = blk.GetVerticalLightPass() || blk == Blocks::kWater;
 		}
 
 		uint32_t ao =

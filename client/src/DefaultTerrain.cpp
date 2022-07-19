@@ -448,7 +448,7 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 	constexpr uint32_t kTestDepth = 16, kMaxTries = 100;
 	thread_local static float deep_cave_output[kTestDepth];
 	for (uint32_t index = 0; index < kChunkSize * kChunkSize; ++index) {
-		if constexpr (!Block{Blocks::kWater, 0}.GetDirectSunlightPass()) {
+		if constexpr (!Block{Blocks::kWater, 0}.GetVerticalLightPass()) {
 			if (info->light_map[index] < 0) {
 				info->light_map[index] = 0;
 				continue;

@@ -15,7 +15,7 @@ using BlockMeta = uint8_t;
 struct BlockProperty {
 	const char *name{"Unnamed"};
 	BlockTexture textures[6]{};
-	bool indirect_light_pass{false}, direct_sunlight_pass{false};
+	bool indirect_light_pass{false}, vertical_light_pass{false};
 	BlockMesh custom_mesh;
 	// META path #1: array to properties
 	const BlockProperty *meta_property_array{nullptr};
@@ -35,7 +35,7 @@ struct BlockProperty {
 			            textures[BlockFaces::kTop],
 			        },
 			        indirect_light_pass,
-			        direct_sunlight_pass,
+			        vertical_light_pass,
 			        custom_mesh};
 		} else if (axis == 1) {
 			return {name,
@@ -48,7 +48,7 @@ struct BlockProperty {
 			            textures[BlockFaces::kLeft],
 			        },
 			        indirect_light_pass,
-			        direct_sunlight_pass,
+			        vertical_light_pass,
 			        custom_mesh};
 		} else {
 			return {name,
@@ -61,7 +61,7 @@ struct BlockProperty {
 			            textures[5].RotateCCW(),
 			        },
 			        indirect_light_pass,
-			        direct_sunlight_pass,
+			        vertical_light_pass,
 			        custom_mesh};
 		}
 	}
@@ -245,8 +245,8 @@ private:
 	    BLOCK_PROPERTY_META_FUNCTION("Log", get_log_property),
 	    BLOCK_PROPERTY_META_ARRAY("Plank", kPlankProperties),
 	    {"Apple", {}, true, true, BlockMeshes::Cross(BlockTextures::kApple, 5, 1, 15, BlockFaces::kBottom)},
-	    {"CactusSides", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop), true,
-	     false, BlockMeshes::CactusSides()},
+	    {"Cactus", BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop), true, false,
+	     BlockMeshes::CactusSides()},
 	    BLOCK_PROPERTY_META_ARRAY("Vine", (kInnerSurfaceProperties<kVineName, BlockTextures::kVine>)),
 	    {"Red Mushroom", {}, true, true, BlockMeshes::Cross(BlockTextures::kRedMushroom, 5, 0, 12, true)},
 	    {"Brow Mushroom", {}, true, true, BlockMeshes::Cross(BlockTextures::kBrownMushroom, 6, 0, 9, true)},
@@ -261,6 +261,7 @@ private:
 		                        (m_meta < get_generic_property()->meta_property_array_count ? m_meta : 0)
 		                  : get_generic_property());
 	}
+	inline static constexpr u8AABB kDefaultAABB{{0, 0, 0}, {16, 16, 16}};
 
 public:
 	inline constexpr Block() : m_data{} {}
@@ -277,12 +278,15 @@ public:
 
 	inline constexpr bool HaveCustomMesh() const { return get_property()->custom_mesh.face_count; }
 	inline constexpr const BlockMesh *GetCustomMesh() const { return &get_property()->custom_mesh; }
+	inline constexpr const u8AABB *GetAABBs() const {
+		return HaveCustomMesh() ? GetCustomMesh()->aabbs : &kDefaultAABB;
+	}
+	inline constexpr uint32_t GetAABBCount() const { return HaveCustomMesh() ? GetCustomMesh()->aabb_count : 1; }
 	inline constexpr const char *GetGenericName() const { return get_generic_property()->name; }
 	inline constexpr const char *GetName() const { return get_property()->name; }
 	inline constexpr BlockTexture GetTexture(BlockFace face) const { return get_property()->textures[face]; }
-	// inline constexpr bool GetLightPass() const { return get_property()->m_light_pass; }
-	// Direct Light: vertical sunlight
-	inline constexpr bool GetDirectSunlightPass() const { return get_property()->direct_sunlight_pass; }
+	// Vertical Sunlight
+	inline constexpr bool GetVerticalLightPass() const { return get_property()->vertical_light_pass; }
 	inline constexpr bool GetIndirectLightPass() const { return get_property()->indirect_light_pass; }
 
 	inline constexpr bool ShowFace(BlockFace face, Block neighbour) const {

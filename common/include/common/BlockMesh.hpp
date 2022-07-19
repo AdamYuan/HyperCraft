@@ -29,13 +29,13 @@ struct BlockMeshFace {
 	BlockMeshVertex vertices[4]{};
 };
 #define BLOCK_MESH_MAX_FACE_COUNT 32
-constexpr uint32_t kBlockMeshMaxHitboxCount = 4;
+constexpr uint32_t kBlockMeshMaxAABBCount = 4;
 struct BlockMesh {
 	// "faces" array's BlockFace property should be sorted for better performance
 	BlockMeshFace faces[BLOCK_MESH_MAX_FACE_COUNT];
 	uint32_t face_count{};
-	u8AABB hitboxes[kBlockMeshMaxHitboxCount];
-	uint32_t hitbox_count{};
+	u8AABB aabbs[kBlockMeshMaxAABBCount];
+	uint32_t aabb_count{};
 };
 #undef BLOCK_MESH_MAX_FACE_COUNT
 
