@@ -337,7 +337,8 @@ void DefaultTerrain::generate_xz_info(const ChunkPos2 &pos, XZInfo *info) {
 		float river_depth = river_get_depth(origin_height);
 		float final_height = river_modify_range_height(
 		    river_output[index], river_depth,
-		    biome_modify_height(biome_precipitation_output[index], biome_temperature_output[index], origin_height));
+		    biome_modify_height(biome_precipitation_output[index], biome_temperature_output[index], origin_height),
+		    biome_precipitation_output[index]);
 		info->height_map[index] = ceil32(final_height);
 
 		info->max_height = std::max(info->max_height, info->height_map[index]);

@@ -92,17 +92,19 @@ private:
 		return glm::max((1.5f * glm::tanh(height) + glm::cos(height * 10.0f) * 0.125f) * 40.0f, 5.0f);
 	}
 	inline static float river_function(float river_val) { return 0.5f * glm::tanh(7.0f * river_val - 5.0f) + 0.5f; }
-	inline static float river_depth_coef(float mheight, float river_depth) {
+	inline static float river_depth_coef(float mheight, float river_depth, float dig_coef) {
 		return mheight < 0.0f ? glm::max(river_depth + mheight, 0.0f)
-		                      : glm::exp(-(0.5f / river_depth * river_depth) * mheight * mheight) * river_depth;
+		                      : glm::exp(-(dig_coef / river_depth * river_depth) * mheight * mheight) * river_depth;
 	}
 	inline static float river_terrain_coef(float height) {
 		return height >= 0.0f ? glm::exp(-0.4f * (height * height)) : 0.0f;
 	}
 
-	inline static float river_modify_range_height(float river_val, float river_depth, float height) {
+	inline static float river_modify_range_height(float river_val, float river_depth, float height,
+	                                              float precipitation) {
 		height *= (1.0f - river_val * river_terrain_coef(height)) * (float)kHeightRange;
-		return height - river_function(river_val) * river_depth_coef(height, river_depth);
+		float x = 1.0f - biome_prop_remap(precipitation);
+		return height - river_function(river_val) * river_depth_coef(height, river_depth, x * x);
 	}
 
 	// Noise generators
