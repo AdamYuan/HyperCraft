@@ -500,6 +500,7 @@ void ChunkMesher::Run() {
 
 	if (!m_chunk_ptr->IsGenerated() /* || !m_chunk_ptr->IsLatestLight()*/)
 		return;
+
 	uint64_t version = m_chunk_ptr->FetchMeshVersion();
 	if (!version)
 		return;
