@@ -2,8 +2,8 @@
 
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 std::shared_ptr<Camera> Camera::Create(const std::shared_ptr<myvk::Device> &device) {
 	std::shared_ptr<Camera> ret = std::make_shared<Camera>();

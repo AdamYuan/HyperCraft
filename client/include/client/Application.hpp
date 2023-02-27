@@ -45,7 +45,7 @@ private:
 	void create_frame_object();
 	void init_imgui();
 
-	void resize(const myvk::FrameManager &frame_manager);
+	void resize(const VkExtent2D &extent);
 	void draw_frame();
 
 	static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);

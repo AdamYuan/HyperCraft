@@ -26,7 +26,7 @@ private:
 
 	// Renderers
 	std::unique_ptr<PostProcessor> m_post_processor;
-	myvk::ImGuiRenderer m_imgui_renderer;
+	std::shared_ptr<myvk::ImGuiRenderer> m_imgui_renderer;
 
 	void create_render_pass();
 	void create_framebuffer();

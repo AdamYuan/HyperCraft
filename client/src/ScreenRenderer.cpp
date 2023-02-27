@@ -9,8 +9,7 @@ ScreenRenderer::ScreenRenderer(const std::shared_ptr<WorldRenderer> &world_rende
 	create_render_pass();
 	create_framebuffer();
 	m_post_processor = PostProcessor::Create(world_renderer_ptr, m_render_pass, 0);
-	m_imgui_renderer.Initialize(myvk::CommandPool::Create(m_frame_manager_ptr->GetSwapchain()->GetGraphicsQueuePtr()),
-	                            m_render_pass, 1, kFrameCount);
+	m_imgui_renderer = myvk::ImGuiRenderer::Create(m_render_pass, 1, kFrameCount);
 }
 
 void ScreenRenderer::create_render_pass() {
@@ -59,7 +58,7 @@ void ScreenRenderer::CmdRenderPass(const std::shared_ptr<myvk::CommandBuffer> &c
 
 		// Subpass 1: Transparent
 		command_buffer->CmdNextSubpass();
-		m_imgui_renderer.CmdDrawPipeline(command_buffer, frame);
+		m_imgui_renderer->CmdDrawPipeline(command_buffer, frame);
 	}
 	command_buffer->CmdEndRenderPass();
 }

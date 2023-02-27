@@ -2,8 +2,10 @@
 #include <client/Config.hpp>
 #include <client/World.hpp>
 #include <client/WorldRenderer.hpp>
+
 #include <enet/enet.h>
-#include <imgui/imgui_impl_glfw.h>
+#include <imgui_impl_glfw.h>
+#include <myvk/ImGuiHelper.hpp>
 #include <spdlog/spdlog.h>
 
 #include <random>
@@ -18,11 +20,7 @@ void Application::create_glfw_window() {
 	glfwSetFramebufferSizeCallback(m_window, glfw_framebuffer_resize_callback);
 }
 
-void Application::init_imgui() {
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui_ImplGlfw_InitForVulkan(m_window, true);
-}
+void Application::init_imgui() { myvk::ImGuiInit(m_window, m_main_command_pool); }
 
 void Application::create_vulkan_base() {
 	m_instance = myvk::Instance::CreateWithGlfwExtensions();
@@ -32,28 +30,19 @@ void Application::create_vulkan_base() {
 		spdlog::error("No vulkan physical device available");
 		exit(EXIT_FAILURE);
 	}
-	myvk::DeviceCreateInfo device_create_info = {};
-	device_create_info.Initialize(
+
+	myvk::PhysicalDeviceFeatures features = physical_devices[0]->GetDefaultFeatures();
+	features.vk12.drawIndirectCount = VK_TRUE;    // for vkCmdDrawIndexedIndirectCount
+	features.vk12.samplerFilterMinmax = VK_TRUE;  // for occlusion culling
+	features.vk12.imagelessFramebuffer = VK_TRUE; // for imageless framebuffer
+	m_device = myvk::Device::Create(
 	    physical_devices[0],
 	    myvk::GenericPresentTransferQueueSelector(&m_main_queue, &m_transfer_queue, m_surface, &m_present_queue),
-	    {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
-	if (!device_create_info.QueueSupport()) {
-		spdlog::error("Failed to find queues!");
-		exit(EXIT_FAILURE);
-	}
-	if (!device_create_info.ExtensionSupport()) {
-		spdlog::error("Failed to find extension support!");
-		exit(EXIT_FAILURE);
-	}
-	VkPhysicalDeviceVulkan12Features vk12features = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
-	vk12features.drawIndirectCount = VK_TRUE;    // for vkCmdDrawIndexedIndirectCount
-	vk12features.samplerFilterMinmax = VK_TRUE;  // for occlusion culling
-	vk12features.imagelessFramebuffer = VK_TRUE; // for imageless framebuffer
-	m_device = myvk::Device::Create(device_create_info, &vk12features);
+	    features, {VK_KHR_SWAPCHAIN_EXTENSION_NAME});
 
 	m_main_command_pool = myvk::CommandPool::Create(m_main_queue);
 
-	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().deviceName);
+	spdlog::info("Physical Device: {}", m_device->GetPhysicalDevicePtr()->GetProperties().vk10.deviceName);
 	spdlog::info("Present Queue: ({}){}, Main Queue: ({}){}, Transfer Queue: ({}){}",      //
 	             m_present_queue->GetFamilyIndex(), (void *)m_present_queue->GetHandle(),  // present queue
 	             m_main_queue->GetFamilyIndex(), (void *)m_main_queue->GetHandle(),        // main queue
@@ -63,12 +52,12 @@ void Application::create_vulkan_base() {
 
 void Application::create_frame_object() {
 	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount);
-	m_frame_manager->SetResizeFunc([&](const myvk::FrameManager &frame_manager) { resize(frame_manager); });
+	m_frame_manager->SetResizeFunc([this](const VkExtent2D &extent) { resize(extent); });
 	m_depth_hierarchy = DepthHierarchy::Create(m_frame_manager);
 }
 
-void Application::resize(const myvk::FrameManager &frame_manager) {
-	m_camera->m_aspect_ratio = (float)frame_manager.GetExtent().width / (float)frame_manager.GetExtent().height;
+void Application::resize(const VkExtent2D &extent) {
+	m_camera->m_aspect_ratio = (float)extent.width / (float)extent.height;
 	m_depth_hierarchy->Resize();
 	m_world_renderer->Resize();
 	m_screen_renderer->Resize();
@@ -133,8 +122,7 @@ void Application::Run() {
 
 		m_world->Update(m_camera->m_position);
 
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
+		myvk::ImGuiNewFrame();
 
 		ImGui::Begin("Test");
 		ImGui::Text("fps: %f", ImGui::GetIO().Framerate);
