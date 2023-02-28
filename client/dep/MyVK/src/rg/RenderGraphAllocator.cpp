@@ -4,6 +4,10 @@
 
 #include <algorithm>
 
+#ifdef MYVK_RG_DEBUG
+#include <iostream>
+#endif
+
 namespace myvk_rg::_details_ {
 
 // TODO: Alloc Double-Buffering Images
@@ -49,18 +53,20 @@ class RenderGraphAllocation final : public myvk::DeviceObjectBase {
 private:
 	myvk::Ptr<myvk::Device> m_device_ptr;
 	VmaAllocation m_allocation{VK_NULL_HANDLE};
+	VmaAllocationInfo m_info{};
 
 public:
 	inline RenderGraphAllocation(const myvk::Ptr<myvk::Device> &device, const VkMemoryRequirements &memory_requirements,
 	                             const VmaAllocationCreateInfo &create_info)
 	    : m_device_ptr{device} {
 		vmaAllocateMemory(GetDevicePtr()->GetAllocatorHandle(), &memory_requirements, &create_info, &m_allocation,
-		                  nullptr);
+		                  &m_info);
 	}
 	inline ~RenderGraphAllocation() final {
 		if (m_allocation != VK_NULL_HANDLE)
 			vmaFreeMemory(GetDevicePtr()->GetAllocatorHandle(), m_allocation);
 	}
+	inline const VmaAllocationInfo &GetInfo() const { return m_info; }
 	inline VmaAllocation GetHandle() const { return m_allocation; }
 	const myvk::Ptr<myvk::Device> &GetDevicePtr() const final { return m_device_ptr; }
 };
@@ -423,8 +429,10 @@ void RenderGraphAllocator::create_and_bind_allocations() {
 	m_allocated_resource_aliased_relation.Reset(m_p_resolved->GetIntResourceCount(),
 	                                            m_p_resolved->GetIntResourceCount());
 
-	{ // Create Allocations
-		MemoryInfo device_memory{}, persistent_device_memory{}, lazy_memory{}, mapped_memory{};
+	{
+		// Create Allocations
+		MemoryInfo device_memory{}, persistent_device_memory{}, lazy_memory{}, //
+		    rnd_mapped_memory{}, seq_mapped_memory{};
 
 		device_memory.resources.reserve(m_p_resolved->GetIntResourceCount());
 		uint32_t buffer_image_granularity =
@@ -442,9 +450,13 @@ void RenderGraphAllocator::create_and_bind_allocations() {
 		}
 		for (auto &buffer_alloc : m_allocated_buffers) {
 			const auto &buffer_info = buffer_alloc.GetBufferInfo();
-			if (false) // TODO: Mapped Buffer Condition
-				mapped_memory.push(&buffer_alloc);
-			else if (buffer_info.p_last_frame_info)
+			auto map_type = buffer_info.buffer->GetMapType();
+			if (map_type != BufferMapType::kNone) {
+				if (map_type == BufferMapType::kRandom)
+					rnd_mapped_memory.push(&buffer_alloc);
+				else if (map_type == BufferMapType::kSeqWrite)
+					seq_mapped_memory.push(&buffer_alloc);
+			} else if (buffer_info.p_last_frame_info)
 				persistent_device_memory.push(&buffer_alloc);
 			else
 				device_memory.push(&buffer_alloc);
@@ -467,25 +479,41 @@ void RenderGraphAllocator::create_and_bind_allocations() {
 			create_info.usage = VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED;
 			_make_naive_allocation(std::move(lazy_memory), create_info);
 		}
+		{
+			VmaAllocationCreateInfo create_info = {};
+			create_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT |
+			                    VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			_make_naive_allocation(std::move(rnd_mapped_memory), create_info);
+		}
+		{
+			VmaAllocationCreateInfo create_info = {};
+			create_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT |
+			                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+			                    VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			_make_naive_allocation(std::move(seq_mapped_memory), create_info);
+		}
 	}
 	// Bind Memory
 	for (auto &image_alloc : m_allocated_images) {
-		vmaBindImageMemory2(m_device_ptr->GetAllocatorHandle(),
-		                    m_allocations[image_alloc.allocation_id].myvk_allocation->GetHandle(),
-		                    image_alloc.memory_offset, image_alloc.myvk_images[0]->GetHandle(), nullptr);
+		const auto &allocation_ptr = m_allocations[image_alloc.allocation_id].myvk_allocation;
+		vmaBindImageMemory2(m_device_ptr->GetAllocatorHandle(), allocation_ptr->GetHandle(), image_alloc.memory_offset,
+		                    image_alloc.myvk_images[0]->GetHandle(), nullptr);
 		if (image_alloc.double_buffering)
-			vmaBindImageMemory2(m_device_ptr->GetAllocatorHandle(),
-			                    m_allocations[image_alloc.allocation_id].myvk_allocation->GetHandle(),
+			vmaBindImageMemory2(m_device_ptr->GetAllocatorHandle(), allocation_ptr->GetHandle(),
 			                    image_alloc.db_memory_offset, image_alloc.myvk_images[1]->GetHandle(), nullptr);
 	}
 	for (auto &buffer_alloc : m_allocated_buffers) {
-		vmaBindBufferMemory2(m_device_ptr->GetAllocatorHandle(),
-		                     m_allocations[buffer_alloc.allocation_id].myvk_allocation->GetHandle(),
+		const auto &allocation_ptr = m_allocations[buffer_alloc.allocation_id].myvk_allocation;
+		vmaBindBufferMemory2(m_device_ptr->GetAllocatorHandle(), allocation_ptr->GetHandle(),
 		                     buffer_alloc.memory_offset, buffer_alloc.myvk_buffers[0]->GetHandle(), nullptr);
-		if (buffer_alloc.double_buffering)
-			vmaBindBufferMemory2(m_device_ptr->GetAllocatorHandle(),
-			                     m_allocations[buffer_alloc.allocation_id].myvk_allocation->GetHandle(),
+		buffer_alloc.mapped_mem[0] = (uint8_t *)allocation_ptr->GetInfo().pMappedData + buffer_alloc.memory_offset;
+		if (buffer_alloc.double_buffering) {
+			vmaBindBufferMemory2(m_device_ptr->GetAllocatorHandle(), allocation_ptr->GetHandle(),
 			                     buffer_alloc.db_memory_offset, buffer_alloc.myvk_buffers[1]->GetHandle(), nullptr);
+			buffer_alloc.mapped_mem[1] =
+			    (uint8_t *)allocation_ptr->GetInfo().pMappedData + buffer_alloc.db_memory_offset;
+		} else
+			buffer_alloc.mapped_mem[1] = buffer_alloc.mapped_mem[0];
 	}
 
 #ifdef MYVK_RG_DEBUG

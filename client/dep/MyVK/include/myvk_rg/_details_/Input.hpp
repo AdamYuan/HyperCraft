@@ -121,8 +121,10 @@ private:
 	template <typename Type, typename AliasType> inline AliasType *make_output(const PoolKey &input_key) {
 		const Input *p_input = _InputPool::template Get<0, Input>(input_key);
 		assert(p_input && !UsageIsReadOnly(p_input->GetUsage()));
-		if (!p_input || UsageIsReadOnly(p_input->GetUsage())) // Read-Only input should not produce an output
+		if (!p_input || UsageIsReadOnly(p_input->GetUsage())) {  // Read-Only input should not produce an output
+			assert(false);
 			return nullptr;
+		}
 		const Type *resource = p_input->GetResource<Type>();
 		static_assert(std::is_base_of_v<PassBase, Derived>);
 		auto *const producer_pass = static_cast<const PassBase *>(static_cast<Derived *>(this));

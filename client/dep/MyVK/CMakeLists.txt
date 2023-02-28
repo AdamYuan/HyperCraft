@@ -39,7 +39,6 @@ add_library(MyVK_Vulkan STATIC
 add_library(myvk::vulkan ALIAS MyVK_Vulkan)
 target_include_directories(MyVK_Vulkan PUBLIC include)
 target_link_libraries(MyVK_Vulkan PUBLIC MyVK_Dep_Vulkan)
-target_compile_definitions(MyVK_Vulkan PUBLIC VK_NO_PROTOTYPES)
 
 add_library(MyVK_RenderGraph STATIC
         src/rg/RenderGraphResolver.cpp

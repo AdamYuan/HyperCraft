@@ -79,12 +79,7 @@ public:
 	template <typename Visitor> inline std::invoke_result_t<Visitor, GraphicsPassBase *> Visit(Visitor &&visitor);
 	template <typename Visitor> inline std::invoke_result_t<Visitor, GraphicsPassBase *> Visit(Visitor &&visitor) const;
 
-	inline const auto &GetVkDevice() const { return GetRenderGraphPtr()->GetDevicePtr(); }
-	inline const auto &GetMainVkQueue() const { return GetRenderGraphPtr()->GetMainQueuePtr(); }
-
-	inline void CreatePipeline() {
-		Visit([](auto *pass) -> void { pass->CreatePipeline(); });
-	}
+	virtual void CreatePipeline() = 0;
 	virtual void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const = 0;
 };
 
@@ -132,9 +127,6 @@ class GraphicsPassBase : public PassBase,
                          public ResourcePool<GraphicsPassBase>,
                          public AttachmentInputSlot<GraphicsPassBase>,
                          public DescriptorInputSlot<GraphicsPassBase> {
-private:
-	mutable myvk::Ptr<myvk::GraphicsPipeline> m_graphics_pipeline;
-
 public:
 	inline constexpr PassType GetType() const { return PassType::kGraphics; }
 
@@ -149,19 +141,13 @@ public:
 	uint32_t GetSubpass() const;
 	const myvk::Ptr<myvk::RenderPass> &GetVkRenderPass() const;
 
-	inline const auto &GetGraphicsPipeline() const { return m_graphics_pipeline; }
-	inline void UpdateGraphicsPipeline() const { m_executor_info.pipeline_updated = true; }
-	inline virtual myvk::Ptr<myvk::GraphicsPipeline> CreateGraphicsPipeline() = 0;
-	inline void CreatePipeline() { m_graphics_pipeline = CreateGraphicsPipeline(); }
+	inline void UpdatePipeline() const { m_executor_info.pipeline_updated = true; }
 };
 
 class ComputePassBase : public PassBase,
                         public InputPool<ComputePassBase>,
                         public ResourcePool<ComputePassBase>,
                         public DescriptorInputSlot<ComputePassBase> {
-private:
-	mutable myvk::Ptr<myvk::ComputePipeline> m_compute_pipeline;
-
 public:
 	inline constexpr PassType GetType() const { return PassType::kCompute; }
 
@@ -172,10 +158,7 @@ public:
 	inline ComputePassBase(ComputePassBase &&) noexcept = default;
 	inline ~ComputePassBase() override = default;
 
-	inline const auto &GetComputePipeline() const { return m_compute_pipeline; }
-	inline void UpdateComputePipeline() const { m_executor_info.pipeline_updated = true; }
-	inline virtual myvk::Ptr<myvk::ComputePipeline> CreateComputePipeline() = 0;
-	inline void CreatePipeline() { m_compute_pipeline = CreateComputePipeline(); }
+	inline void UpdatePipeline() const { m_executor_info.pipeline_updated = true; }
 };
 
 class TransferPassBase : public PassBase, public InputPool<TransferPassBase>, public ResourcePool<TransferPassBase> {
@@ -188,7 +171,7 @@ public:
 	inline TransferPassBase(TransferPassBase &&) noexcept = default;
 	inline ~TransferPassBase() override = default;
 
-	inline void CreatePipeline() const {}
+	inline void CreatePipeline() final {}
 };
 
 class PassGroupBase : public PassBase,
@@ -204,7 +187,7 @@ public:
 	inline PassGroupBase(PassGroupBase &&) noexcept = default;
 	inline ~PassGroupBase() override = default;
 
-	inline void CreatePipeline() const {}
+	inline void CreatePipeline() final {}
 };
 
 template <typename Visitor> std::invoke_result_t<Visitor, GraphicsPassBase *> PassBase::Visit(Visitor &&visitor) {

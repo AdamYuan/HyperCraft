@@ -42,6 +42,7 @@ public:
 	};
 	struct IntBufferAlloc final : public IntResourceAlloc {
 		myvk::Ptr<myvk::BufferBase> myvk_buffers[2]{};
+		void *mapped_mem[2]{};
 
 		VkBufferUsageFlags vk_buffer_usages{};
 
@@ -184,6 +185,10 @@ public:
 	inline const myvk::Ptr<myvk::BufferBase> &GetVkBuffer(const BufferBase *buffer, bool db) const {
 		return buffer->Visit(
 		    [this, db](const auto *buffer) -> const myvk::Ptr<myvk::BufferBase> & { return GetVkBuffer(buffer, db); });
+	}
+
+	inline void *GetMappedData(const ManagedBuffer *buffer, bool db) const {
+		return m_allocated_buffers[RenderGraphResolver::GetIntBufferID(buffer)].mapped_mem[db];
 	}
 };
 

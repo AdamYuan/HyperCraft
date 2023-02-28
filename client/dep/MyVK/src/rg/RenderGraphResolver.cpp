@@ -51,6 +51,7 @@ struct RenderGraphResolver::OriginGraph {
 		                                                    const Input *p_dep_input, DependencyType type) -> void {
 			if (!pass || !p_input)
 				return;
+			assert(resource);
 			add_edge(resource, {p_dep_input, dep_pass}, {p_input, pass}, type);
 		};
 		const auto add_edge_and_visit_dep_pass = [this, &add_visitor_edge](const ResourceBase *resource,
@@ -112,7 +113,6 @@ struct RenderGraphResolver::OriginGraph {
 	}
 	inline void insert_write_after_read_edges() {
 		// Dependency Edges
-		// TODO: Last Frame Images should not overlap [CHECK]
 		for (auto &pair : nodes) {
 			std::unordered_map<const ResourceBase *, const Input *> write_inputs;
 			std::unordered_map<const ResourceBase *, Edge *> write_outputs;

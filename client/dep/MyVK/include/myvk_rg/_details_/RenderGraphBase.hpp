@@ -51,7 +51,6 @@ private:
 	// bool m_lazy_allocation_supported{};
 
 	mutable uint8_t m_compile_phrase{};
-	inline void SetCompilePhrases(uint8_t phrase) { m_compile_phrase |= phrase; }
 
 	struct Compiler;
 	std::unique_ptr<Compiler> m_compiler{};

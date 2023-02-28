@@ -28,6 +28,7 @@ private:
 		myvk::Ptr<myvk::DescriptorSet> sets[2]{};
 	};
 	std::vector<PassDescriptor> m_pass_descriptors;
+	myvk::Ptr<myvk::Device> m_device_ptr;
 
 public:
 	void Create(const myvk::Ptr<myvk::Device> &device, const RenderGraphResolver &resolved);

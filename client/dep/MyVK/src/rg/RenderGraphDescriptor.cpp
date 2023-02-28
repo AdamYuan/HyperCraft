@@ -8,6 +8,8 @@
 namespace myvk_rg::_details_ {
 
 void RenderGraphDescriptor::Create(const myvk::Ptr<myvk::Device> &device, const RenderGraphResolver &resolved) {
+	m_device_ptr = device;
+
 	m_pass_descriptors.clear();
 	m_pass_descriptors.resize(resolved.GetPassNodeCount());
 
@@ -78,6 +80,10 @@ void RenderGraphDescriptor::Create(const myvk::Ptr<myvk::Device> &device, const 
 		descriptor_set_layouts.emplace_back(myvk::DescriptorSetLayout::Create(device, bindings));
 		// TODO: DescriptorSetLayout Create Callbacks
 	}
+
+	// If no descriptors are used, just return
+	if (descriptor_type_counts.empty())
+		return;
 
 	myvk::Ptr<myvk::DescriptorPool> descriptor_pool;
 	{
@@ -203,8 +209,7 @@ void RenderGraphDescriptor::PreBind(const RenderGraphAllocator &allocated) {
 #ifdef MYVK_RG_DEBUG
 	printf("Pre-bind descriptors with %zu writes\n", writer.writes.size());
 #endif
-	vkUpdateDescriptorSets(m_pass_descriptors.front().sets[0]->GetDevicePtr()->GetHandle(), writer.writes.size(),
-	                       writer.writes.data(), 0, nullptr);
+	vkUpdateDescriptorSets(m_device_ptr->GetHandle(), writer.writes.size(), writer.writes.data(), 0, nullptr);
 }
 
 void RenderGraphDescriptor::ExecutionBind(bool flip) {
@@ -227,8 +232,7 @@ void RenderGraphDescriptor::ExecutionBind(bool flip) {
 #ifdef MYVK_RG_DEBUG
 	printf("Bind execution descriptors with %zu writes\n", writer.writes.size());
 #endif
-	vkUpdateDescriptorSets(m_pass_descriptors.front().sets[0]->GetDevicePtr()->GetHandle(), writer.writes.size(),
-	                       writer.writes.data(), 0, nullptr);
+	vkUpdateDescriptorSets(m_device_ptr->GetHandle(), writer.writes.size(), writer.writes.data(), 0, nullptr);
 }
 
 } // namespace myvk_rg::_details_

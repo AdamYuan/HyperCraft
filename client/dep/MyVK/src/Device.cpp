@@ -57,6 +57,7 @@ VkResult Device::create_device(const std::vector<VkDeviceQueueCreateInfo> &queue
 	create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	create_info.pQueueCreateInfos = queue_create_infos.data();
 	create_info.queueCreateInfoCount = queue_create_infos.size();
+	// features.robustBufferAccess = VK_FALSE; // from ARM/AMD best practice
 	create_info.pEnabledFeatures = &features.vk10;
 	create_info.enabledExtensionCount = extensions.size();
 	create_info.ppEnabledExtensionNames = extensions.data();

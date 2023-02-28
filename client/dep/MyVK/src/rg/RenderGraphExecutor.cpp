@@ -6,6 +6,10 @@
 #include <map>
 #include <span>
 
+#ifdef MYVK_RG_DEBUG
+#include <iostream>
+#endif
+
 namespace myvk_rg::_details_ {
 
 struct RenderGraphExecutor::SubpassDependencies {
@@ -67,10 +71,39 @@ struct RenderGraphExecutor::SubpassDependencies {
 		    link_to.pass, (link_to.p_input ? link_to.p_input->GetUsagePipelineStages() : 0u) | extra_dst_stages,
 		    (link_to.p_input ? UsageGetAccessFlags(link_to.p_input->GetUsage()) : 0u) | extra_dst_access);
 	}
+	inline uint32_t get_attachment_id(const ImageBase *image) {
+		auto it = p_attachment_id_map->find(image);
+		if (it != p_attachment_id_map->end())
+			return it->second;
+		return extended_attachment_id_map.at(image);
+	}
 
 	uint32_t pass_id{};
 	std::map<SubpassDependencyKey, VkMemoryBarrier2> subpass_dependency_map;
 	std::vector<AttachmentDependency> attachment_dependencies;
+
+	const std::unordered_map<const ImageBase *, uint32_t> *p_attachment_id_map{};
+	std::unordered_map<const ImageBase *, uint32_t> extended_attachment_id_map;
+
+	inline explicit SubpassDependencies(const RenderGraphScheduler::PassInfo &pass_info) {
+		pass_id = RenderGraphScheduler::GetPassID(pass_info.subpasses[0].pass);
+		if (pass_info.p_render_pass_info) {
+			attachment_dependencies.resize(pass_info.p_render_pass_info->attachment_id_map.size());
+			p_attachment_id_map = &pass_info.p_render_pass_info->attachment_id_map;
+			for (const auto &origin_sub_dep : pass_info.p_render_pass_info->subpass_dependencies)
+				add_subpass_dependency(VK_DEPENDENCY_BY_REGION_BIT, origin_sub_dep.from, origin_sub_dep.to);
+			for (const auto &att_it : *p_attachment_id_map) {
+				const auto *image = att_it.first;
+				image->Visit([&att_it, this](const auto *image) {
+					if constexpr (ResourceVisitorTrait<decltype(image)>::kClass == ResourceClass::kLastFrameImage) {
+						auto cur_it = p_attachment_id_map->find(image->GetCurrentResource());
+						if (cur_it == p_attachment_id_map->end())
+							extended_attachment_id_map.insert({image->GetCurrentResource(), att_it.second});
+					}
+				});
+			}
+		}
+	}
 };
 
 // Dependency Builder
@@ -196,8 +229,7 @@ public:
 
 				{
 					uint32_t from_pass_id = RenderGraphScheduler::GetPassID(ref_from.pass);
-					uint32_t attachment_id = m_parent.m_p_scheduled->GetPassInfo(from_pass_id)
-					                             .p_render_pass_info->attachment_id_map.at(image);
+					uint32_t attachment_id = m_sub_deps[from_pass_id].get_attachment_id(image);
 					m_sub_deps[from_pass_id].attachment_dependencies[attachment_id].set_final_layout(trans_layout);
 				}
 				{
@@ -220,8 +252,7 @@ public:
 				MemoryState state_from = from_func(ref_from);
 
 				uint32_t from_pass_id = RenderGraphScheduler::GetPassID(ref_from.pass);
-				uint32_t attachment_id =
-				    m_parent.m_p_scheduled->GetPassInfo(from_pass_id).p_render_pass_info->attachment_id_map.at(image);
+				uint32_t attachment_id = m_sub_deps[from_pass_id].get_attachment_id(image);
 
 				for (const auto &ref_to : m_to_references) {
 					MemoryState state_to = to_func(ref_to);
@@ -237,8 +268,7 @@ public:
 				MemoryState state_to = to_func(ref_to);
 
 				uint32_t to_pass_id = RenderGraphScheduler::GetPassID(ref_to.pass);
-				uint32_t attachment_id =
-				    m_parent.m_p_scheduled->GetPassInfo(to_pass_id).p_render_pass_info->attachment_id_map.at(image);
+				uint32_t attachment_id = m_sub_deps[to_pass_id].get_attachment_id(image);
 				VkAccessFlags2 attachment_access = state_to.attachment_init
 				                                       ? VkAttachmentInitAccessFromVkFormat(image->GetFormat())
 				                                       : VkAttachmentLoadAccessFromVkFormat(image->GetFormat());
@@ -391,16 +421,10 @@ void RenderGraphExecutor::_process_last_frame_dependency(const RenderGraphSchedu
 }
 
 std::vector<RenderGraphExecutor::SubpassDependencies> RenderGraphExecutor::extract_barriers_and_subpass_dependencies() {
-	std::vector<SubpassDependencies> sub_deps(m_p_scheduled->GetPassCount());
-	for (uint32_t i = 0; i < m_p_scheduled->GetPassCount(); ++i) {
-		const auto &pass_info = m_p_scheduled->GetPassInfo(i);
-		if (pass_info.p_render_pass_info == nullptr)
-			continue;
-		sub_deps[i].pass_id = i;
-		sub_deps[i].attachment_dependencies.resize(pass_info.p_render_pass_info->attachment_id_map.size());
-		for (const auto &origin_sub_dep : pass_info.p_render_pass_info->subpass_dependencies)
-			sub_deps[i].add_subpass_dependency(VK_DEPENDENCY_BY_REGION_BIT, origin_sub_dep.from, origin_sub_dep.to);
-	}
+	std::vector<SubpassDependencies> sub_deps;
+	sub_deps.reserve(m_p_scheduled->GetPassCount());
+	for (uint32_t i = 0; i < m_p_scheduled->GetPassCount(); ++i)
+		sub_deps.emplace_back(m_p_scheduled->GetPassInfo(i));
 
 	// Extract from Pass Dependencies
 	for (const auto &dep : m_p_scheduled->GetPassDependencies()) {

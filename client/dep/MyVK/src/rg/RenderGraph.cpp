@@ -107,6 +107,10 @@ const myvk::Ptr<myvk::ImageView> &LastFrameImage::GetVkImageView() const {
 	return GetRenderGraphPtr()->m_compiler->allocator.GetVkImageView(this, !GetRenderGraphPtr()->m_exe_flip);
 }
 
+void *ManagedBuffer::get_mapped_data() const {
+	return GetRenderGraphPtr()->m_compiler->allocator.GetMappedData(this, GetRenderGraphPtr()->m_exe_flip);
+}
+
 // Descriptor GetVk functions
 const myvk::Ptr<myvk::DescriptorSetLayout> &DescriptorSetData::GetVkDescriptorSetLayout(const PassBase *pass) const {
 	const auto *render_graph = pass->GetRenderGraphPtr();

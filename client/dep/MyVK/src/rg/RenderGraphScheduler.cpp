@@ -2,6 +2,10 @@
 
 #include <algorithm>
 
+#ifdef MYVK_RG_DEBUG
+#include <iostream>
+#endif
+
 namespace myvk_rg::_details_ {
 
 struct RenderGraphScheduler::RenderPassMergeInfo {
@@ -292,8 +296,9 @@ void RenderGraphScheduler::sort_and_insert_image_dependencies() {
 
 void RenderGraphScheduler::extract_pass_attachments() {
 	for (auto &pass_info : m_passes) {
-		const auto register_attachment = [&pass_info](const ImageBase *image) {
-			auto &attachment_id_map = pass_info.p_render_pass_info->attachment_id_map;
+		auto &attachment_id_map = pass_info.p_render_pass_info->attachment_id_map;
+
+		const auto register_attachment = [&attachment_id_map](const ImageBase *image) {
 			if (attachment_id_map.find(image) == attachment_id_map.end()) {
 				uint32_t id = attachment_id_map.size();
 				attachment_id_map[image] = id;
