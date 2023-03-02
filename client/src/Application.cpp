@@ -52,7 +52,8 @@ void Application::create_vulkan_base() {
 }
 
 void Application::create_frame_object() {
-	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount);
+	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount,
+	                                             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 	m_frame_manager->SetResizeFunc([this](const VkExtent2D &extent) { resize(extent); });
 }
 
