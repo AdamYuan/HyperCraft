@@ -98,6 +98,8 @@ Application::Application() {
 	create_frame_object();
 	init_imgui();
 
+	m_transfer_queue = m_main_queue;
+
 	m_world = World::Create();
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);

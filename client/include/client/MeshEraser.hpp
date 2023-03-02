@@ -33,12 +33,12 @@ public:
 		for (auto &i : m_mesh_handle_vector) {
 			if (!i)
 				continue;
-			i->destroy(false);
-			cluster_set.insert(std::move(i->m_cluster_ptr));
+			i->destroy();
+			// cluster_set.insert(std::move(i->m_cluster_ptr));
 		}
-		for (auto &i : cluster_set) {
+		/* for (auto &i : cluster_set) {
 			i->upload_mesh_info_vector();
-		}
+		} */
 	}
 	~MeshEraser() override = default;
 };

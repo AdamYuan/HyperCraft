@@ -14,12 +14,9 @@ private:
 
 	bool m_finalize{false};
 
-	inline void destroy(bool upload_draw_list) {
+	inline void destroy() {
 		if (!m_finalize && (~m_first_index)) {
-			if (upload_draw_list)
-				m_cluster_ptr->erase_mesh(m_first_index);
-			else
-				m_cluster_ptr->erase_mesh_without_upload(m_first_index);
+			m_cluster_ptr->erase_mesh(m_first_index);
 			m_first_index = UINT32_MAX;
 		}
 		if (m_vertices_allocation) {
@@ -75,7 +72,7 @@ public:
 
 	inline void SetFinalize() { m_finalize = true; }
 
-	~MeshHandle() { destroy(true); }
+	~MeshHandle() { destroy(); }
 };
 
 #endif
