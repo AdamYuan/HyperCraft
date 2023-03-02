@@ -14,20 +14,25 @@ struct DrawIndexedIndirectCommand {
 	uint index_count, instance_count, first_index, vertex_offset, first_instance;
 };
 
-layout(std430, set = 0, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
-layout(std430, set = 0, binding = 1) buffer uuDrawCount { uint uOpaqueDrawCount, uTransparentDrawCount; };
-layout(std430, set = 0, binding = 2) writeonly buffer uuOpaqueDrawCommand {
+layout(std430, set = 0, binding = 0) writeonly buffer uuOpaqueDrawCommand {
 	DrawIndexedIndirectCommand uOpaqueDrawCommand[];
 };
-layout(std430, set = 0, binding = 3) writeonly buffer uuTransparentDrawCommand {
+layout(std430, set = 0, binding = 1) buffer uuOpaqueDrawCount { uint uOpaqueDrawCounts[]; };
+layout(std430, set = 0, binding = 2) writeonly buffer uuTransparentDrawCommand {
 	DrawIndexedIndirectCommand uTransparentDrawCommand[];
 };
+layout(std430, set = 0, binding = 3) buffer uuTransparentDrawCount { uint uTransparentDrawCounts[]; };
 
 layout(set = 1, binding = 0) uniform uuCamera {
 	vec4 uViewPosition;
 	mat4 uViewProjection;
 };
-layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
+
+layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
+
+// layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
+
+layout(push_constant) uniform uuPushConstant { uint uMeshCount, uDrawCmdOffset, uCountOffset; };
 
 uint GetCullBits(in const vec4 projected) {
 	return (projected.x < -projected.w ? 1u : 0u)    // left
@@ -76,17 +81,18 @@ void GetClipInfo(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, i
 bool FrustumCull(in const uint cull_bits) { return (cull_bits & 127u) != 0; }
 
 bool OcclusionCull(in const vec3 clip_min, in const vec3 clip_max, in const uint cull_bits) {
-	if ((cull_bits & 128u) == 0) // if any projected.w <= 0
-		return false;
+	/* if ((cull_bits & 128u) == 0) // if any projected.w <= 0
+	    return false;
 	vec2 uv_min = clip_min.xy * 0.5 + 0.5, uv_max = clip_max.xy * 0.5 + 0.5;
 	vec2 uv_size = uv_max.xy - uv_min.xy, tex_size = vec2(textureSize(uDepthHierarchy, 0));
 	float lod = ceil(log2(max(uv_size.x, uv_size.y) * max(tex_size.x, tex_size.y)));
-	return textureLod(uDepthHierarchy, (uv_min + uv_max) * 0.5, lod).r < clip_min.z;
+	return textureLod(uDepthHierarchy, (uv_min + uv_max) * 0.5, lod).r < clip_min.z; */
+	return false;
 }
 
 void main() {
 	uint mesh_id = gl_GlobalInvocationID.x;
-	if (mesh_id >= uMeshInfo.length())
+	if (mesh_id >= uMeshCount)
 		return;
 
 	vec3 clip_min, clip_max;
@@ -97,13 +103,13 @@ void main() {
 		return;
 
 	if (uMeshInfo[mesh_id].transparent == 0) {
-		uint opaque_draw_id = atomicAdd(uOpaqueDrawCount, 1u);
-		uOpaqueDrawCommand[opaque_draw_id] =
+		uint opaque_draw_id = atomicAdd(uOpaqueDrawCounts[uCountOffset], 1u);
+		uOpaqueDrawCommand[uDrawCmdOffset | opaque_draw_id] =
 		    DrawIndexedIndirectCommand(uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index,
 		                               uMeshInfo[mesh_id].vertex_offset, mesh_id);
 	} else {
-		uint transparent_draw_id = atomicAdd(uTransparentDrawCount, 1u);
-		uTransparentDrawCommand[transparent_draw_id] =
+		uint transparent_draw_id = atomicAdd(uTransparentDrawCounts[uCountOffset], 1u);
+		uTransparentDrawCommand[uDrawCmdOffset | transparent_draw_id] =
 		    DrawIndexedIndirectCommand(uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index,
 		                               uMeshInfo[mesh_id].vertex_offset, mesh_id);
 	}

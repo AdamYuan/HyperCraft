@@ -5,8 +5,9 @@
 
 #include <enet/enet.h>
 #include <imgui_impl_glfw.h>
-#include <myvk/ImGuiHelper.hpp>
 #include <spdlog/spdlog.h>
+
+#include <myvk/ImGuiHelper.hpp>
 
 #include <random>
 
@@ -53,14 +54,10 @@ void Application::create_vulkan_base() {
 void Application::create_frame_object() {
 	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount);
 	m_frame_manager->SetResizeFunc([this](const VkExtent2D &extent) { resize(extent); });
-	m_depth_hierarchy = DepthHierarchy::Create(m_frame_manager);
 }
 
 void Application::resize(const VkExtent2D &extent) {
 	m_camera->m_aspect_ratio = (float)extent.width / (float)extent.height;
-	m_depth_hierarchy->Resize();
-	m_world_renderer->Resize();
-	m_screen_renderer->Resize();
 }
 
 void Application::draw_frame() {
@@ -74,11 +71,10 @@ void Application::draw_frame() {
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
 	{
-		// Build depth hierarchy for Hi-Z culling (next frame's)
-		m_depth_hierarchy->CmdBuild(command_buffer);
-
-		m_world_renderer->CmdRenderPass(command_buffer);
-		m_screen_renderer->CmdRenderPass(command_buffer);
+		auto &world_rg = m_world_render_graphs[current_frame];
+		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
+		world_rg->CmdUpdateChunkMesh(command_buffer);
+		world_rg->CmdExecute(command_buffer);
 	}
 	command_buffer->End();
 
@@ -104,11 +100,16 @@ Application::Application() {
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create(m_device);
 	m_camera->m_speed = 64.0f;
-	m_world_renderer = WorldRenderer::Create(m_frame_manager, m_world, m_global_texture, m_camera, m_depth_hierarchy,
-	                                         m_transfer_queue);
-	m_screen_renderer = ScreenRenderer::Create(m_world_renderer);
+	m_world_renderer =
+	    WorldRenderer::Create(m_frame_manager, m_world, m_global_texture, m_camera, nullptr, m_transfer_queue);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);
+
+	auto chunk_renderer = m_world_renderer->GetChunkRenderer();
+	for (auto &world_rg : m_world_render_graphs) {
+		world_rg = WorldRenderGraph::Create(m_main_queue, m_frame_manager, chunk_renderer, m_global_texture, m_camera);
+		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
+	}
 }
 
 void Application::Run() {

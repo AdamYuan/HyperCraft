@@ -28,9 +28,9 @@ struct ChunkMeshInfo {
 };
 static_assert(sizeof(ChunkMeshInfo) == 40);
 
-using ChunkMeshHandle = MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo, 2>;
-using ChunkMeshCluster = MeshCluster<ChunkMeshVertex, uint16_t, ChunkMeshInfo, 2>;
-using ChunkMeshRendererBase = MeshRendererBase<ChunkMeshVertex, uint16_t, ChunkMeshInfo, 2>;
-using ChunkMeshEraser = MeshEraser<ChunkMeshVertex, uint16_t, ChunkMeshInfo, 2>;
+using ChunkMeshHandle = MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
+using ChunkMeshCluster = MeshCluster<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
+using ChunkMeshRendererBase = MeshRendererBase<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
+using ChunkMeshEraser = MeshEraser<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 
 #endif

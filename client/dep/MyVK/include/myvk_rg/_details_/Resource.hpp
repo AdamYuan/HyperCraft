@@ -364,7 +364,7 @@ public:
 	~ManagedBuffer() override = default;
 
 	const myvk::Ptr<myvk::BufferBase> &GetVkBuffer() const;
-	template <typename T = void> inline T *GetMappedData() const { return static_cast<T *>(get_mapped_data()); }
+	template <typename T = void> inline T *GetMappedData() const { return reinterpret_cast<T *>(get_mapped_data()); }
 };
 
 // Internal Image ( the combination of ManagedImage and CombinedImage, used in implementation )

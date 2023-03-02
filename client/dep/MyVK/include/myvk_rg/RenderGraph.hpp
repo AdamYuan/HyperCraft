@@ -14,6 +14,7 @@ using ComputePassBase = _details_::ComputePassBase;
 using TransferPassBase = _details_::TransferPassBase;
 using PassGroupBase = _details_::PassGroupBase;
 
+using ImageBase = _details_::ImageBase;
 using ImageInput = const _details_::ImageBase *;
 using ImageOutput = const _details_::ImageAlias *;
 using ManagedImage = _details_::ManagedImage;
@@ -22,6 +23,7 @@ using ExternalImageBase = _details_::ExternalImageBase;
 using SwapchainImage = _details_::SwapchainImage;
 #endif
 
+using BufferBase = _details_::BufferBase;
 using BufferInput = const _details_::BufferBase *;
 using BufferOutput = const _details_::BufferAlias *;
 using ManagedBuffer = _details_::ManagedBuffer;

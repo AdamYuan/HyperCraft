@@ -65,11 +65,15 @@ public:
 
 	void CmdBindPipeline(const Ptr<PipelineBase> &pipeline) const;
 
+	void CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets, uint32_t first_set,
+	                           const Ptr<PipelineLayout> &pipeline_layout, VkPipelineBindPoint pipeline_bind_point,
+	                           const std::vector<uint32_t> &offsets = {}) const;
 	void CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets,
 	                           const Ptr<PipelineLayout> &pipeline_layout, VkPipelineBindPoint pipeline_bind_point,
 	                           const std::vector<uint32_t> &offsets = {}) const;
-
 	void CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets,
+	                           const Ptr<PipelineBase> &pipeline, const std::vector<uint32_t> &offsets = {}) const;
+	void CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets, uint32_t first_set,
 	                           const Ptr<PipelineBase> &pipeline, const std::vector<uint32_t> &offsets = {}) const;
 
 	void CmdBindVertexBuffer(const Ptr<BufferBase> &buffer, VkDeviceSize offset, uint32_t start_slot = 0) const;

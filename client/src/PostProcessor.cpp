@@ -11,7 +11,7 @@ PostProcessor::PostProcessor(const std::shared_ptr<WorldRenderer> &world_rendere
 
 void PostProcessor::create_pipeline(uint32_t subpass) {
 	const std::shared_ptr<myvk::Device> &device = m_frame_manager_ptr->GetDevicePtr();
-	m_pipeline_layout = myvk::PipelineLayout::Create(device, {m_world_renderer_ptr->GetInputDescriptorLayout()}, {});
+	m_pipeline_layout = myvk::PipelineLayout::Create(device, {}, {});
 
 	constexpr uint32_t kQuadVertSpv[] = {
 #include <client/shader/quad.vert.u32>
@@ -45,6 +45,5 @@ void PostProcessor::CmdDrawPipeline(const std::shared_ptr<myvk::CommandBuffer> &
 	command_buffer->CmdBindPipeline(m_pipeline);
 	m_frame_manager_ptr->CmdPipelineSetScreenSize(command_buffer);
 
-	command_buffer->CmdBindDescriptorSets({m_world_renderer_ptr->GetInputDescriptorSet()}, m_pipeline);
 	command_buffer->CmdDraw(3, 1, 0, 0);
 }

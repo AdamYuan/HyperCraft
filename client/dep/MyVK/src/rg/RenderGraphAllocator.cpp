@@ -59,8 +59,10 @@ public:
 	inline RenderGraphAllocation(const myvk::Ptr<myvk::Device> &device, const VkMemoryRequirements &memory_requirements,
 	                             const VmaAllocationCreateInfo &create_info)
 	    : m_device_ptr{device} {
-		vmaAllocateMemory(GetDevicePtr()->GetAllocatorHandle(), &memory_requirements, &create_info, &m_allocation,
-		                  &m_info);
+		vmaAllocateMemory(device->GetAllocatorHandle(), &memory_requirements, &create_info, &m_allocation, &m_info);
+		if (create_info.flags & VMA_ALLOCATION_CREATE_MAPPED_BIT) {
+			assert(m_info.pMappedData);
+		}
 	}
 	inline ~RenderGraphAllocation() final {
 		if (m_allocation != VK_NULL_HANDLE)
@@ -481,15 +483,16 @@ void RenderGraphAllocator::create_and_bind_allocations() {
 		}
 		{
 			VmaAllocationCreateInfo create_info = {};
-			create_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT |
-			                    VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			create_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT |
+			                    VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+			create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 			_make_naive_allocation(std::move(rnd_mapped_memory), create_info);
 		}
 		{
 			VmaAllocationCreateInfo create_info = {};
-			create_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT |
-			                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-			                    VMA_ALLOCATION_CREATE_MAPPED_BIT;
+			create_info.flags = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT |
+			                    VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+			create_info.requiredFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 			_make_naive_allocation(std::move(seq_mapped_memory), create_info);
 		}
 	}

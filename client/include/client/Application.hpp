@@ -12,6 +12,8 @@
 #include <client/ScreenRenderer.hpp>
 #include <client/WorldRenderer.hpp>
 
+#include <client/pass/WorldRenderGraph.hpp>
+
 class Application {
 private:
 	GLFWwindow *m_window{};
@@ -26,16 +28,13 @@ private:
 
 	// frame objects
 	std::shared_ptr<myvk::FrameManager> m_frame_manager;
-	std::shared_ptr<DepthHierarchy> m_depth_hierarchy;
-
-	// render pass
-	std::shared_ptr<WorldRenderer> m_world_renderer;
-	std::unique_ptr<ScreenRenderer> m_screen_renderer;
+	myvk::Ptr<WorldRenderGraph> m_world_render_graphs[kFrameCount];
 
 	// game objects and resources
 	std::shared_ptr<GlobalTexture> m_global_texture;
 	std::shared_ptr<Camera> m_camera;
 	std::shared_ptr<World> m_world;
+	std::shared_ptr<WorldRenderer> m_world_renderer;
 
 	// game client
 	std::shared_ptr<ClientBase> m_client;

@@ -7,5 +7,6 @@
 #define MYVK_RG_RENDER_GRAPH_FRIENDS template <typename> friend class myvk_rg::_details_::RenderGraph;
 
 #define MYVK_RG_INLINE_INITIALIZER(...) inline void MYVK_RG_INITIALIZER_FUNC(__VA_ARGS__)
+#define MYVK_RG_INITIALIZER(...) void MYVK_RG_INITIALIZER_FUNC(__VA_ARGS__)
 
 #endif

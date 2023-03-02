@@ -182,7 +182,7 @@ void CommandBuffer::CmdBindPipeline(const Ptr<PipelineBase> &pipeline) const {
 	vkCmdBindPipeline(m_command_buffer, pipeline->GetBindPoint(), pipeline->GetHandle());
 }
 
-void CommandBuffer::CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets,
+void CommandBuffer::CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets, uint32_t first_set,
                                           const Ptr<PipelineLayout> &pipeline_layout,
                                           VkPipelineBindPoint pipeline_bind_point,
                                           const std::vector<uint32_t> &offsets) const {
@@ -190,8 +190,22 @@ void CommandBuffer::CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> 
 	for (uint32_t i = 0; i < handles.size(); ++i)
 		handles[i] = descriptor_sets[i]->GetHandle();
 
-	vkCmdBindDescriptorSets(m_command_buffer, pipeline_bind_point, pipeline_layout->GetHandle(), 0, handles.size(),
-	                        handles.data(), offsets.size(), offsets.data());
+	vkCmdBindDescriptorSets(m_command_buffer, pipeline_bind_point, pipeline_layout->GetHandle(), first_set,
+	                        handles.size(), handles.data(), offsets.size(), offsets.data());
+}
+
+void CommandBuffer::CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets,
+                                          const Ptr<PipelineLayout> &pipeline_layout,
+                                          VkPipelineBindPoint pipeline_bind_point,
+                                          const std::vector<uint32_t> &offsets) const {
+	CmdBindDescriptorSets(descriptor_sets, 0, pipeline_layout, pipeline_bind_point, offsets);
+}
+
+void CommandBuffer::CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets, uint32_t first_set,
+                                          const Ptr<PipelineBase> &pipeline,
+                                          const std::vector<uint32_t> &offsets) const {
+	CmdBindDescriptorSets(descriptor_sets, first_set, pipeline->GetPipelineLayoutPtr(), pipeline->GetBindPoint(),
+	                      offsets);
 }
 
 void CommandBuffer::CmdBindDescriptorSets(const std::vector<Ptr<DescriptorSet>> &descriptor_sets,
