@@ -13,7 +13,6 @@ add_library(common_dep STATIC
         lightweightsemaphore.h
         blockingconcurrentqueue.h
 
-        atomic_shared_ptr.hpp
         sqlite3.c
         sqlite3.h
         sqlite3ext.h
