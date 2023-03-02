@@ -52,18 +52,24 @@ void RenderGraphDescriptor::Create(const myvk::Ptr<myvk::Device> &device, const 
 						pass_desc.int_image_bindings[binding] = {resource, p_input};
 					else if constexpr (Trait::kIsLastFrame)
 						pass_desc.lf_image_bindings[binding] = {resource, p_input};
-					else if constexpr (Trait::kIsExternal)
-						pass_desc.ext_image_bindings[binding] = {resource, p_input};
-					else
+					else if constexpr (Trait::kIsExternal) {
+						if (resource->IsStatic())
+							pass_desc.static_ext_image_bindings[binding] = {resource, p_input};
+						else
+							pass_desc.dynamic_ext_image_bindings[binding] = {resource, p_input};
+					} else
 						assert(false);
 				} else {
 					if constexpr (Trait::kIsInternal)
 						pass_desc.int_buffer_bindings[binding] = {resource, p_input};
 					else if constexpr (Trait::kIsLastFrame)
 						pass_desc.lf_buffer_bindings[binding] = {resource, p_input};
-					else if constexpr (Trait::kIsExternal)
-						pass_desc.ext_buffer_bindings[binding] = {resource, p_input};
-					else
+					else if constexpr (Trait::kIsExternal) {
+						if (resource->IsStatic())
+							pass_desc.static_ext_buffer_bindings[binding] = {resource, p_input};
+						else
+							pass_desc.dynamic_ext_buffer_bindings[binding] = {resource, p_input};
+					} else
 						assert(false);
 				}
 			};
@@ -197,6 +203,12 @@ void RenderGraphDescriptor::PreBind(const RenderGraphAllocator &allocated) {
 			for (const auto &b : pass_desc.lf_buffer_bindings)
 				writer.push_buffer_write(pass_desc.sets[flip], b.first, allocated.GetVkBuffer(b.second.resource, flip),
 				                         b.second.p_input);
+			for (const auto &b : pass_desc.static_ext_image_bindings)
+				writer.push_image_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkImageView(),
+				                        b.second.p_input);
+			for (const auto &b : pass_desc.static_ext_buffer_bindings)
+				writer.push_buffer_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkBuffer(),
+				                         b.second.p_input);
 		};
 
 		write_int_lf_descriptors();
@@ -217,10 +229,10 @@ void RenderGraphDescriptor::ExecutionBind(bool flip) {
 
 	for (auto &pass_desc : m_pass_descriptors) {
 		const auto write_ext_descriptors = [&writer, &pass_desc](bool flip = false) {
-			for (const auto &b : pass_desc.ext_image_bindings)
+			for (const auto &b : pass_desc.dynamic_ext_image_bindings)
 				writer.push_image_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkImageView(),
 				                        b.second.p_input);
-			for (const auto &b : pass_desc.ext_buffer_bindings)
+			for (const auto &b : pass_desc.dynamic_ext_buffer_bindings)
 				writer.push_buffer_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkBuffer(),
 				                         b.second.p_input);
 		};

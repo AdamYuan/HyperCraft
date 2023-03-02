@@ -100,6 +100,7 @@ private:
 		return static_cast<const ObjectBase *>(static_cast<const Derived *>(this))->GetRenderGraphPtr();
 	}
 
+	bool m_is_static{false};
 	VkPipelineStageFlags2 m_src_stages{VK_PIPELINE_STAGE_2_NONE}, m_dst_stages{VK_PIPELINE_STAGE_2_NONE};
 	VkAccessFlags2 m_src_accesses{VK_ACCESS_2_NONE}, m_dst_accesses{VK_ACCESS_2_NONE};
 
@@ -132,6 +133,7 @@ public:
 			get_render_graph_ptr()->SetCompilePhrase(CompilePhrase::kPrepareExecutor);
 		}
 	}
+	inline virtual bool IsStatic() const = 0;
 };
 class ExternalImageBase : public ImageBase,
                           public ImageAttachmentInfo<ExternalImageBase>,
@@ -178,26 +180,6 @@ public:
 	inline ExternalBufferBase(ExternalBufferBase &&) noexcept = default;
 	inline ~ExternalBufferBase() override = default;
 };
-#ifdef MYVK_ENABLE_GLFW
-class SwapchainImage final : public ExternalImageBase {
-private:
-	myvk::Ptr<myvk::FrameManager> m_frame_manager;
-
-	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(const myvk::Ptr<myvk::FrameManager> &frame_manager) {
-		m_frame_manager = frame_manager;
-		SetDstLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	}
-
-public:
-	inline SwapchainImage() = default;
-	inline SwapchainImage(SwapchainImage &&) noexcept = default;
-	~SwapchainImage() final = default;
-	inline const myvk::Ptr<myvk::ImageView> &GetVkImageView() const final {
-		return m_frame_manager->GetCurrentSwapchainImageView();
-	}
-};
-#endif
 // Alias
 class Input;
 class ImageAlias final : public ImageBase {

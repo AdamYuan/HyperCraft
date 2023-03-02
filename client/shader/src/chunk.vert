@@ -12,7 +12,7 @@ layout(location = 4) out float vTorchlight;
 layout(location = 5) out flat uint vTexture;
 layout(location = 6) out vec2 vTexcoord;
 
-layout(set = 1, binding = 0) uniform uuCamera {
+layout(set = 0, binding = 0) uniform uuCamera {
 	vec4 uViewPosition;
 	mat4 uViewProjection;
 };

@@ -19,9 +19,6 @@ using ImageInput = const _details_::ImageBase *;
 using ImageOutput = const _details_::ImageAlias *;
 using ManagedImage = _details_::ManagedImage;
 using ExternalImageBase = _details_::ExternalImageBase;
-#ifdef MYVK_ENABLE_GLFW
-using SwapchainImage = _details_::SwapchainImage;
-#endif
 
 using BufferBase = _details_::BufferBase;
 using BufferInput = const _details_::BufferBase *;

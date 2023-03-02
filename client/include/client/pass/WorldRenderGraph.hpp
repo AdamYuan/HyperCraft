@@ -4,15 +4,21 @@
 #include "ChunkCullPass.hpp"
 #include "ChunkOpaquePass.hpp"
 
-#include <myvk_rg/pass/ImageBlitPass.hpp>
 #include <myvk_rg/pass/ImGuiPass.hpp>
+#include <myvk_rg/pass/ImageBlitPass.hpp>
+
+#include <myvk_rg/resource/StaticBuffer.hpp>
+#include <myvk_rg/resource/SwapchainImage.hpp>
 
 class WorldRenderGraph final : public myvk_rg::RenderGraph<WorldRenderGraph> {
 private:
 	std::shared_ptr<ChunkMeshRendererBase> m_chunk_renderer_ptr;
 	std::vector<ChunkMeshRendererBase::PreparedCluster> m_prepared_clusters;
 
+	Camera::UniformData *m_p_camera_data;
+
 public:
+	inline void UpdateCamera(const std::shared_ptr<Camera> &camera_ptr) { camera_ptr->Update(m_p_camera_data); }
 	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) {
 		m_prepared_clusters = m_chunk_renderer_ptr->CmdUpdateMesh(command_buffer);
 		GetPass<ChunkCullPass>({"chunk_cull_pass"})->Update(m_prepared_clusters);
@@ -21,9 +27,16 @@ public:
 
 	MYVK_RG_INLINE_INITIALIZER(const myvk::Ptr<myvk::FrameManager> &frame_manager,
 	                           const std::shared_ptr<ChunkMeshRendererBase> &chunk_renderer_ptr,
-	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr,
-	                           const std::shared_ptr<Camera> &camera_ptr) {
+	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr) {
 		m_chunk_renderer_ptr = chunk_renderer_ptr;
+
+		// Create Camera Buffer
+		auto camera_vk_buffer = myvk::Buffer::Create(GetDevicePtr(), sizeof(Camera::UniformData),
+		                                             VMA_ALLOCATION_CREATE_MAPPED_BIT |
+		                                                 VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+		                                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO);
+		m_p_camera_data = (Camera::UniformData *)camera_vk_buffer->GetMappedData();
+		auto camera_buffer = CreateResource<myvk_rg::StaticBuffer>({"camera"}, std::move(camera_vk_buffer));
 
 		auto format = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 
@@ -35,9 +48,10 @@ public:
 		depth_image->SetLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 		depth_image->SetClearColorValue({1.0f});
 
-		auto chunk_cull_pass = CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_renderer_ptr, camera_ptr, nullptr);
+		auto chunk_cull_pass =
+		    CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_renderer_ptr, camera_buffer, nullptr);
 		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>(
-		    {"chunk_opaque_pass"}, chunk_renderer_ptr, camera_ptr, global_texture_ptr, color_image, depth_image,
+		    {"chunk_opaque_pass"}, chunk_renderer_ptr, global_texture_ptr, camera_buffer, color_image, depth_image,
 		    chunk_cull_pass->GetOpaqueDrawCmdOutput(), chunk_cull_pass->GetOpaqueDrawCountOutput());
 
 		auto swapchain_image = CreateResource<myvk_rg::SwapchainImage>({"swapchain_image"}, frame_manager);

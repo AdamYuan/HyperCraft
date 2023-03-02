@@ -10,7 +10,6 @@
 class ChunkOpaquePass final : public myvk_rg::GraphicsPassBase {
 private:
 	std::shared_ptr<ChunkMeshRendererBase> m_renderer_ptr;
-	std::shared_ptr<Camera> m_camera_ptr;
 	std::shared_ptr<GlobalTexture> m_global_texture_ptr;
 
 	const std::vector<ChunkMeshRendererBase::PreparedCluster> *m_p_prepared_clusters;
@@ -19,14 +18,15 @@ private:
 
 public:
 	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshRendererBase> &renderer_ptr,
-	                           const std::shared_ptr<Camera> &camera_ptr,
 	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr,
+	                           myvk_rg::BufferInput camera_buffer, //
 	                           myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image,
 	                           myvk_rg::BufferInput draw_cmd_buffer, myvk_rg::BufferInput draw_count_buffer) {
 		m_renderer_ptr = renderer_ptr;
-		m_camera_ptr = camera_ptr;
 		m_global_texture_ptr = global_texture_ptr;
 
+		AddDescriptorInput<0, myvk_rg::Usage::kUniformBuffer, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"camera"},
+		                                                                                             camera_buffer);
 		AddColorAttachmentInput<0, myvk_rg::Usage::kColorAttachmentW>({"opaque"}, color_image);
 		SetDepthAttachmentInput<myvk_rg::Usage::kDepthAttachmentRW>({"depth"}, depth_image);
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_cmd"}, draw_cmd_buffer);
@@ -39,8 +39,8 @@ public:
 	inline void CreatePipeline() final {
 		auto pipeline_layout = myvk::PipelineLayout::Create(GetRenderGraphPtr()->GetDevicePtr(),
 		                                                    {
+		                                                        GetVkDescriptorSetLayout(),
 		                                                        m_global_texture_ptr->GetDescriptorSetLayout(),
-		                                                        m_camera_ptr->GetDescriptorSetLayout(),
 		                                                        m_renderer_ptr->GetDescriptorSetLayout(),
 		                                                    },
 		                                                    {});
@@ -83,8 +83,8 @@ public:
 	inline auto GetDepthOutput() { return MakeImageOutput({"depth"}); }
 	inline void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const final {
 		command_buffer->CmdBindPipeline(m_pipeline);
-		command_buffer->CmdBindDescriptorSets(
-		    {m_global_texture_ptr->GetDescriptorSet(), m_camera_ptr->GetFrameDescriptorSet(0)}, m_pipeline);
+		command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet(), m_global_texture_ptr->GetDescriptorSet()},
+		                                      m_pipeline);
 
 		const auto &draw_cmd_buffer = GetInput({"draw_cmd"})->GetResource<myvk_rg::BufferBase>()->GetVkBuffer();
 		const auto &draw_count_buffer = GetInput({"draw_count"})->GetResource<myvk_rg::BufferBase>()->GetVkBuffer();

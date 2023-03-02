@@ -6,7 +6,6 @@
 #include <set>
 #include <shared_mutex>
 
-#include <atomic_shared_ptr.hpp>
 #include <concurrentqueue.h>
 #include <vk_mem_alloc.h>
 

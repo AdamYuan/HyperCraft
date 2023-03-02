@@ -66,13 +66,12 @@ void Application::draw_frame() {
 
 	uint32_t current_frame = m_frame_manager->GetCurrentFrame();
 
-	m_camera->Update(current_frame);
-
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
 	{
 		auto &world_rg = m_world_render_graphs[current_frame];
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
+		world_rg->UpdateCamera(m_camera);
 		world_rg->CmdUpdateChunkMesh(command_buffer);
 		world_rg->CmdExecute(command_buffer);
 	}
@@ -98,7 +97,7 @@ Application::Application() {
 
 	m_world = World::Create();
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
-	m_camera = Camera::Create(m_device);
+	m_camera = Camera::Create();
 	m_camera->m_speed = 64.0f;
 	m_world_renderer =
 	    WorldRenderer::Create(m_frame_manager, m_world, m_global_texture, m_camera, nullptr, m_transfer_queue);
@@ -107,7 +106,7 @@ Application::Application() {
 
 	auto chunk_renderer = m_world_renderer->GetChunkRenderer();
 	for (auto &world_rg : m_world_render_graphs) {
-		world_rg = WorldRenderGraph::Create(m_main_queue, m_frame_manager, chunk_renderer, m_global_texture, m_camera);
+		world_rg = WorldRenderGraph::Create(m_main_queue, m_frame_manager, chunk_renderer, m_global_texture);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 	}
 }

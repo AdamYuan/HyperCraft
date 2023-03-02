@@ -5,32 +5,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-std::shared_ptr<Camera> Camera::Create(const std::shared_ptr<myvk::Device> &device) {
-	std::shared_ptr<Camera> ret = std::make_shared<Camera>();
-	ret->m_descriptor_pool =
-	    myvk::DescriptorPool::Create(device, kFrameCount, {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, kFrameCount}});
-	{
-		VkDescriptorSetLayoutBinding camera_binding = {};
-		camera_binding.binding = 0;
-		camera_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		camera_binding.descriptorCount = 1;
-		camera_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
-
-		ret->m_descriptor_set_layout = myvk::DescriptorSetLayout::Create(device, {camera_binding});
-	}
-
-	for (uint32_t i = 0; i < kFrameCount; ++i) {
-		ret->m_uniform_buffers[i] =
-		    myvk::Buffer::Create(device, sizeof(UniformData),
-		                         VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT,
-		                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO);
-		ret->m_descriptor_sets[i] = myvk::DescriptorSet::Create(ret->m_descriptor_pool, ret->m_descriptor_set_layout);
-		ret->m_descriptor_sets[i]->UpdateUniformBuffer(ret->m_uniform_buffers[i], 0);
-	}
-
-	return ret;
-}
-
 void Camera::move_forward(float dist, float dir) {
 	m_position.x -= glm::sin(m_yaw + dir) * dist;
 	m_position.z -= glm::cos(m_yaw + dir) * dist;
@@ -80,7 +54,7 @@ glm::mat4 Camera::fetch_matrix() const {
 	return ret;
 }
 
-void Camera::Update(uint32_t current_frame) {
+void Camera::Update(Camera::UniformData *p_data) {
 	glm::mat4 view_projection = fetch_matrix();
-	m_uniform_buffers[current_frame]->UpdateData((UniformData){glm::vec4(m_position, 0.0), view_projection});
+	*p_data = {glm::vec4(m_position, 0.0), view_projection};
 }

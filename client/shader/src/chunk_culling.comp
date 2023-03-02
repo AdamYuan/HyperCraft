@@ -22,13 +22,12 @@ layout(std430, set = 0, binding = 2) writeonly buffer uuTransparentDrawCommand {
 	DrawIndexedIndirectCommand uTransparentDrawCommand[];
 };
 layout(std430, set = 0, binding = 3) buffer uuTransparentDrawCount { uint uTransparentDrawCounts[]; };
-
-layout(set = 1, binding = 0) uniform uuCamera {
+layout(set = 0, binding = 4) uniform uuCamera {
 	vec4 uViewPosition;
 	mat4 uViewProjection;
 };
 
-layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
+layout(std430, set = 1, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
 
 // layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
 

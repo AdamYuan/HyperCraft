@@ -9,7 +9,6 @@
 class ChunkCullPass final : public myvk_rg::ComputePassBase {
 private:
 	std::shared_ptr<ChunkMeshRendererBase> m_renderer_ptr;
-	std::shared_ptr<Camera> m_camera_ptr;
 
 	const std::vector<ChunkMeshRendererBase::PreparedCluster> *m_p_prepared_clusters;
 
@@ -18,9 +17,8 @@ private:
 
 public:
 	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshRendererBase> &renderer_ptr,
-	                           const std::shared_ptr<Camera> &camera_ptr, myvk_rg::ImageInput depth_hierarchy) {
+	                           myvk_rg::BufferInput camera_buffer, myvk_rg::ImageInput depth_hierarchy) {
 		m_renderer_ptr = renderer_ptr;
-		m_camera_ptr = camera_ptr;
 
 		auto opaque_draw_cmd_buffer = CreateResource<myvk_rg::ManagedBuffer>({"opaque_draw_cmd"});
 		auto opaque_draw_count_buffer = CreateResource<myvk_rg::ManagedBuffer>({"opaque_draw_count"});
@@ -38,6 +36,8 @@ public:
 		    {"trans_draw_cmd"}, trans_draw_cmd_buffer);
 		AddDescriptorInput<3, myvk_rg::Usage::kStorageBufferRW, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT>(
 		    {"trans_draw_count"}, trans_draw_count_buffer);
+		AddDescriptorInput<4, myvk_rg::Usage::kUniformBuffer, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT>({"camera"},
+		                                                                                              camera_buffer);
 		// AddDescriptorInput<4, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT>(
 		//     {"depth_hierarchy"}, depth_hierarchy, nullptr);
 	}
@@ -69,7 +69,6 @@ public:
 		auto pipeline_layout = myvk::PipelineLayout::Create(GetRenderGraphPtr()->GetDevicePtr(),
 		                                                    {
 		                                                        GetVkDescriptorSetLayout(),
-		                                                        m_camera_ptr->GetDescriptorSetLayout(),
 		                                                        m_renderer_ptr->GetDescriptorSetLayout(),
 		                                                    },
 		                                                    {
@@ -84,8 +83,7 @@ public:
 	}
 	inline void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const final {
 		command_buffer->CmdBindPipeline(m_pipeline);
-		command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet(), m_camera_ptr->GetFrameDescriptorSet(0)},
-		                                      m_pipeline);
+		command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet()}, m_pipeline);
 		// Clear counters
 		uint32_t clusters = m_p_prepared_clusters->size();
 		auto *opaque_draw_count_mapped =
@@ -95,17 +93,16 @@ public:
 		std::fill(opaque_draw_count_mapped, opaque_draw_count_mapped + clusters, 0u);
 		std::fill(trans_draw_count_mapped, trans_draw_count_mapped + clusters, 0u);
 
-		uint32_t count_offset = 0;
-		uint32_t draw_cmd_offset = 0, offset_delta = m_renderer_ptr->GetMaxMeshes();
+		uint32_t count_offset = 0, draw_cmd_offset = 0, draw_cmd_size = m_renderer_ptr->GetMaxMeshes();
 		for (const auto &prepared_cluster : *m_p_prepared_clusters) {
 			const auto &mesh_info_desc_set = prepared_cluster.m_cluster_ptr->GetMeshInfoDescriptorSet();
-			command_buffer->CmdBindDescriptorSets({mesh_info_desc_set}, 2, m_pipeline);
+			command_buffer->CmdBindDescriptorSets({mesh_info_desc_set}, 1, m_pipeline);
 			uint32_t pc_data[3] = {prepared_cluster.m_mesh_count, draw_cmd_offset, count_offset};
 			command_buffer->CmdPushConstants(m_pipeline->GetPipelineLayoutPtr(), VK_SHADER_STAGE_COMPUTE_BIT, 0,
 			                                 sizeof(uint32_t) * 3, pc_data);
 			command_buffer->CmdDispatch(group_x_64(prepared_cluster.m_mesh_count), 1, 1);
 			++count_offset;
-			draw_cmd_offset += offset_delta;
+			draw_cmd_offset += draw_cmd_size;
 		}
 	}
 };
