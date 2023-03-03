@@ -7,7 +7,7 @@
 
 #include <client/MeshEraser.hpp>
 #include <client/MeshHandle.hpp>
-#include <client/MeshRendererBase.hpp>
+#include <client/MeshPool.hpp>
 
 struct ChunkMeshVertex { // Compressed mesh vertex for chunk
 	static constexpr uint32_t kUnitBitOffset = 4u;
@@ -30,7 +30,7 @@ static_assert(sizeof(ChunkMeshInfo) == 40);
 
 using ChunkMeshHandle = MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshCluster = MeshCluster<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
-using ChunkMeshRendererBase = MeshRendererBase<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
+using ChunkMeshPoolBase = MeshPool<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshEraser = MeshEraser<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 
 #endif

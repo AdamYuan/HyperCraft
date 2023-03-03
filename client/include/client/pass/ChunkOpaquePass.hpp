@@ -9,20 +9,20 @@
 
 class ChunkOpaquePass final : public myvk_rg::GraphicsPassBase {
 private:
-	std::shared_ptr<ChunkMeshRendererBase> m_renderer_ptr;
+	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool_ptr;
 	std::shared_ptr<GlobalTexture> m_global_texture_ptr;
 
-	const std::vector<ChunkMeshRendererBase::PreparedCluster> *m_p_prepared_clusters;
+	const std::vector<std::shared_ptr<ChunkMeshCluster>> *m_p_prepared_clusters;
 
 	myvk::Ptr<myvk::GraphicsPipeline> m_pipeline;
 
 public:
-	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshRendererBase> &renderer_ptr,
+	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
 	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr,
 	                           myvk_rg::BufferInput camera_buffer, //
 	                           myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image,
 	                           myvk_rg::BufferInput draw_cmd_buffer, myvk_rg::BufferInput draw_count_buffer) {
-		m_renderer_ptr = renderer_ptr;
+		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
 		m_global_texture_ptr = global_texture_ptr;
 
 		AddDescriptorInput<0, myvk_rg::Usage::kUniformBuffer, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"camera"},
@@ -32,7 +32,7 @@ public:
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_cmd"}, draw_cmd_buffer);
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_count"}, draw_count_buffer);
 	}
-	inline void Update(const std::vector<ChunkMeshRendererBase::PreparedCluster> &prepared_clusters) {
+	inline void Update(const std::vector<std::shared_ptr<ChunkMeshCluster>> &prepared_clusters) {
 		m_p_prepared_clusters = &prepared_clusters;
 	}
 
@@ -41,7 +41,7 @@ public:
 		                                                    {
 		                                                        GetVkDescriptorSetLayout(),
 		                                                        m_global_texture_ptr->GetDescriptorSetLayout(),
-		                                                        m_renderer_ptr->GetDescriptorSetLayout(),
+		                                                        m_chunk_mesh_pool_ptr->GetDescriptorSetLayout(),
 		                                                    },
 		                                                    {});
 
@@ -89,18 +89,20 @@ public:
 		const auto &draw_cmd_buffer = GetInput({"draw_cmd"})->GetResource<myvk_rg::BufferBase>()->GetVkBuffer();
 		const auto &draw_count_buffer = GetInput({"draw_count"})->GetResource<myvk_rg::BufferBase>()->GetVkBuffer();
 
-		uint32_t id = 0, draw_cmd_size = m_renderer_ptr->GetMaxMeshes() * sizeof(VkDrawIndexedIndirectCommand);
-		for (const auto &prepared_cluster : *m_p_prepared_clusters) {
-			const auto &mesh_info_desc_set = prepared_cluster.m_cluster_ptr->GetMeshInfoDescriptorSet();
+		uint32_t id = 0,
+		         draw_cmd_size = m_chunk_mesh_pool_ptr->GetMaxMeshesPerCluster() * sizeof(VkDrawIndexedIndirectCommand);
+		for (const auto &cluster : *m_p_prepared_clusters) {
+			const auto &mesh_info_desc_set = cluster->GetMeshInfoDescriptorSet();
 			command_buffer->CmdBindDescriptorSets({mesh_info_desc_set}, 2, m_pipeline);
 
-			const auto &vertex_buffer = prepared_cluster.m_cluster_ptr->GetVertexBuffer();
-			const auto &index_buffer = prepared_cluster.m_cluster_ptr->GetIndexBuffer();
+			const auto &vertex_buffer = cluster->GetVertexBuffer();
+			const auto &index_buffer = cluster->GetIndexBuffer();
 			command_buffer->CmdBindVertexBuffer(vertex_buffer, 0);
-			command_buffer->CmdBindIndexBuffer(index_buffer, 0, prepared_cluster.m_cluster_ptr->kIndexType);
-			command_buffer->CmdDrawIndexedIndirectCount(draw_cmd_buffer, id * draw_cmd_size,      //
-			                                            draw_count_buffer, id * sizeof(uint32_t), //
-			                                            prepared_cluster.m_mesh_count);
+			command_buffer->CmdBindIndexBuffer(index_buffer, 0, cluster->kIndexType);
+			command_buffer->CmdDrawIndexedIndirectCount(
+			    draw_cmd_buffer, id * draw_cmd_size,      //
+			    draw_count_buffer, id * sizeof(uint32_t), //
+			    std::min(cluster->GetLocalMeshCount(), cluster->GetMaxMeshes()));
 			++id;
 		}
 	}

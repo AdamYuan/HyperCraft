@@ -12,23 +12,23 @@
 
 class WorldRenderGraph final : public myvk_rg::RenderGraph<WorldRenderGraph> {
 private:
-	std::shared_ptr<ChunkMeshRendererBase> m_chunk_renderer_ptr;
-	std::vector<ChunkMeshRendererBase::PreparedCluster> m_prepared_clusters;
+	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool_ptr;
+	std::vector<std::shared_ptr<ChunkMeshCluster>> m_prepared_clusters;
 
 	Camera::UniformData *m_p_camera_data;
 
 public:
 	inline void UpdateCamera(const std::shared_ptr<Camera> &camera_ptr) { camera_ptr->Update(m_p_camera_data); }
 	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) {
-		m_prepared_clusters = m_chunk_renderer_ptr->CmdUpdateMesh(command_buffer);
+		m_prepared_clusters = m_chunk_mesh_pool_ptr->CmdUpdateMesh(command_buffer, 4 * 1024);
 		GetPass<ChunkCullPass>({"chunk_cull_pass"})->Update(m_prepared_clusters);
 		GetPass<ChunkOpaquePass>({"chunk_opaque_pass"})->Update(m_prepared_clusters);
 	}
 
 	MYVK_RG_INLINE_INITIALIZER(const myvk::Ptr<myvk::FrameManager> &frame_manager,
-	                           const std::shared_ptr<ChunkMeshRendererBase> &chunk_renderer_ptr,
+	                           const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
 	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr) {
-		m_chunk_renderer_ptr = chunk_renderer_ptr;
+		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
 
 		// Create Camera Buffer
 		auto camera_vk_buffer = myvk::Buffer::Create(GetDevicePtr(), sizeof(Camera::UniformData),
@@ -49,9 +49,9 @@ public:
 		depth_image->SetClearColorValue({1.0f});
 
 		auto chunk_cull_pass =
-		    CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_renderer_ptr, camera_buffer, nullptr);
+		    CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_mesh_pool_ptr, camera_buffer, nullptr);
 		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>(
-		    {"chunk_opaque_pass"}, chunk_renderer_ptr, global_texture_ptr, camera_buffer, color_image, depth_image,
+		    {"chunk_opaque_pass"}, chunk_mesh_pool_ptr, global_texture_ptr, camera_buffer, color_image, depth_image,
 		    chunk_cull_pass->GetOpaqueDrawCmdOutput(), chunk_cull_pass->GetOpaqueDrawCountOutput());
 
 		auto swapchain_image = CreateResource<myvk_rg::SwapchainImage>({"swapchain_image"}, frame_manager);

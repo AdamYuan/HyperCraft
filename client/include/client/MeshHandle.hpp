@@ -9,25 +9,25 @@
 template <typename Vertex, typename Index, typename Info> class MeshHandle {
 private:
 	std::shared_ptr<MeshCluster<Vertex, Index, Info>> m_cluster_ptr;
-	VmaVirtualAllocation m_vertices_allocation{VK_NULL_HANDLE}, m_indices_allocation{VK_NULL_HANDLE};
-	uint32_t m_first_index{UINT32_MAX}; // used as a key for searching mesh in the cluster
+	VmaVirtualAllocation m_vertex_allocation{VK_NULL_HANDLE}, m_index_allocation{VK_NULL_HANDLE};
 
+	uint64_t m_mesh_id = -1;
 	bool m_finalize{false};
 
 	inline void destroy() {
-		if (!m_finalize && (~m_first_index)) {
-			m_cluster_ptr->erase_mesh(m_first_index);
-			m_first_index = UINT32_MAX;
-		}
-		if (m_vertices_allocation) {
-			std::scoped_lock lock{m_cluster_ptr->m_vertices_virtual_block_mutex};
-			vmaVirtualFree(m_cluster_ptr->m_vertices_virtual_block, m_vertices_allocation);
-			m_vertices_allocation = VK_NULL_HANDLE;
-		}
-		if (m_indices_allocation) {
-			std::scoped_lock lock{m_cluster_ptr->m_indices_virtual_block_mutex};
-			vmaVirtualFree(m_cluster_ptr->m_indices_virtual_block, m_indices_allocation);
-			m_indices_allocation = VK_NULL_HANDLE;
+		if (!m_finalize)
+			m_cluster_ptr->enqueue_mesh_erase(m_mesh_id);
+		if (~m_mesh_id) {
+			std::scoped_lock lock{m_cluster_ptr->m_allocation_mutex};
+			--m_cluster_ptr->m_allocation_count;
+			if (m_vertex_allocation) {
+				vmaVirtualFree(m_cluster_ptr->m_vertex_virtual_block, m_vertex_allocation);
+				m_vertex_allocation = VK_NULL_HANDLE;
+			}
+			if (m_index_allocation) {
+				vmaVirtualFree(m_cluster_ptr->m_index_virtual_block, m_index_allocation);
+				m_index_allocation = VK_NULL_HANDLE;
+			}
 		}
 	}
 
@@ -35,38 +35,40 @@ private:
 
 public:
 	inline static std::unique_ptr<MeshHandle>
-	Create(const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster_ptr,
-	       const std::vector<Vertex> &vertices, const std::vector<Index> &indices, const Info &info) {
+	Create(const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster_ptr, const std::vector<Vertex> &vertices,
+	       const std::vector<Index> &indices, const Info &info) {
 		auto ret = std::make_unique<MeshHandle>();
+
 		ret->m_cluster_ptr = cluster_ptr;
-		VkDeviceSize vertices_offset, indices_offset;
+		VkDeviceSize vertex_offset, index_offset;
 		{
-			VmaVirtualAllocationCreateInfo allocation_info = {};
-			allocation_info.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
-
-			allocation_info.alignment = sizeof(Vertex);
+			VmaVirtualAllocationCreateInfo vertex_alloc = {}, index_alloc = {};
+			vertex_alloc.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+			vertex_alloc.alignment = sizeof(Vertex);
 			static_assert((sizeof(Vertex) & (sizeof(Vertex) - 1)) == 0, "sizeof(Vertex) is required to be power of 2");
-			allocation_info.size = vertices.size() * sizeof(Vertex);
-			{
-				std::scoped_lock lock{cluster_ptr->m_vertices_virtual_block_mutex};
-				if (vmaVirtualAllocate(cluster_ptr->m_vertices_virtual_block, &allocation_info,
-				                       &ret->m_vertices_allocation, &vertices_offset) != VK_SUCCESS) {
-					return nullptr;
-				}
-			}
+			vertex_alloc.size = vertices.size() * sizeof(Vertex);
 
-			allocation_info.alignment = sizeof(Index);
+			index_alloc.flags = VMA_VIRTUAL_ALLOCATION_CREATE_STRATEGY_MIN_MEMORY_BIT;
+			index_alloc.alignment = sizeof(Index);
 			static_assert((sizeof(Index) & (sizeof(Index) - 1)) == 0, "sizeof(Index) is required to be power of 2");
-			allocation_info.size = indices.size() * sizeof(Index);
-			{
-				std::scoped_lock lock{cluster_ptr->m_indices_virtual_block_mutex};
-				if (vmaVirtualAllocate(cluster_ptr->m_indices_virtual_block, &allocation_info,
-				                       &ret->m_indices_allocation, &indices_offset) != VK_SUCCESS) {
-					return nullptr;
-				}
+			index_alloc.size = indices.size() * sizeof(Index);
+
+			std::scoped_lock allocation_lock{cluster_ptr->m_allocation_mutex};
+			if (cluster_ptr->m_allocation_count >= cluster_ptr->m_max_meshes)
+				return nullptr;
+			if (vmaVirtualAllocate(cluster_ptr->m_vertex_virtual_block, &vertex_alloc, &ret->m_vertex_allocation,
+			                       &vertex_offset) != VK_SUCCESS) {
+				return nullptr;
 			}
+			if (vmaVirtualAllocate(cluster_ptr->m_index_virtual_block, &index_alloc, &ret->m_index_allocation,
+			                       &index_offset) != VK_SUCCESS) {
+				// Free vertex block if index block allocation failed
+				vmaVirtualFree(cluster_ptr->m_vertex_virtual_block, ret->m_vertex_allocation);
+				return nullptr;
+			}
+			++cluster_ptr->m_allocation_count;
 		}
-		ret->m_first_index = cluster_ptr->insert_mesh(vertices, vertices_offset, indices, indices_offset, info);
+		ret->m_mesh_id = cluster_ptr->enqueue_mesh_insert(vertices, vertex_offset, indices, index_offset, info);
 		return ret;
 	}
 

@@ -3,22 +3,23 @@
 
 #include <client/Camera.hpp>
 #include <client/ChunkMesh.hpp>
+#include <client/ChunkMeshPool.hpp>
 
 #include <myvk_rg/RenderGraph.hpp>
 
 class ChunkCullPass final : public myvk_rg::ComputePassBase {
 private:
-	std::shared_ptr<ChunkMeshRendererBase> m_renderer_ptr;
+	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool_ptr;
 
-	const std::vector<ChunkMeshRendererBase::PreparedCluster> *m_p_prepared_clusters;
+	const std::vector<std::shared_ptr<ChunkMeshCluster>> *m_p_prepared_clusters;
 
 	myvk::Ptr<myvk::ComputePipeline> m_pipeline;
 	uint32_t m_supported_clusters = 0u;
 
 public:
-	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshRendererBase> &renderer_ptr,
+	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
 	                           myvk_rg::BufferInput camera_buffer, myvk_rg::ImageInput depth_hierarchy) {
-		m_renderer_ptr = renderer_ptr;
+		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
 
 		auto opaque_draw_cmd_buffer = CreateResource<myvk_rg::ManagedBuffer>({"opaque_draw_cmd"});
 		auto opaque_draw_count_buffer = CreateResource<myvk_rg::ManagedBuffer>({"opaque_draw_count"});
@@ -41,7 +42,7 @@ public:
 		// AddDescriptorInput<4, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT>(
 		//     {"depth_hierarchy"}, depth_hierarchy, nullptr);
 	}
-	inline void Update(const std::vector<ChunkMeshRendererBase::PreparedCluster> &prepared_clusters) {
+	inline void Update(const std::vector<std::shared_ptr<ChunkMeshCluster>> &prepared_clusters) {
 		m_p_prepared_clusters = &prepared_clusters;
 
 		auto opaque_draw_cmd_buffer = GetResource<myvk_rg::ManagedBuffer>({"opaque_draw_cmd"});
@@ -52,11 +53,11 @@ public:
 		auto clusters = std::max((uint32_t)prepared_clusters.size(), 1u);
 		if (m_supported_clusters < clusters) {
 			m_supported_clusters = clusters;
-			opaque_draw_cmd_buffer->SetSize(clusters * m_renderer_ptr->GetMaxMeshes() *
+			opaque_draw_cmd_buffer->SetSize(clusters * m_chunk_mesh_pool_ptr->GetMaxMeshesPerCluster() *
 			                                sizeof(VkDrawIndexedIndirectCommand));
 			opaque_draw_count_buffer->SetSize(clusters * sizeof(uint32_t));
 
-			trans_draw_cmd_buffer->SetSize(clusters * m_renderer_ptr->GetMaxMeshes() *
+			trans_draw_cmd_buffer->SetSize(clusters * m_chunk_mesh_pool_ptr->GetMaxMeshesPerCluster() *
 			                               sizeof(VkDrawIndexedIndirectCommand));
 			trans_draw_count_buffer->SetSize(clusters * sizeof(uint32_t));
 		}
@@ -69,7 +70,7 @@ public:
 		auto pipeline_layout = myvk::PipelineLayout::Create(GetRenderGraphPtr()->GetDevicePtr(),
 		                                                    {
 		                                                        GetVkDescriptorSetLayout(),
-		                                                        m_renderer_ptr->GetDescriptorSetLayout(),
+		                                                        m_chunk_mesh_pool_ptr->GetDescriptorSetLayout(),
 		                                                    },
 		                                                    {
 		                                                        {VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(uint32_t) * 3},
@@ -93,14 +94,14 @@ public:
 		std::fill(opaque_draw_count_mapped, opaque_draw_count_mapped + clusters, 0u);
 		std::fill(trans_draw_count_mapped, trans_draw_count_mapped + clusters, 0u);
 
-		uint32_t count_offset = 0, draw_cmd_offset = 0, draw_cmd_size = m_renderer_ptr->GetMaxMeshes();
-		for (const auto &prepared_cluster : *m_p_prepared_clusters) {
-			const auto &mesh_info_desc_set = prepared_cluster.m_cluster_ptr->GetMeshInfoDescriptorSet();
+		uint32_t count_offset = 0, draw_cmd_offset = 0, draw_cmd_size = m_chunk_mesh_pool_ptr->GetMaxMeshesPerCluster();
+		for (const auto &cluster : *m_p_prepared_clusters) {
+			const auto &mesh_info_desc_set = cluster->GetMeshInfoDescriptorSet();
 			command_buffer->CmdBindDescriptorSets({mesh_info_desc_set}, 1, m_pipeline);
-			uint32_t pc_data[3] = {prepared_cluster.m_mesh_count, draw_cmd_offset, count_offset};
+			uint32_t pc_data[3] = {cluster->GetLocalMeshCount(), draw_cmd_offset, count_offset};
 			command_buffer->CmdPushConstants(m_pipeline->GetPipelineLayoutPtr(), VK_SHADER_STAGE_COMPUTE_BIT, 0,
 			                                 sizeof(uint32_t) * 3, pc_data);
-			command_buffer->CmdDispatch(group_x_64(prepared_cluster.m_mesh_count), 1, 1);
+			command_buffer->CmdDispatch(group_x_64(cluster->GetLocalMeshCount()), 1, 1);
 			++count_offset;
 			draw_cmd_offset += draw_cmd_size;
 		}

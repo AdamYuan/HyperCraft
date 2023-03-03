@@ -29,7 +29,6 @@ private:
 	std::shared_ptr<myvk::ImGuiRenderer> m_imgui_renderer;
 
 	void create_render_pass();
-	void create_framebuffer();
 
 public:
 	explicit ScreenRenderer(const std::shared_ptr<WorldRenderer> &world_renderer_ptr);

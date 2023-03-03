@@ -3,7 +3,7 @@
 
 #include <client/Camera.hpp>
 #include <client/ChunkMesh.hpp>
-#include <client/ChunkRenderer.hpp>
+#include <client/ChunkMeshPool.hpp>
 #include <client/Config.hpp>
 #include <client/DepthHierarchy.hpp>
 #include <client/GlobalTexture.hpp>
@@ -25,7 +25,7 @@ private:
 	std::shared_ptr<myvk::Queue> m_transfer_queue;
 
 	// Renderers
-	std::shared_ptr<ChunkRenderer> m_chunk_renderer;
+	std::shared_ptr<ChunkMeshPool> m_chunk_renderer;
 
 	// Child
 	std::shared_ptr<myvk::FrameManager> m_frame_manager_ptr;
@@ -45,8 +45,7 @@ public:
 		ret->m_world_ptr = world_ptr;
 		ret->m_transfer_queue = transfer_queue;
 		ret->m_frame_manager_ptr = frame_manager_ptr;
-		ret->m_chunk_renderer =
-		    ChunkRenderer::Create(frame_manager_ptr, texture_ptr, camera_ptr, depth_ptr, ret->m_render_pass, 0, 1);
+		ret->m_chunk_renderer = ChunkMeshPool::Create(frame_manager_ptr->GetDevicePtr());
 		return ret;
 	}
 

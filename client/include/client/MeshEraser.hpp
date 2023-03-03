@@ -34,11 +34,7 @@ public:
 			if (!i)
 				continue;
 			i->destroy();
-			// cluster_set.insert(std::move(i->m_cluster_ptr));
 		}
-		/* for (auto &i : cluster_set) {
-		    i->upload_mesh_info_vector();
-		} */
 	}
 	~MeshEraser() override = default;
 };

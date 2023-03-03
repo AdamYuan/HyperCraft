@@ -3,11 +3,9 @@
 #include <client/WorldRenderer.hpp>
 
 ScreenRenderer::ScreenRenderer(const std::shared_ptr<WorldRenderer> &world_renderer_ptr)
-    : m_world_renderer_ptr(world_renderer_ptr),
-      m_depth_hierarchy_ptr(world_renderer_ptr->GetChunkRenderer()->GetDepthHierarchyPtr()),
+    : m_world_renderer_ptr(world_renderer_ptr), m_depth_hierarchy_ptr(nullptr),
       m_frame_manager_ptr(world_renderer_ptr->GetFrameManagerPtr()) {
 	create_render_pass();
-	create_framebuffer();
 	m_post_processor = PostProcessor::Create(world_renderer_ptr, m_render_pass, 0);
 	m_imgui_renderer = myvk::ImGuiRenderer::Create(m_render_pass, 1, kFrameCount);
 }
@@ -37,14 +35,7 @@ void ScreenRenderer::create_render_pass() {
 	m_render_pass = myvk::RenderPass::Create(device, state);
 }
 
-void ScreenRenderer::create_framebuffer() {
-	m_framebuffer = myvk::ImagelessFramebuffer::Create(
-	    m_render_pass,
-	    {m_frame_manager_ptr->GetSwapchainImages()[0]->GetFramebufferAttachmentImageInfo(),
-	     m_depth_hierarchy_ptr->GetAttachmentImageView()->GetImagePtr()->GetFramebufferAttachmentImageInfo()});
-}
-
-void ScreenRenderer::Resize() { create_framebuffer(); }
+void ScreenRenderer::Resize() {}
 
 void ScreenRenderer::CmdRenderPass(const std::shared_ptr<myvk::CommandBuffer> &command_buffer) const {
 	uint32_t frame = m_frame_manager_ptr->GetCurrentFrame();
