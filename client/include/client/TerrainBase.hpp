@@ -24,16 +24,15 @@ public:
 	virtual void Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t *y_peak) = 0;
 };
 
-template <typename KEY, typename T, uint32_t SIZE> class TerrainCache {
+template <typename Key, typename T, uint32_t SIZE> class TerrainCache {
 private:
-	std::pair<KEY, std::shared_ptr<T>> m_cache_queue[SIZE];
+	std::pair<Key, std::shared_ptr<T>> m_cache_queue[SIZE];
 	uint32_t m_cache_queue_pointer{0};
-	std::unordered_map<KEY, std::weak_ptr<T>> m_cache_map;
+	std::unordered_map<Key, std::weak_ptr<T>> m_cache_map;
 	std::shared_mutex m_cache_map_mutex;
 
 public:
-	template <typename GEN>
-	auto Acquire(const KEY &key, GEN generator) -> decltype(generator(KEY{}, (T *){}), std::shared_ptr<const T>{}) {
+	template <typename Generator> std::shared_ptr<const T> Acquire(const Key &key, Generator &&generator) {
 		{ // try to acquire it first
 			std::shared_lock cache_read_lock{m_cache_map_mutex};
 			auto it = m_cache_map.find(key);
