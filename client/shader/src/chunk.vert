@@ -12,17 +12,20 @@ layout(location = 4) out float vTorchlight;
 layout(location = 5) out flat uint vTexture;
 layout(location = 6) out vec2 vTexcoord;
 
-layout(set = 0, binding = 0) uniform uuCamera {
-	vec4 uViewPosition;
-	mat4 uViewProjection;
-};
 struct MeshInfo {
 	uint index_count, first_index, vertex_offset;
 	float aabb_min_x, aabb_min_y, aabb_min_z, aabb_max_x, aabb_max_y, aabb_max_z;
 	int base_pos_x, base_pos_y, base_pos_z;
 	uint transparent;
 };
-layout(std430, set = 2, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
+layout(std430, set = 0, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
+
+layout(push_constant) uniform uuPushConstant { uint uMeshInfoOffset; };
+
+layout(set = 0, binding = 1) uniform uuCamera {
+	vec4 uViewPosition;
+	mat4 uViewProjection;
+};
 
 const float kAOCurve[4] = {0.54, 0.7569, 0.87, 1.0};
 
@@ -38,9 +41,10 @@ void main() {
 	x10_y10_z10_axis2 >>= 10u;
 
 	vTexcoord = x10_y10_z10_axis2 == 0u ? -pos.zy : (x10_y10_z10_axis2 == 1u ? pos.xz : -pos.xy);
-	vec3 translate = vec3(uMeshInfo[gl_InstanceIndex].base_pos_x, //
-	                      uMeshInfo[gl_InstanceIndex].base_pos_y, //
-	                      uMeshInfo[gl_InstanceIndex].base_pos_z) //
+	uint mesh_info_idx = uMeshInfoOffset | gl_InstanceIndex;
+	vec3 translate = vec3(uMeshInfo[mesh_info_idx].base_pos_x, //
+	                      uMeshInfo[mesh_info_idx].base_pos_y, //
+	                      uMeshInfo[mesh_info_idx].base_pos_z) //
 	                 - uViewPosition.xyz;
 	gl_Position = uViewProjection * vec4(pos + translate, 1.0f);
 

@@ -47,16 +47,11 @@ void World::Update(const glm::vec3 &position) {
 		spdlog::info("current_chunk_pos = {}", glm::to_string(current_chunk_pos));
 
 		std::vector<std::unique_ptr<WorkerBase>> new_workers, new_nei_workers;
-		std::vector<std::unique_ptr<ChunkMeshHandle>> erased_meshes;
-		erased_meshes.reserve(kR * kR * 4);
 
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
 
 			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR + 2) {
 				auto meshes = it->second->MoveMeshes();
-				if (!meshes.empty())
-					erased_meshes.insert(erased_meshes.end(), std::make_move_iterator(meshes.begin()),
-					                     std::make_move_iterator(meshes.end()));
 				it = m_chunks.erase(it);
 			} else {
 				if (!it->second->IsMeshed())
@@ -64,8 +59,6 @@ void World::Update(const glm::vec3 &position) {
 				++it;
 			}
 		}
-		if (!erased_meshes.empty())
-			new_workers.push_back(ChunkMeshEraser::Create(std::move(erased_meshes)));
 
 		for (const ChunkPos3 *i = kWorldLoadingList; i != kWorldLoadingRadiusEnd[kR]; ++i) {
 			ChunkPos3 pos = current_chunk_pos + *i;

@@ -5,9 +5,9 @@
 #include <common/Block.hpp>
 #include <common/Light.hpp>
 
+#include "client/mesh/MeshHandle.hpp"
+#include "client/mesh/MeshPool.hpp"
 #include <client/MeshEraser.hpp>
-#include <client/MeshHandle.hpp>
-#include <client/MeshPool.hpp>
 
 struct ChunkMeshVertex { // Compressed mesh vertex for chunk
 	static constexpr uint32_t kUnitBitOffset = 4u;
@@ -32,5 +32,6 @@ using ChunkMeshHandle = MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshCluster = MeshCluster<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshPoolBase = MeshPool<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshEraser = MeshEraser<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
+using ChunkMeshInfoBuffer = MeshInfoBuffer<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 
 #endif

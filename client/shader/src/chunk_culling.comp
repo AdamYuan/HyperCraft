@@ -22,12 +22,13 @@ layout(std430, set = 0, binding = 2) writeonly buffer uuTransparentDrawCommand {
 	DrawIndexedIndirectCommand uTransparentDrawCommand[];
 };
 layout(std430, set = 0, binding = 3) buffer uuTransparentDrawCount { uint uTransparentDrawCounts[]; };
-layout(set = 0, binding = 4) uniform uuCamera {
+
+layout(std430, set = 0, binding = 4) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
+
+layout(set = 0, binding = 5) uniform uuCamera {
 	vec4 uViewPosition;
 	mat4 uViewProjection;
 };
-
-layout(std430, set = 1, binding = 0) readonly buffer uuMeshInfo { MeshInfo uMeshInfo[]; };
 
 // layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
 
@@ -94,22 +95,24 @@ void main() {
 	if (mesh_id >= uMeshCount)
 		return;
 
+	uint mesh_info_idx = uDrawCmdOffset | mesh_id;
+
 	vec3 clip_min, clip_max;
 	uint cull_bits;
-	GetClipInfo(uMeshInfo[mesh_id].aabb, clip_min, clip_max, cull_bits);
+	GetClipInfo(uMeshInfo[mesh_info_idx].aabb, clip_min, clip_max, cull_bits);
 
 	if (FrustumCull(cull_bits) || OcclusionCull(clip_min, clip_max, cull_bits))
 		return;
 
-	if (uMeshInfo[mesh_id].transparent == 0) {
+	if (uMeshInfo[mesh_info_idx].transparent == 0) {
 		uint opaque_draw_id = atomicAdd(uOpaqueDrawCounts[uCountOffset], 1u);
 		uOpaqueDrawCommand[uDrawCmdOffset | opaque_draw_id] =
-		    DrawIndexedIndirectCommand(uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index,
-		                               uMeshInfo[mesh_id].vertex_offset, mesh_id);
+		    DrawIndexedIndirectCommand(uMeshInfo[mesh_info_idx].index_count, 1, uMeshInfo[mesh_info_idx].first_index,
+		                               uMeshInfo[mesh_info_idx].vertex_offset, mesh_id);
 	} else {
 		uint transparent_draw_id = atomicAdd(uTransparentDrawCounts[uCountOffset], 1u);
 		uTransparentDrawCommand[uDrawCmdOffset | transparent_draw_id] =
-		    DrawIndexedIndirectCommand(uMeshInfo[mesh_id].index_count, 1, uMeshInfo[mesh_id].first_index,
-		                               uMeshInfo[mesh_id].vertex_offset, mesh_id);
+		    DrawIndexedIndirectCommand(uMeshInfo[mesh_info_idx].index_count, 1, uMeshInfo[mesh_info_idx].first_index,
+		                               uMeshInfo[mesh_info_idx].vertex_offset, mesh_id);
 	}
 }

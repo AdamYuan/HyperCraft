@@ -7,8 +7,8 @@
 #include <common/Size.hpp>
 #include <glm/glm.hpp>
 
+#include "client/mesh/MeshHandle.hpp"
 #include <client/ChunkMesh.hpp>
-#include <client/MeshHandle.hpp>
 
 #include <chrono>
 #include <memory>

@@ -1,7 +1,7 @@
 #ifndef CUBECRAFT3_CLIENT_MESH_ERASER_HPP
 #define CUBECRAFT3_CLIENT_MESH_ERASER_HPP
 
-#include <client/MeshHandle.hpp>
+#include "client/mesh/MeshHandle.hpp"
 #include <client/WorkerBase.hpp>
 #include <set>
 #include <utility>
@@ -30,11 +30,11 @@ public:
 		if (m_mesh_handle_vector.empty())
 			return;
 		std::set<std::shared_ptr<MeshCluster<Vertex, Index, Info>>> cluster_set;
-		for (auto &i : m_mesh_handle_vector) {
+		/* for (auto &i : m_mesh_handle_vector) {
 			if (!i)
 				continue;
 			i->destroy();
-		}
+		} */
 	}
 	~MeshEraser() override = default;
 };

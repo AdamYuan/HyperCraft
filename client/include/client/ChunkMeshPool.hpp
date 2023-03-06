@@ -3,20 +3,20 @@
 
 #include <cinttypes>
 
+#include "client/mesh/MeshPool.hpp"
 #include <client/ChunkMesh.hpp>
-#include <client/MeshPool.hpp>
 #include <common/AABB.hpp>
 #include <common/Position.hpp>
 
 class ChunkMeshPool : public ChunkMeshPoolBase {
 private:
 	inline static constexpr uint32_t kClusterFaceCount = 4 * 1024 * 1024;
-	inline static constexpr uint32_t kLog2MaxMeshesPerCluster = 15u;
+	inline static constexpr uint32_t kMaxMeshesPerCluster = 16384u, kMaxClusters = 8u;
 
 public:
 	explicit ChunkMeshPool(const myvk::Ptr<myvk::Device> &device)
 	    : ChunkMeshPoolBase(device, kClusterFaceCount * 4 * sizeof(ChunkMeshVertex),
-	                        kClusterFaceCount * 6 * sizeof(uint16_t), kLog2MaxMeshesPerCluster) {}
+	                        kClusterFaceCount * 6 * sizeof(uint16_t), kMaxClusters, kMaxMeshesPerCluster) {}
 
 	inline static std::shared_ptr<ChunkMeshPool> Create(const myvk::Ptr<myvk::Device> &device) {
 		return std::make_shared<ChunkMeshPool>(device);

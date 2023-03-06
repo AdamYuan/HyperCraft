@@ -25,6 +25,7 @@ private:
 	// Parent weak_ptrs
 	std::weak_ptr<WorldRenderer> m_world_renderer_weak_ptr;
 	friend class WorldRenderer;
+
 	std::weak_ptr<ClientBase> m_client_weak_ptr;
 	friend class LocalClient;
 	friend class ENetClient;

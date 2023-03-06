@@ -549,13 +549,13 @@ void ChunkMesher::Run() {
 	// version,meshes.size());
 	for (uint32_t i = 0; i < meshes.size(); ++i) {
 		auto &info = meshes[i];
-		mesh_handles[i] = world_renderer_ptr->GetChunkRenderer()->PushMesh(
-		    info.vertices, info.indices,
+		mesh_handles[i] = ChunkMeshHandle::Create(
+		    world_renderer_ptr->GetChunkRenderer(), info.vertices, info.indices,
 		    {(fAABB)info.aabb / glm::vec3(1u << ChunkMeshVertex::kUnitBitOffset) + (glm::vec3)base_position,
 		     base_position, (uint32_t)info.transparent});
 	}
 	// Push mesh to chunk
 	m_chunk_ptr->SwapMesh(version, mesh_handles);
-	if (!mesh_handles.empty())
-		MeshEraser{std::move(mesh_handles)}.Run();
+	// if (!mesh_handles.empty())
+	// 	MeshEraser{std::move(mesh_handles)}.Run();
 }

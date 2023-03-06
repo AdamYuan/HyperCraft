@@ -24,16 +24,13 @@ private:
 	// Vulkan Queue
 	std::shared_ptr<myvk::Queue> m_transfer_queue;
 
-	// Renderers
-	std::shared_ptr<ChunkMeshPool> m_chunk_renderer;
+	// Mesh Pool
+	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool;
 
 	// Child
 	std::shared_ptr<myvk::FrameManager> m_frame_manager_ptr;
 
 	std::shared_ptr<World> m_world_ptr;
-
-	// Render pass
-	std::shared_ptr<myvk::RenderPass> m_render_pass;
 
 public:
 	inline static std::shared_ptr<WorldRenderer>
@@ -45,14 +42,14 @@ public:
 		ret->m_world_ptr = world_ptr;
 		ret->m_transfer_queue = transfer_queue;
 		ret->m_frame_manager_ptr = frame_manager_ptr;
-		ret->m_chunk_renderer = ChunkMeshPool::Create(frame_manager_ptr->GetDevicePtr());
+		ret->m_chunk_mesh_pool = ChunkMeshPool::Create(frame_manager_ptr->GetDevicePtr());
 		return ret;
 	}
 
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world_ptr; }
 	inline const std::shared_ptr<myvk::Queue> &GetTransferQueue() const { return m_transfer_queue; }
 
-	inline const auto &GetChunkRenderer() const { return m_chunk_renderer; }
+	inline const auto &GetChunkRenderer() const { return m_chunk_mesh_pool; }
 
 	inline const std::shared_ptr<myvk::FrameManager> &GetFrameManagerPtr() const { return m_frame_manager_ptr; }
 
