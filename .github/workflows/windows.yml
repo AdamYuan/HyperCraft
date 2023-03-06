@@ -16,45 +16,50 @@ jobs:
       matrix:
         config:
           - {
-            name: "Windows MinGW 64",
+            name: "Windows MSVC 64",
             os: windows-latest,
-            artifact: "windows_mingw_64.7z",
+            artifact: "windows_msvc_64.7z",
             build_type: "Release",
-            cc: "x86_64-w64-mingw32-gcc",
-            cxx: "x86_64-w64-mingw32-g++",
+            cc: "cl",
+            cxx: "cl",
+            arch: "x64",
             archiver: "7z a",
-            generators: "Ninja"
+            generators: "Visual Studio 17 2022"
+          }
+          - {
+            name: "Windows MSVC 32",
+            os: windows-latest,
+            artifact: "windows_msvc_32.7z",
+            build_type: "Release",
+            cc: "cl",
+            cxx: "cl",
+            arch: "Win32",
+            archiver: "7z a",
+            generators: "Visual Studio 17 2022"
           }
 
     steps:
-      - uses: actions/checkout@v2
-
-      - uses: msys2/setup-msys2@v2
-        with:
-          update: false
-          install: mingw-w64-x86_64-gcc cmake ninja
+      - uses: actions/checkout@v3
 
       - name: Configure
-        shell: msys2 {0}
+        shell: bash
         run: |
           mkdir build
           mkdir instdir
           cmake \
             -S . \
             -B . \
-            -DCMAKE_SYSTEM_NAME=Windows \
-            -DCMAKE_C_COMPILER="${{ matrix.config.cc }}" \
-            -DCMAKE_CXX_COMPILER="${{ matrix.config.cxx }}" \
+            -A ${{ matrix.config.arch }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir
 
       - name: Build
-        shell: msys2 {0}
+        shell: bash
         run: cmake --build . --config ${{ matrix.config.build_type }}
 
       - name: Install Strip
-        shell: msys2 {0}
+        shell: bash
         run: cmake --install . --strip
 
       - name: Pack
