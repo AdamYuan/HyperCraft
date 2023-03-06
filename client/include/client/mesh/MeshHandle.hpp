@@ -38,19 +38,30 @@ public:
 		}
 		if (!m_cluster_ptr) {
 			std::scoped_lock write_lock{pool_ptr->m_clusters_mutex};
-			for (uint32_t offset = 0; offset < pool_ptr->m_clusters.size(); ++offset) {
-				auto &weak_cluster = pool_ptr->m_clusters[offset];
-				if (!weak_cluster.expired())
-					continue;
-				auto cluster = MeshCluster<Vertex, Index, Info>::Create(
-				    pool_ptr->GetDevicePtr(), pool_ptr->gen_cluster_id(), offset, //
-				    pool_ptr->GetVertexBlockSize(), pool_ptr->GetIndexBlockSize(), pool_ptr->GetMaxMeshesPerCluster());
-				weak_cluster = cluster;
-				if (cluster->try_alloc(vertices.size(), &m_vertex_alloc, &vertex_offset, indices.size(), &m_index_alloc,
-				                       &index_offset))
+			for (const auto &weak_cluster : pool_ptr->m_clusters) {
+				std::shared_ptr<MeshCluster<Vertex, Index, Info>> cluster = weak_cluster.lock();
+				if (cluster && cluster->try_alloc(vertices.size(), &m_vertex_alloc, &vertex_offset, indices.size(),
+				                                  &m_index_alloc, &index_offset)) {
 					m_cluster_ptr = cluster;
-				// else, then the vertex and index buffers are too large for a cluster, just ignore it
-				return;
+					break;
+				}
+			}
+			if (!m_cluster_ptr) {
+				for (uint32_t offset = 0; offset < pool_ptr->m_clusters.size(); ++offset) {
+					auto &weak_cluster = pool_ptr->m_clusters[offset];
+					if (!weak_cluster.expired())
+						continue;
+					auto cluster = MeshCluster<Vertex, Index, Info>::Create(
+					    pool_ptr->GetDevicePtr(), pool_ptr->gen_cluster_id(), offset, //
+					    pool_ptr->GetVertexBlockSize(), pool_ptr->GetIndexBlockSize(),
+					    pool_ptr->GetMaxMeshesPerCluster());
+					weak_cluster = cluster;
+					if (cluster->try_alloc(vertices.size(), &m_vertex_alloc, &vertex_offset, indices.size(),
+					                       &m_index_alloc, &index_offset))
+						m_cluster_ptr = cluster;
+					// else, then the vertex and index buffers are too large for a cluster, just ignore it
+					return;
+				}
 			}
 		}
 
