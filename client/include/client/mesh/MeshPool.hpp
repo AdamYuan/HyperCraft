@@ -6,6 +6,11 @@
 
 #include <atomic>
 #include <shared_mutex>
+#include <unordered_set>
+
+#include <concurrentqueue.h>
+
+#include <myvk/CommandBuffer.hpp>
 
 template <typename Vertex, typename Index, typename Info> class MeshPool : public myvk::DeviceObjectBase {
 public:
@@ -54,6 +59,22 @@ private:
 
 	// Local Updates
 	moodycamel::ConcurrentQueue<std::unique_ptr<LocalUpdate>> m_local_update_queue;
+	std::unordered_set<uint64_t> m_erased_meshes;
+
+	inline std::unordered_map<uint64_t, std::shared_ptr<MeshCluster<Vertex, Index, Info>>> make_cluster_map() const {
+		std::unordered_map<uint64_t, std::shared_ptr<MeshCluster<Vertex, Index, Info>>> cluster_map;
+		{
+			std::shared_lock read_lock{m_clusters_mutex};
+			for (auto &i : m_clusters) {
+				auto cluster = i.lock();
+				if (cluster) {
+					uint64_t cluster_id = cluster->GetClusterID();
+					cluster_map.insert({cluster_id, std::move(cluster)});
+				}
+			}
+		}
+		return cluster_map;
+	}
 
 	template <typename, typename, typename> friend class MeshHandle;
 	template <typename, typename, typename> friend class MeshCluster;
@@ -77,22 +98,29 @@ public:
 	inline VkDeviceSize GetVertexBlockSize() const { return m_vertex_block_size; }
 	inline VkDeviceSize GetIndexBlockSize() const { return m_index_block_size; }
 
+	inline void PostUpdate(std::vector<std::unique_ptr<LocalUpdate>> &&post_updates) {
+		auto cluster_map = make_cluster_map();
+
+		for (auto &post_update : post_updates) {
+			auto cluster_it = cluster_map.find(post_update->cluster_id);
+			if (cluster_it == cluster_map.end())
+				continue;
+
+			const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster = cluster_it->second;
+
+			if (post_update->type == LocalUpdate::Type::kErase) {
+				auto *p_erase = static_cast<LocalErase *>(post_update.get());
+				cluster->free_alloc(p_erase->vertex_alloc, p_erase->index_alloc);
+			}
+			post_update = nullptr;
+		}
+	}
+
 	inline void CmdLocalUpdate(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
 	                           std::vector<std::shared_ptr<MeshCluster<Vertex, Index, Info>>> *p_prepared_clusters,
 	                           std::vector<std::unique_ptr<LocalUpdate>> *p_post_updates,
 	                           VkDeviceSize max_transfer_bytes, uint32_t max_updates) {
-		std::unordered_map<uint64_t, std::shared_ptr<MeshCluster<Vertex, Index, Info>>> cluster_map;
-
-		{
-			std::shared_lock read_lock{m_clusters_mutex};
-			for (auto &i : m_clusters) {
-				auto cluster = i.lock();
-				if (cluster) {
-					uint64_t cluster_id = cluster->GetClusterID();
-					cluster_map.insert({cluster_id, std::move(cluster)});
-				}
-			}
-		}
+		auto cluster_map = make_cluster_map();
 
 		p_prepared_clusters->clear();
 		p_post_updates->clear();
@@ -104,7 +132,7 @@ public:
 		uint32_t updates{};
 		VkDeviceSize transfer_bytes{};
 		std::unique_ptr<LocalUpdate> local_update;
-		bool first_copy = true;
+		bool transfer = false;
 		while (transfer_bytes < max_transfer_bytes && updates++ < max_updates &&
 		       m_local_update_queue.try_dequeue(local_update)) {
 			auto cluster_it = cluster_map.find(local_update->cluster_id);
@@ -114,26 +142,31 @@ public:
 			const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster = cluster_it->second;
 
 			if (local_update->type == LocalUpdate::Type::kInsert) {
-				if (first_copy) {
-					// Leave a initial barrier
-					command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-					                                   VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {}, {});
-					first_copy = false;
-				}
+				transfer = true;
+
 				auto *p_insert = static_cast<LocalInsert *>(local_update.get());
-				cluster->local_insert_mesh(p_insert->mesh_id, p_insert->mesh_info, p_insert->vertex_staging,
-				                           p_insert->index_staging, &copies, &copy_regions, &post_barriers);
-				transfer_bytes += p_insert->vertex_staging->GetSize() + p_insert->index_staging->GetSize();
+
+				auto erased_it = m_erased_meshes.find(p_insert->mesh_id);
+				// If the mesh is already erased, just ignore it
+				if (erased_it == m_erased_meshes.end()) {
+					cluster->local_insert_mesh(p_insert->mesh_id, p_insert->mesh_info, p_insert->vertex_staging,
+					                           p_insert->index_staging, &copies, &copy_regions, &post_barriers);
+					transfer_bytes += p_insert->vertex_staging->GetSize() + p_insert->index_staging->GetSize();
+				} else
+					m_erased_meshes.erase(erased_it);
 			} else { // Erase
 				auto *p_erase = static_cast<LocalErase *>(local_update.get());
-				cluster->local_erase_mesh(p_erase->mesh_id);
+				if (cluster->try_local_erase_mesh(p_erase->mesh_id) == false)
+					m_erased_meshes.insert(p_erase->mesh_id);
 			}
-			++cluster->m_cluster_version;
+			++cluster->m_cluster_local_version;
 			p_post_updates->push_back(std::move(local_update));
 		}
 
 		// Copy
-		if (!first_copy) {
+		if (transfer) {
+			command_buffer->CmdPipelineBarrier(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {},
+			                                   {}, {});
 			for (uint32_t i = 0; i < copies.size(); ++i) {
 				copies[i].regionCount = 1;
 				copies[i].pRegions = copy_regions.data() + i;
@@ -202,15 +235,15 @@ public:
 	inline void Update(const std::vector<std::shared_ptr<MeshCluster<Vertex, Index, Info>>> &prepared_clusters) {
 		for (const auto &cluster : prepared_clusters) {
 			auto &state = m_cluster_states[cluster->GetClusterOffset()];
-			if (cluster->GetClusterID() == state.id && cluster->GetClusterVersion() <= state.version)
+			if (cluster->GetClusterID() == state.id && cluster->GetClusterLocalVersion() <= state.version)
 				continue;
-			printf("UPDATE: offset=%d, id=%ld, version=%ld\n", cluster->GetClusterOffset(), cluster->GetClusterID(),
-			       cluster->GetClusterVersion());
 			MeshInfo<Info> *p_data = state.p_data;
 			for (const auto &it : cluster->m_local_mesh_info_map)
 				*(p_data)++ = it.second;
 			state.id = cluster->GetClusterID();
-			state.version = cluster->GetClusterVersion();
+			state.version = cluster->GetClusterLocalVersion();
+			// printf("Update: id = %d, version = %d, offset = %d\n", state.id, state.version,
+			//        cluster->GetClusterOffset());
 		}
 	}
 

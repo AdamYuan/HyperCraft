@@ -23,6 +23,7 @@ public:
 		                       ->GetMappedData());
 	}
 	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) {
+		m_chunk_mesh_pool_ptr->PostUpdate(std::move(m_post_updates)); // TODO: Move this to task system
 		m_chunk_mesh_pool_ptr->CmdLocalUpdate(command_buffer, &m_prepared_clusters, &m_post_updates, 4 * 1024, 64);
 		GetResource<myvk_rg::StaticBuffer<ChunkMeshInfoBuffer>>({"chunk_mesh_info"})
 		    ->GetBuffer()

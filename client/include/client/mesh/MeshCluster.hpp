@@ -9,12 +9,9 @@
 #include <vk_mem_alloc.h>
 
 #include <myvk/Buffer.hpp>
-#include <myvk/CommandBuffer.hpp>
-#include <myvk/Queue.hpp>
 
 #include "MeshInfo.hpp"
 
-#include <concurrentqueue.h>
 #include <spdlog/include/spdlog/spdlog.h>
 
 // Used for zero-overhead rendering (with GPU culling)
@@ -23,7 +20,7 @@ template <typename Vertex, typename Index, typename Info> class MeshCluster {
 
 private:
 	uint32_t m_cluster_offset{}, m_max_meshes{};
-	uint64_t m_cluster_id{}, m_cluster_version{};
+	uint64_t m_cluster_id{}, m_cluster_local_version{1};
 
 	// Buffers
 	myvk::Ptr<myvk::Buffer> m_vertex_buffer, m_index_buffer;
@@ -65,6 +62,15 @@ private:
 			++m_allocation_count;
 		}
 		return true;
+	}
+
+	inline void free_alloc(VmaVirtualAllocation vertex_alloc, VmaVirtualAllocation index_alloc) {
+		std::scoped_lock allocation_lock{m_allocation_mutex};
+		if (vertex_alloc)
+			vmaVirtualFree(m_vertex_virtual_block, vertex_alloc);
+		if (index_alloc)
+			vmaVirtualFree(m_index_virtual_block, index_alloc);
+		--m_allocation_count;
 	}
 
 	inline void local_insert_mesh(uint64_t mesh_id, const MeshInfo<Info> &mesh_info,
@@ -117,7 +123,7 @@ private:
 		}
 	}
 
-	inline void local_erase_mesh(uint64_t mesh_id) { m_local_mesh_info_map.erase(mesh_id); }
+	inline bool try_local_erase_mesh(uint64_t mesh_id) { return m_local_mesh_info_map.erase(mesh_id); }
 
 	template <typename, typename, typename> friend class MeshHandle;
 	template <typename, typename, typename> friend class MeshInfoBuffer;
@@ -154,9 +160,8 @@ public:
 	}
 
 	inline uint64_t GetClusterID() const { return m_cluster_id; }
-	inline uint64_t GetClusterVersion() const { return m_cluster_version; }
+	inline uint64_t GetClusterLocalVersion() const { return m_cluster_local_version; }
 	inline uint32_t GetClusterOffset() const { return m_cluster_offset; }
-
 	inline uint32_t GetLocalMeshCount() const { return m_local_mesh_info_map.size(); }
 	inline uint32_t GetMaxMeshes() const { return m_max_meshes; }
 

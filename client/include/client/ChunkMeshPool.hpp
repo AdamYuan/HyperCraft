@@ -11,7 +11,7 @@
 class ChunkMeshPool : public ChunkMeshPoolBase {
 private:
 	inline static constexpr uint32_t kClusterFaceCount = 4 * 1024 * 1024;
-	inline static constexpr uint32_t kMaxMeshesPerCluster = 16384u, kMaxClusters = 8u;
+	inline static constexpr uint32_t kMaxMeshesPerCluster = 4096u, kMaxClusters = 8u;
 
 public:
 	explicit ChunkMeshPool(const myvk::Ptr<myvk::Device> &device)
