@@ -3,7 +3,6 @@
 
 #include <client/Camera.hpp>
 #include <client/ChunkMesh.hpp>
-#include <client/ChunkMeshPool.hpp>
 
 #include <myvk_rg/RenderGraph.hpp>
 

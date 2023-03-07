@@ -5,7 +5,6 @@
 
 #include <client/ChunkGenerator.hpp>
 #include <client/ChunkMesher.hpp>
-#include <client/MeshEraser.hpp>
 
 void World::launch_worker_threads() {
 	m_worker_threads.resize(std::max(std::thread::hardware_concurrency() * 3 / 4, 1u));

@@ -1,6 +1,5 @@
 #include <client/ChunkMesher.hpp>
 
-#include <client/MeshEraser.hpp>
 #include <client/WorldRenderer.hpp>
 
 #include <bitset>

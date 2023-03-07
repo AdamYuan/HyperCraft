@@ -7,7 +7,6 @@
 
 #include "client/mesh/MeshHandle.hpp"
 #include "client/mesh/MeshPool.hpp"
-#include <client/MeshEraser.hpp>
 
 struct ChunkMeshVertex { // Compressed mesh vertex for chunk
 	static constexpr uint32_t kUnitBitOffset = 4u;
@@ -31,7 +30,21 @@ static_assert(sizeof(ChunkMeshInfo) == 40);
 using ChunkMeshHandle = MeshHandle<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshCluster = MeshCluster<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshPoolBase = MeshPool<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
-using ChunkMeshEraser = MeshEraser<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshInfoBuffer = MeshInfoBuffer<ChunkMeshVertex, uint16_t, ChunkMeshInfo>;
+
+class ChunkMeshPool : public ChunkMeshPoolBase {
+private:
+	inline static constexpr uint32_t kClusterFaceCount = 4 * 1024 * 1024;
+	inline static constexpr uint32_t kMaxMeshesPerCluster = 4096u, kMaxClusters = 8u;
+
+public:
+	explicit ChunkMeshPool(const myvk::Ptr<myvk::Device> &device)
+	    : ChunkMeshPoolBase(device, kClusterFaceCount * 4 * sizeof(ChunkMeshVertex),
+	                        kClusterFaceCount * 6 * sizeof(uint16_t), kMaxClusters, kMaxMeshesPerCluster) {}
+
+	inline static std::shared_ptr<ChunkMeshPool> Create(const myvk::Ptr<myvk::Device> &device) {
+		return std::make_shared<ChunkMeshPool>(device);
+	}
+};
 
 #endif

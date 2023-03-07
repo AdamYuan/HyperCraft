@@ -3,7 +3,6 @@
 
 #include <client/Camera.hpp>
 #include <client/ChunkMesh.hpp>
-#include <client/ChunkMeshPool.hpp>
 #include <client/Config.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/World.hpp>
