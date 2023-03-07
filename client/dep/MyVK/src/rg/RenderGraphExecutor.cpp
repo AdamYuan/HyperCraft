@@ -112,6 +112,10 @@ struct MemoryState {
 	VkAccessFlags2 access_mask;
 	VkImageLayout layout;
 	bool attachment_init;
+
+	inline bool is_valid_barrier(const MemoryState &r) const {
+		return (stage_mask | access_mask) && (r.stage_mask | r.access_mask);
+	}
 };
 class RenderGraphExecutor::DependencyBuilder {
 private:
@@ -180,9 +184,7 @@ public:
 
 			m_resource->Visit([this, &barrier_info, &from_func, &to_func](const auto *resource) {
 				if constexpr (ResourceVisitorTrait<decltype(resource)>::kType == ResourceType::kBuffer) {
-					barrier_info.buffer_barriers.emplace_back();
-					BufferMemoryBarrier &barrier = barrier_info.buffer_barriers.back();
-
+					BufferMemoryBarrier barrier = {};
 					barrier.buffer = resource;
 
 					for (const auto &ref : m_from_references) {
@@ -195,10 +197,10 @@ public:
 						barrier.dst_stage_mask |= state.stage_mask;
 						barrier.dst_access_mask |= state.access_mask;
 					}
+					if (barrier.is_valid_buffer_barrier())
+						barrier_info.buffer_barriers.push_back(barrier);
 				} else {
-					barrier_info.image_barriers.emplace_back();
-					ImageMemoryBarrier &barrier = barrier_info.image_barriers.back();
-
+					ImageMemoryBarrier barrier = {};
 					barrier.image = resource;
 
 					for (const auto &ref : m_from_references) {
@@ -215,6 +217,8 @@ public:
 						assert(barrier.new_layout == VK_IMAGE_LAYOUT_UNDEFINED || barrier.new_layout == state.layout);
 						barrier.new_layout = state.layout;
 					}
+					if (barrier.is_valid_image_barrier())
+						barrier_info.image_barriers.push_back(barrier);
 				}
 			});
 		} else {
@@ -233,16 +237,17 @@ public:
 					m_sub_deps[from_pass_id].attachment_dependencies[attachment_id].set_final_layout(trans_layout);
 				}
 				{
-					VkAccessFlags2 attachment_access = state_to.attachment_init
-					                                       ? VkAttachmentInitAccessFromVkFormat(image->GetFormat())
-					                                       : VkAttachmentLoadAccessFromVkFormat(image->GetFormat());
+					state_to.access_mask |= state_to.attachment_init
+					                            ? VkAttachmentInitAccessFromVkFormat(image->GetFormat())
+					                            : VkAttachmentLoadAccessFromVkFormat(image->GetFormat());
+					state_to.stage_mask |= VkAttachmentInitialStagesFromVkFormat(image->GetFormat());
 
 					uint32_t to_pass_id = RenderGraphScheduler::GetPassID(ref_to.pass);
-					m_sub_deps[to_pass_id].add_subpass_dependency(
-					    0,                                                            //
-					    ref_from.pass, state_from.stage_mask, state_from.access_mask, //
-					    ref_to.pass, state_to.stage_mask | VkAttachmentInitialStagesFromVkFormat(image->GetFormat()),
-					    state_to.access_mask | attachment_access);
+					if (state_from.is_valid_barrier(state_to))
+						m_sub_deps[to_pass_id].add_subpass_dependency(
+						    0,                                                            //
+						    ref_from.pass, state_from.stage_mask, state_from.access_mask, //
+						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
 					uint32_t attachment_id =
 					    m_parent.m_p_scheduled->GetPassInfo(to_pass_id).p_render_pass_info->attachment_id_map.at(image);
 					m_sub_deps[to_pass_id].attachment_dependencies[attachment_id].set_initial_layout(trans_layout);
@@ -257,10 +262,11 @@ public:
 				for (const auto &ref_to : m_to_references) {
 					MemoryState state_to = to_func(ref_to);
 					m_sub_deps[from_pass_id].attachment_dependencies[attachment_id].set_final_layout(state_to.layout);
-					m_sub_deps[from_pass_id].add_subpass_dependency(
-					    0,                                                            //
-					    ref_from.pass, state_from.stage_mask, state_from.access_mask, //
-					    m_to_direct_pass ? ref_to.pass : nullptr, state_to.stage_mask, state_to.access_mask);
+					if (state_from.is_valid_barrier(state_to))
+						m_sub_deps[from_pass_id].add_subpass_dependency(
+						    0,                                                            //
+						    ref_from.pass, state_from.stage_mask, state_from.access_mask, //
+						    m_to_direct_pass ? ref_to.pass : nullptr, state_to.stage_mask, state_to.access_mask);
 				}
 			} else {
 				assert(is_to_attachment);
@@ -269,20 +275,23 @@ public:
 
 				uint32_t to_pass_id = RenderGraphScheduler::GetPassID(ref_to.pass);
 				uint32_t attachment_id = m_sub_deps[to_pass_id].get_attachment_id(image);
-				VkAccessFlags2 attachment_access = state_to.attachment_init
-				                                       ? VkAttachmentInitAccessFromVkFormat(image->GetFormat())
-				                                       : VkAttachmentLoadAccessFromVkFormat(image->GetFormat());
+
+				state_to.access_mask |= state_to.attachment_init
+				                            ? VkAttachmentInitAccessFromVkFormat(image->GetFormat())
+				                            : VkAttachmentLoadAccessFromVkFormat(image->GetFormat());
+				state_to.stage_mask |= VkAttachmentInitialStagesFromVkFormat(image->GetFormat());
 
 				for (const auto &ref_from : m_from_references) {
 					MemoryState state_from = from_func(ref_from);
 					if (!state_to.attachment_init) // If is init_mode, don't load
 						m_sub_deps[to_pass_id].attachment_dependencies[attachment_id].set_initial_layout(
 						    state_from.layout);
-					m_sub_deps[to_pass_id].add_subpass_dependency(
-					    0,                                                                                           //
-					    m_from_direct_pass ? ref_from.pass : nullptr, state_from.stage_mask, state_from.access_mask, //
-					    ref_to.pass, state_to.stage_mask | VkAttachmentInitialStagesFromVkFormat(image->GetFormat()),
-					    state_to.access_mask | attachment_access);
+					if (state_from.is_valid_barrier(state_to))
+						m_sub_deps[to_pass_id].add_subpass_dependency(0, //
+						                                              m_from_direct_pass ? ref_from.pass : nullptr,
+						                                              state_from.stage_mask, state_from.access_mask, //
+						                                              ref_to.pass, state_to.stage_mask,
+						                                              state_to.access_mask);
 				}
 			}
 		}

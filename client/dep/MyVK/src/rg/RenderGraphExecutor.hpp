@@ -26,11 +26,18 @@ private:
 	};
 	struct BufferMemoryBarrier : public MemoryBarrier {
 		const BufferBase *buffer;
+		inline bool is_valid_buffer_barrier() const {
+			return (src_stage_mask | src_access_mask) && (dst_stage_mask | dst_access_mask);
+		}
 	};
 	struct ImageMemoryBarrier : public MemoryBarrier {
 		const ImageBase *image;
 		VkImageLayout old_layout;
 		VkImageLayout new_layout;
+		inline bool is_valid_image_barrier() const {
+			return ((src_stage_mask | src_access_mask) && (dst_stage_mask | dst_access_mask)) ||
+			       old_layout != new_layout;
+		}
 	};
 
 	struct AttachmentInfo {
