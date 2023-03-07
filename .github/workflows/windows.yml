@@ -20,8 +20,8 @@ jobs:
             os: windows-latest,
             artifact: "windows_msvc_64.7z",
             build_type: "Release",
-            cc: "cl",
-            cxx: "cl",
+            cc: "clang-cl",
+            cxx: "clang-cl",
             arch: "x64",
             archiver: "7z a",
             generators: "Visual Studio 17 2022"
@@ -31,8 +31,8 @@ jobs:
             os: windows-latest,
             artifact: "windows_msvc_32.7z",
             build_type: "Release",
-            cc: "cl",
-            cxx: "cl",
+            cc: "clang-cl",
+            cxx: "clang-cl",
             arch: "Win32",
             archiver: "7z a",
             generators: "Visual Studio 17 2022"
