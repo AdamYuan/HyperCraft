@@ -45,7 +45,7 @@ private:
 	void init_imgui();
 
 	void resize(const VkExtent2D &extent);
-	void draw_frame();
+	void draw_frame(double delta);
 
 	static void glfw_key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 	static void glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height);

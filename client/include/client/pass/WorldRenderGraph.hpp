@@ -15,16 +15,22 @@ private:
 	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool_ptr;
 	std::vector<std::shared_ptr<ChunkMeshCluster>> m_prepared_clusters;
 	std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> m_post_updates;
+	VkDeviceSize m_max_transfer_bytes{};
 
 public:
+	inline void SetTransferCapacity(VkDeviceSize max_transfer_bytes_per_sec, double delta) {
+		m_max_transfer_bytes = VkDeviceSize((double)max_transfer_bytes_per_sec * delta);
+	}
 	inline void UpdateCamera(const std::shared_ptr<Camera> &camera_ptr) {
 		camera_ptr->Update((Camera::UniformData *)GetResource<myvk_rg::StaticBuffer<myvk::Buffer>>({"camera"})
 		                       ->GetBuffer()
 		                       ->GetMappedData());
 	}
-	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) {
-		m_chunk_mesh_pool_ptr->PostUpdate(std::move(m_post_updates)); // TODO: Move this to task system
-		m_chunk_mesh_pool_ptr->CmdLocalUpdate(command_buffer, &m_prepared_clusters, &m_post_updates, 4 * 1024, 64);
+	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
+	                               std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> *p_post_updates) {
+		*p_post_updates = std::move(m_post_updates);
+		m_chunk_mesh_pool_ptr->CmdLocalUpdate(command_buffer, &m_prepared_clusters, &m_post_updates,
+		                                      m_max_transfer_bytes);
 		GetResource<myvk_rg::StaticBuffer<ChunkMeshInfoBuffer>>({"chunk_mesh_info"})
 		    ->GetBuffer()
 		    ->Update(m_prepared_clusters);

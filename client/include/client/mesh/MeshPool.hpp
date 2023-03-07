@@ -119,7 +119,7 @@ public:
 	inline void CmdLocalUpdate(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
 	                           std::vector<std::shared_ptr<MeshCluster<Vertex, Index, Info>>> *p_prepared_clusters,
 	                           std::vector<std::unique_ptr<LocalUpdate>> *p_post_updates,
-	                           VkDeviceSize max_transfer_bytes, uint32_t max_updates) {
+	                           VkDeviceSize max_transfer_bytes) {
 		auto cluster_map = make_cluster_map();
 
 		p_prepared_clusters->clear();
@@ -129,12 +129,10 @@ public:
 		std::vector<VkBufferCopy2> copy_regions;
 		std::vector<VkBufferMemoryBarrier2> post_barriers;
 
-		uint32_t updates{};
-		VkDeviceSize transfer_bytes{};
+		VkDeviceSize transferred_bytes{};
 		std::unique_ptr<LocalUpdate> local_update;
 		bool transfer = false;
-		while (transfer_bytes < max_transfer_bytes && updates++ < max_updates &&
-		       m_local_update_queue.try_dequeue(local_update)) {
+		while (transferred_bytes < max_transfer_bytes && m_local_update_queue.try_dequeue(local_update)) {
 			auto cluster_it = cluster_map.find(local_update->cluster_id);
 			if (cluster_it == cluster_map.end())
 				continue;
@@ -151,7 +149,7 @@ public:
 				if (erased_it == m_erased_meshes.end()) {
 					cluster->local_insert_mesh(p_insert->mesh_id, p_insert->mesh_info, p_insert->vertex_staging,
 					                           p_insert->index_staging, &copies, &copy_regions, &post_barriers);
-					transfer_bytes += p_insert->vertex_staging->GetSize() + p_insert->index_staging->GetSize();
+					transferred_bytes += p_insert->vertex_staging->GetSize() + p_insert->index_staging->GetSize();
 				} else
 					m_erased_meshes.erase(erased_it);
 			} else { // Erase

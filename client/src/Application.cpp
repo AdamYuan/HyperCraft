@@ -61,22 +61,42 @@ void Application::resize(const VkExtent2D &extent) {
 	m_camera->m_aspect_ratio = (float)extent.width / (float)extent.height;
 }
 
-void Application::draw_frame() {
+class PostUpdateWorker final : public WorkerBase {
+private:
+	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool;
+	std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> m_post_updates;
+
+public:
+	inline PostUpdateWorker(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool,
+	                        std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> &&post_updates)
+	    : m_chunk_mesh_pool{chunk_mesh_pool}, m_post_updates{std::move(post_updates)} {}
+	inline void Run() final { m_chunk_mesh_pool->PostUpdate(std::move(m_post_updates)); }
+	inline ~PostUpdateWorker() final = default;
+};
+
+void Application::draw_frame(double delta) {
 	if (!m_frame_manager->NewFrame())
 		return;
 
 	uint32_t current_frame = m_frame_manager->GetCurrentFrame();
 
+	std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> post_updates;
+
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
 	{
 		auto &world_rg = m_world_render_graphs[current_frame];
+		world_rg->SetTransferCapacity(8 * 1024 * 1024, delta);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 		world_rg->UpdateCamera(m_camera);
-		world_rg->CmdUpdateChunkMesh(command_buffer);
+		world_rg->CmdUpdateChunkMesh(command_buffer, &post_updates);
 		world_rg->CmdExecute(command_buffer);
 	}
 	command_buffer->End();
+
+	if (!post_updates.empty())
+		m_world->PushWorker(
+		    std::make_unique<PostUpdateWorker>(m_world_renderer->GetChunkRenderer(), std::move(post_updates)));
 
 	m_frame_manager->Render();
 }
@@ -119,7 +139,7 @@ void Application::Run() {
 		glfwPollEvents();
 
 		std::chrono::time_point<std::chrono::steady_clock> cur_time = std::chrono::steady_clock::now();
-		std::chrono::duration<float, std::ratio<1, 1>> delta = cur_time - prev_time;
+		std::chrono::duration<double, std::ratio<1, 1>> delta = cur_time - prev_time;
 		prev_time = cur_time;
 		m_camera->Control(m_window, delta.count());
 
@@ -132,11 +152,12 @@ void Application::Run() {
 		ImGui::Text("frame time: %.1f ms", delta.count() * 1000.0f);
 		ImGui::Text("cam: %f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
 		ImGui::Text("workers (approx): %zu", m_world->GetApproxWorkerCount());
+		ImGui::Text("delta: %f", delta.count());
 		ImGui::End();
 
 		ImGui::Render();
 
-		draw_frame();
+		draw_frame(delta.count());
 	}
 	m_frame_manager->WaitIdle();
 	m_world->Join();

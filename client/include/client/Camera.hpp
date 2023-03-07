@@ -34,7 +34,7 @@ private:
 public:
 	inline static std::shared_ptr<Camera> Create() { return std::make_shared<Camera>(); }
 
-	void Control(GLFWwindow *window, float delta);
+	void Control(GLFWwindow *window, double delta);
 	void Update(UniformData *p_data);
 };
 
