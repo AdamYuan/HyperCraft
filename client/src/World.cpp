@@ -8,7 +8,7 @@
 #include <client/MeshEraser.hpp>
 
 void World::launch_worker_threads() {
-	m_worker_threads.resize(std::thread::hardware_concurrency());
+	m_worker_threads.resize(std::max(std::thread::hardware_concurrency() >> 1u, 1u));
 	for (auto &i : m_worker_threads)
 		i = std::thread(&World::worker_thread_func, this);
 }
@@ -51,7 +51,6 @@ void World::Update(const glm::vec3 &position) {
 		for (auto it = m_chunks.begin(); it != m_chunks.end();) {
 
 			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR + 2) {
-				auto meshes = it->second->MoveMeshes();
 				it = m_chunks.erase(it);
 			} else {
 				if (!it->second->IsMeshed())
