@@ -248,8 +248,7 @@ public:
 						    0,                                                            //
 						    ref_from.pass, state_from.stage_mask, state_from.access_mask, //
 						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
-					uint32_t attachment_id =
-					    m_parent.m_p_scheduled->GetPassInfo(to_pass_id).p_render_pass_info->attachment_id_map.at(image);
+					uint32_t attachment_id = m_sub_deps[to_pass_id].get_attachment_id(image);
 					m_sub_deps[to_pass_id].attachment_dependencies[attachment_id].set_initial_layout(trans_layout);
 				}
 			} else if (is_from_attachment) {
@@ -340,14 +339,14 @@ void RenderGraphExecutor::_process_validation_dependency(const RenderGraphSchedu
 			}
 
 			if (!mem_alias_refs.empty())
-				builder.SetFromReferences(mem_alias_refs, true);
+				builder.SetFromReferences(mem_alias_refs, false);
 			else {
 				// If used as last frame and no double buffering,
 				if (m_p_resolved->GetIntResourceInfo(resource).p_last_frame_info &&
 				    m_p_allocated->GetIntResourceAlloc(resource).double_buffering == false)
 					builder.SetFromReferences(RenderGraphScheduler::GetLastReferences<Trait::kType>(
 					                              int_res_info.p_last_frame_info->last_references),
-					                          true);
+					                          false);
 				else
 					builder.SetFromReferences(
 					    RenderGraphScheduler::GetLastReferences<Trait::kType>(int_res_info.last_references), false);

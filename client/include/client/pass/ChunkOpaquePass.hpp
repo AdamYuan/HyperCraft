@@ -9,20 +9,15 @@
 
 class ChunkOpaquePass final : public myvk_rg::GraphicsPassBase {
 private:
-	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool_ptr;
-
 	const std::vector<std::shared_ptr<ChunkMeshCluster>> *m_p_prepared_clusters;
 
 	myvk::Ptr<myvk::GraphicsPipeline> m_pipeline;
 
 public:
-	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
-	                           myvk_rg::ImageInput block_texture_image, myvk_rg::ImageInput light_map_image,
-	                           myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer, //
+	MYVK_RG_INLINE_INITIALIZER(myvk_rg::ImageInput block_texture_image, myvk_rg::ImageInput light_map_image,
+	                           myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer,
 	                           myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image,
 	                           myvk_rg::BufferInput draw_cmd_buffer, myvk_rg::BufferInput draw_count_buffer) {
-		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
-
 		AddDescriptorInput<0, myvk_rg::Usage::kStorageBufferR, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"mesh_info"},
 		                                                                                              mesh_info_buffer);
 		AddDescriptorInput<1, myvk_rg::Usage::kUniformBuffer, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"camera"},
@@ -96,7 +91,7 @@ public:
 		for (const auto &cluster : *m_p_prepared_clusters) {
 			command_buffer->CmdBindVertexBuffer(cluster->GetVertexBuffer(), 0);
 			command_buffer->CmdBindIndexBuffer(cluster->GetIndexBuffer(), 0, cluster->kIndexType);
-			uint32_t pc_data[] = {cluster->GetClusterOffset() * m_chunk_mesh_pool_ptr->GetMaxMeshesPerCluster()};
+			uint32_t pc_data[] = {cluster->GetClusterOffset() * cluster->GetMaxMeshes()};
 			command_buffer->CmdPushConstants(m_pipeline->GetPipelineLayoutPtr(), VK_SHADER_STAGE_VERTEX_BIT, 0,
 			                                 sizeof(uint32_t), pc_data);
 			command_buffer->CmdDrawIndexedIndirectCount(

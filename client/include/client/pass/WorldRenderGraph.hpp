@@ -3,6 +3,7 @@
 
 #include "ChunkCullPass.hpp"
 #include "ChunkOpaquePass.hpp"
+#include "ChunkTransparentPass.hpp"
 
 #include <myvk_rg/pass/ImGuiPass.hpp>
 #include <myvk_rg/pass/ImageBlitPass.hpp>
@@ -43,6 +44,7 @@ public:
 		    ->Update(m_prepared_clusters);
 		GetPass<ChunkCullPass>({"chunk_cull_pass"})->Update(m_prepared_clusters);
 		GetPass<ChunkOpaquePass>({"chunk_opaque_pass"})->Update(m_prepared_clusters);
+		GetPass<ChunkTransparentPass>({"chunk_transparent_pass"})->Update(m_prepared_clusters);
 	}
 
 	MYVK_RG_INLINE_INITIALIZER(const myvk::Ptr<myvk::FrameManager> &frame_manager,
@@ -78,18 +80,29 @@ public:
 
 		auto chunk_cull_pass = CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_mesh_pool_ptr,
 		                                                 chunk_mesh_info_buffer, camera_buffer, nullptr);
-		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>({"chunk_opaque_pass"}, chunk_mesh_pool_ptr, //
-		                                                     block_texture_image, light_map_image,       //
-		                                                     chunk_mesh_info_buffer,                     //
-		                                                     camera_buffer,                              //
-		                                                     color_image, depth_image,                   //
+		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>({"chunk_opaque_pass"},                //
+		                                                     block_texture_image, light_map_image, //
+		                                                     chunk_mesh_info_buffer,               //
+		                                                     camera_buffer,                        //
+		                                                     color_image, depth_image,             //
 		                                                     chunk_cull_pass->GetOpaqueDrawCmdOutput(),
 		                                                     chunk_cull_pass->GetOpaqueDrawCountOutput());
+
+		auto chunk_transparent_pass = CreatePass<ChunkTransparentPass>(
+		    {"chunk_transparent_pass"},           //
+		    block_texture_image, light_map_image, //
+		    chunk_mesh_info_buffer,               //
+		    camera_buffer,                        //
+		    chunk_opaque_pass->GetDepthOutput(),  //
+		    chunk_cull_pass->GetTransparentDrawCmdOutput(), chunk_cull_pass->GetTransparentDrawCountOutput());
 
 		auto swapchain_image = CreateResource<myvk_rg::SwapchainImage>({"swapchain_image"}, frame_manager);
 		swapchain_image->SetLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
 
-		auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, chunk_opaque_pass->GetOpaqueOutput(),
+		// auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, chunk_opaque_pass->GetOpaqueOutput(),
+		//                                                     swapchain_image, VK_FILTER_NEAREST);
+
+		auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, chunk_transparent_pass->GetAccumOutput(),
 		                                                    swapchain_image, VK_FILTER_NEAREST);
 
 		auto imgui_pass = CreatePass<myvk_rg::ImGuiPass>({"imgui_pass"}, copy_pass->GetDstOutput());
