@@ -20,8 +20,6 @@ jobs:
             os: windows-latest,
             artifact: "windows_msvc_64.7z",
             build_type: "Release",
-            cc: "clang-cl",
-            cxx: "clang-cl",
             arch: "x64",
             archiver: "7z a",
             generators: "Visual Studio 17 2022"
@@ -31,8 +29,6 @@ jobs:
             os: windows-latest,
             artifact: "windows_msvc_32.7z",
             build_type: "Release",
-            cc: "clang-cl",
-            cxx: "clang-cl",
             arch: "Win32",
             archiver: "7z a",
             generators: "Visual Studio 17 2022"
@@ -49,8 +45,7 @@ jobs:
           cmake \
             -S . \
             -B . \
-            -DCMAKE_C_COMPILER=${{ matrix.config.cc }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
+            -T "ClangCl" \
             -A ${{ matrix.config.arch }} \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -G "${{ matrix.config.generators }}" \
