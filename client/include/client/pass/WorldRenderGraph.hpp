@@ -27,8 +27,14 @@ public:
 		                       ->GetMappedData());
 	}
 	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
-	                               std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> *p_post_updates) {
-		*p_post_updates = std::move(m_post_updates);
+	                               std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> *p_post_updates,
+	                               std::size_t post_update_threshold = 256u) {
+		if (m_post_updates.size() >= post_update_threshold) {
+			*p_post_updates = std::move(m_post_updates);
+			m_post_updates.clear();
+		} else
+			p_post_updates->clear();
+
 		m_chunk_mesh_pool_ptr->CmdLocalUpdate(command_buffer, &m_prepared_clusters, &m_post_updates,
 		                                      m_max_transfer_bytes);
 		GetResource<myvk_rg::StaticBuffer<ChunkMeshInfoBuffer>>({"chunk_mesh_info"})

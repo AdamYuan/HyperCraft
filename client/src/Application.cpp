@@ -70,7 +70,10 @@ public:
 	inline PostUpdateWorker(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool,
 	                        std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> &&post_updates)
 	    : m_chunk_mesh_pool{chunk_mesh_pool}, m_post_updates{std::move(post_updates)} {}
-	inline void Run() final { m_chunk_mesh_pool->PostUpdate(std::move(m_post_updates)); }
+	inline void Run() final {
+		spdlog::info("Post Update {}", m_post_updates.size());
+		m_chunk_mesh_pool->PostUpdate(std::move(m_post_updates));
+	}
 	inline ~PostUpdateWorker() final = default;
 };
 
@@ -89,7 +92,7 @@ void Application::draw_frame(double delta) {
 		world_rg->SetTransferCapacity(8 * 1024 * 1024, delta);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 		world_rg->UpdateCamera(m_camera);
-		world_rg->CmdUpdateChunkMesh(command_buffer, &post_updates);
+		world_rg->CmdUpdateChunkMesh(command_buffer, &post_updates, 64);
 		world_rg->CmdExecute(command_buffer);
 	}
 	command_buffer->End();

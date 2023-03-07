@@ -99,6 +99,9 @@ public:
 	inline VkDeviceSize GetIndexBlockSize() const { return m_index_block_size; }
 
 	inline void PostUpdate(std::vector<std::unique_ptr<LocalUpdate>> &&post_updates) {
+		if (post_updates.empty())
+			return;
+
 		auto cluster_map = make_cluster_map();
 
 		for (auto &post_update : post_updates) {
@@ -123,7 +126,7 @@ public:
 		auto cluster_map = make_cluster_map();
 
 		p_prepared_clusters->clear();
-		p_post_updates->clear();
+		// p_post_updates->clear();
 
 		std::vector<VkCopyBufferInfo2> copies;
 		std::vector<VkBufferCopy2> copy_regions;
