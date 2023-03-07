@@ -60,10 +60,13 @@ public:
 					                       &m_index_alloc, &index_offset))
 						m_cluster_ptr = cluster;
 					// else, then the vertex and index buffers are too large for a cluster, just ignore it
-					return;
+					break;
 				}
 			}
 		}
+
+		if (!m_cluster_ptr)
+			return;
 
 		// Enqueue local mesh insert
 		std::shared_ptr<myvk::Buffer> vertex_staging =

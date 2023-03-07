@@ -504,6 +504,7 @@ void ChunkMesher::Run() {
 	uint64_t version = m_chunk_ptr->FetchMeshVersion();
 	if (!version)
 		return;
+
 	// if the neighbour chunks are not totally generated, return and move it back
 	for (const auto &i : m_neighbour_chunk_ptr)
 		if (!i->IsGenerated()) {
@@ -554,8 +555,7 @@ void ChunkMesher::Run() {
 		    {(fAABB)info.aabb / glm::vec3(1u << ChunkMeshVertex::kUnitBitOffset) + (glm::vec3)base_position,
 		     base_position, (uint32_t)info.transparent});
 	}
+
 	// Push mesh to chunk
 	m_chunk_ptr->SwapMesh(version, mesh_handles);
-	// if (!mesh_handles.empty())
-	// 	MeshEraser{std::move(mesh_handles)}.Run();
 }
