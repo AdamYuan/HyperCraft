@@ -8,7 +8,7 @@
 #include <client/MeshEraser.hpp>
 
 void World::launch_worker_threads() {
-	m_worker_threads.resize(std::max(std::thread::hardware_concurrency() >> 1u, 1u));
+	m_worker_threads.resize(std::max(std::thread::hardware_concurrency() * 3 / 4, 1u));
 	for (auto &i : m_worker_threads)
 		i = std::thread(&World::worker_thread_func, this);
 }

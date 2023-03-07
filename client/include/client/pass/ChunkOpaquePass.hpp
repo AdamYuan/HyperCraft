@@ -10,7 +10,6 @@
 class ChunkOpaquePass final : public myvk_rg::GraphicsPassBase {
 private:
 	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool_ptr;
-	std::shared_ptr<GlobalTexture> m_global_texture_ptr;
 
 	const std::vector<std::shared_ptr<ChunkMeshCluster>> *m_p_prepared_clusters;
 
@@ -18,17 +17,25 @@ private:
 
 public:
 	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
-	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr,
+	                           myvk_rg::ImageInput block_texture_image, myvk_rg::ImageInput light_map_image,
 	                           myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer, //
 	                           myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image,
 	                           myvk_rg::BufferInput draw_cmd_buffer, myvk_rg::BufferInput draw_count_buffer) {
 		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
-		m_global_texture_ptr = global_texture_ptr;
 
 		AddDescriptorInput<0, myvk_rg::Usage::kStorageBufferR, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"mesh_info"},
 		                                                                                              mesh_info_buffer);
 		AddDescriptorInput<1, myvk_rg::Usage::kUniformBuffer, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"camera"},
 		                                                                                             camera_buffer);
+		AddDescriptorInput<2, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT>(
+		    {"block_texture"}, block_texture_image,
+		    myvk::Sampler::Create(GetRenderGraphPtr()->GetDevicePtr(), VK_FILTER_NEAREST,
+		                          VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_MIPMAP_MODE_LINEAR));
+		AddDescriptorInput<3, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT>(
+		    {"light_map"}, light_map_image,
+		    myvk::Sampler::Create(GetRenderGraphPtr()->GetDevicePtr(), VK_FILTER_LINEAR,
+		                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE));
+
 		AddColorAttachmentInput<0, myvk_rg::Usage::kColorAttachmentW>({"opaque"}, color_image);
 		SetDepthAttachmentInput<myvk_rg::Usage::kDepthAttachmentRW>({"depth"}, depth_image);
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_cmd"}, draw_cmd_buffer);
@@ -39,12 +46,9 @@ public:
 	}
 
 	inline void CreatePipeline() final {
-		auto pipeline_layout = myvk::PipelineLayout::Create(GetRenderGraphPtr()->GetDevicePtr(),
-		                                                    {
-		                                                        GetVkDescriptorSetLayout(),
-		                                                        m_global_texture_ptr->GetDescriptorSetLayout(),
-		                                                    },
-		                                                    {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t)}});
+		auto pipeline_layout =
+		    myvk::PipelineLayout::Create(GetRenderGraphPtr()->GetDevicePtr(), {GetVkDescriptorSetLayout()},
+		                                 {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t)}});
 
 		const auto &device = GetRenderGraphPtr()->GetDevicePtr();
 
@@ -84,8 +88,7 @@ public:
 	inline auto GetDepthOutput() { return MakeImageOutput({"depth"}); }
 	inline void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const final {
 		command_buffer->CmdBindPipeline(m_pipeline);
-		command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet(), m_global_texture_ptr->GetDescriptorSet()},
-		                                      m_pipeline);
+		command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet()}, m_pipeline);
 
 		const auto &draw_cmd_buffer = GetInput({"draw_cmd"})->GetResource<myvk_rg::BufferBase>()->GetVkBuffer();
 		const auto &draw_count_buffer = GetInput({"draw_count"})->GetResource<myvk_rg::BufferBase>()->GetVkBuffer();

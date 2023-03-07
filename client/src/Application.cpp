@@ -70,10 +70,7 @@ public:
 	inline PostUpdateWorker(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool,
 	                        std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> &&post_updates)
 	    : m_chunk_mesh_pool{chunk_mesh_pool}, m_post_updates{std::move(post_updates)} {}
-	inline void Run() final {
-		spdlog::info("Post Update {}", m_post_updates.size());
-		m_chunk_mesh_pool->PostUpdate(std::move(m_post_updates));
-	}
+	inline void Run() final { m_chunk_mesh_pool->PostUpdate(std::move(m_post_updates)); }
 	inline ~PostUpdateWorker() final = default;
 };
 
@@ -99,7 +96,7 @@ void Application::draw_frame(double delta) {
 
 	if (!post_updates.empty())
 		m_world->PushWorker(
-		    std::make_unique<PostUpdateWorker>(m_world_renderer->GetChunkRenderer(), std::move(post_updates)));
+		    std::make_unique<PostUpdateWorker>(m_world_renderer->GetChunkMeshPool(), std::move(post_updates)));
 
 	m_frame_manager->Render();
 }
@@ -123,12 +120,11 @@ Application::Application() {
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create();
 	m_camera->m_speed = 64.0f;
-	m_world_renderer =
-	    WorldRenderer::Create(m_frame_manager, m_world, m_global_texture, m_camera, nullptr, m_transfer_queue);
+	m_world_renderer = WorldRenderer::Create(m_device, m_world);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 
-	auto chunk_renderer = m_world_renderer->GetChunkRenderer();
+	auto chunk_renderer = m_world_renderer->GetChunkMeshPool();
 	for (auto &world_rg : m_world_render_graphs) {
 		world_rg = WorldRenderGraph::Create(m_main_queue, m_frame_manager, chunk_renderer, m_global_texture);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());

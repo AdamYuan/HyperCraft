@@ -12,7 +12,6 @@ std::shared_ptr<GlobalTexture> GlobalTexture::Create(const std::shared_ptr<myvk:
 	std::shared_ptr<GlobalTexture> ret = std::make_shared<GlobalTexture>();
 	ret->create_block_texture(command_pool);
 	ret->create_lightmap_texture(command_pool);
-	ret->create_descriptors(command_pool->GetDevicePtr());
 	return ret;
 }
 
@@ -27,8 +26,6 @@ void GlobalTexture::create_lightmap_texture(const std::shared_ptr<myvk::CommandP
 	    myvk::Image::CreateTexture3D(command_pool->GetDevicePtr(), {16, 16, 2}, 1, VK_FORMAT_R8G8B8A8_UNORM,
 	                                 VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 	m_lightmap_view = myvk::ImageView::Create(m_lightmap_texture, VK_IMAGE_VIEW_TYPE_3D);
-	m_lightmap_sampler =
-	    myvk::Sampler::Create(command_pool->GetDevicePtr(), VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	VkBufferImageCopy region = {};
 	region.bufferOffset = 0;
@@ -77,9 +74,6 @@ void GlobalTexture::create_block_texture(const std::shared_ptr<myvk::CommandPool
 	                                                    VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 	                                                        VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 	m_block_view = myvk::ImageView::Create(m_block_texture, VK_IMAGE_VIEW_TYPE_2D_ARRAY);
-	m_block_sampler =
-	    myvk::Sampler::Create(command_pool->GetDevicePtr(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT,
-	                          VK_SAMPLER_MIPMAP_MODE_LINEAR, m_block_texture->GetMipLevels());
 
 	VkBufferImageCopy region = {};
 	region.bufferOffset = 0;
@@ -112,28 +106,4 @@ void GlobalTexture::create_block_texture(const std::shared_ptr<myvk::CommandPool
 	std::shared_ptr<myvk::Fence> fence = myvk::Fence::Create(command_buffer->GetDevicePtr());
 	command_buffer->Submit(fence);
 	fence->Wait();
-}
-
-void GlobalTexture::create_descriptors(const std::shared_ptr<myvk::Device> &device) {
-	m_descriptor_pool = myvk::DescriptorPool::Create(device, 1, {{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2}});
-	{
-		VkDescriptorSetLayoutBinding block_texture_binding = {};
-		block_texture_binding.binding = 0;
-		block_texture_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		block_texture_binding.descriptorCount = 1;
-		block_texture_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-		VkDescriptorSetLayoutBinding lightmap_texture_binding = {};
-		lightmap_texture_binding.binding = 1;
-		lightmap_texture_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		lightmap_texture_binding.descriptorCount = 1;
-		lightmap_texture_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-		m_descriptor_set_layout =
-		    myvk::DescriptorSetLayout::Create(device, {block_texture_binding, lightmap_texture_binding});
-	}
-
-	m_descriptor_set = myvk::DescriptorSet::Create(m_descriptor_pool, m_descriptor_set_layout);
-	m_descriptor_set->UpdateCombinedImageSampler(m_block_sampler, m_block_view, 0);
-	m_descriptor_set->UpdateCombinedImageSampler(m_lightmap_sampler, m_lightmap_view, 1);
 }

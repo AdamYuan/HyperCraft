@@ -7,9 +7,7 @@
 
 #include <client/Camera.hpp>
 #include <client/ClientBase.hpp>
-#include <client/DepthHierarchy.hpp>
 #include <client/GlobalTexture.hpp>
-#include <client/ScreenRenderer.hpp>
 #include <client/WorldRenderer.hpp>
 
 #include <client/pass/WorldRenderGraph.hpp>

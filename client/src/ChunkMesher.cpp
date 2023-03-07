@@ -551,7 +551,7 @@ void ChunkMesher::Run() {
 	for (uint32_t i = 0; i < meshes.size(); ++i) {
 		auto &info = meshes[i];
 		mesh_handles[i] = ChunkMeshHandle::Create(
-		    world_renderer_ptr->GetChunkRenderer(), info.vertices, info.indices,
+		    world_renderer_ptr->GetChunkMeshPool(), info.vertices, info.indices,
 		    {(fAABB)info.aabb / glm::vec3(1u << ChunkMeshVertex::kUnitBitOffset) + (glm::vec3)base_position,
 		     base_position, (uint32_t)info.transparent});
 	}

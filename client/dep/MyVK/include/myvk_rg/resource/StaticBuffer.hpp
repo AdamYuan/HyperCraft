@@ -1,5 +1,5 @@
-#ifndef MYVK_RG_STATIC_EXTERNAL_BUFFER_HPP
-#define MYVK_RG_STATIC_EXTERNAL_BUFFER_HPP
+#ifndef MYVK_RG_STATIC_BUFFER_HPP
+#define MYVK_RG_STATIC_BUFFER_HPP
 
 #include <myvk_rg/RenderGraph.hpp>
 

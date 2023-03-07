@@ -8,6 +8,7 @@
 #include <myvk_rg/pass/ImageBlitPass.hpp>
 
 #include <myvk_rg/resource/StaticBuffer.hpp>
+#include <myvk_rg/resource/StaticImage.hpp>
 #include <myvk_rg/resource/SwapchainImage.hpp>
 
 class WorldRenderGraph final : public myvk_rg::RenderGraph<WorldRenderGraph> {
@@ -49,6 +50,12 @@ public:
 	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr) {
 		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
 
+		// Global Images
+		auto block_texture_image = CreateResource<myvk_rg::StaticImage>(
+		    {"block_texture"}, global_texture_ptr->GetBlockTextureView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		auto light_map_image = CreateResource<myvk_rg::StaticImage>(
+		    {"light_map"}, global_texture_ptr->GetLightMapView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
 		// Create Camera Buffer
 		auto camera_buffer = CreateResource<myvk_rg::StaticBuffer<myvk::Buffer>>(
 		    {"camera"}, myvk::Buffer::Create(GetDevicePtr(), sizeof(Camera::UniformData),
@@ -71,10 +78,13 @@ public:
 
 		auto chunk_cull_pass = CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_mesh_pool_ptr,
 		                                                 chunk_mesh_info_buffer, camera_buffer, nullptr);
-		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>(
-		    {"chunk_opaque_pass"}, chunk_mesh_pool_ptr, global_texture_ptr, chunk_mesh_info_buffer, camera_buffer,
-		    color_image, depth_image, chunk_cull_pass->GetOpaqueDrawCmdOutput(),
-		    chunk_cull_pass->GetOpaqueDrawCountOutput());
+		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>({"chunk_opaque_pass"}, chunk_mesh_pool_ptr, //
+		                                                     block_texture_image, light_map_image,       //
+		                                                     chunk_mesh_info_buffer,                     //
+		                                                     camera_buffer,                              //
+		                                                     color_image, depth_image,                   //
+		                                                     chunk_cull_pass->GetOpaqueDrawCmdOutput(),
+		                                                     chunk_cull_pass->GetOpaqueDrawCountOutput());
 
 		auto swapchain_image = CreateResource<myvk_rg::SwapchainImage>({"swapchain_image"}, frame_manager);
 		swapchain_image->SetLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);

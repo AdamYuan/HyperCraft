@@ -1,7 +1,7 @@
 #version 450
 
-layout(set = 1, binding = 0) uniform sampler2DArray uBlockTexture;
-layout(set = 1, binding = 1) uniform sampler3D uLightmapTexture;
+layout(set = 0, binding = 2) uniform sampler2DArray uBlockTexture;
+layout(set = 0, binding = 3) uniform sampler3D uLightmapTexture;
 
 // layout(location = 0) in vec3 vPosition;
 layout(location = 1) in flat uint vFace;
