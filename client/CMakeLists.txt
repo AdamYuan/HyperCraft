@@ -45,9 +45,7 @@ add_executable(CubeCraft3_client
         include/client/mesh/MeshCluster.hpp
         include/client/mesh/MeshHandle.hpp
         include/client/mesh/MeshPool.hpp
-        include/client/ChunkMeshPool.hpp
         include/client/WorkerBase.hpp
-        include/client/MeshEraser.hpp
         src/ChunkLighter.cpp
         include/client/ChunkLighter.hpp
         )

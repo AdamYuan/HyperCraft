@@ -128,7 +128,7 @@ private:
 	const ResourceBase *m_resource{};
 
 	std::span<const ResourceReference> m_from_references, m_to_references;
-	bool m_from_direct_pass{true}, m_to_direct_pass{true};
+	bool m_from_direct_pass{true}, m_to_direct_pass{true}, m_attachment_may_alias{false};
 
 public:
 	inline static MemoryState DefaultFromFunc(const ResourceReference &ref) {
@@ -152,6 +152,7 @@ public:
 		m_to_references = to_references;
 		m_to_direct_pass = to_direct_pass;
 	}
+	inline void SetAttachmentMayAlias(bool att_may_alias = true) { m_attachment_may_alias = att_may_alias; }
 	template <typename FromFunc, typename ToFunc> inline void Build(FromFunc &&from_func, ToFunc &&to_func) {
 		assert(m_from_direct_pass || m_to_direct_pass);
 
@@ -245,10 +246,18 @@ public:
 				MemoryState state_from = from_func(ref_from), state_to = to_func(ref_to);
 				VkImageLayout trans_layout = state_to.attachment_init ? VK_IMAGE_LAYOUT_UNDEFINED : state_from.layout;
 
+				uint32_t from_pass_id = RenderGraphScheduler::GetPassID(ref_from.pass);
+				uint32_t to_pass_id = RenderGraphScheduler::GetPassID(ref_to.pass);
+
 				{
-					uint32_t from_pass_id = RenderGraphScheduler::GetPassID(ref_from.pass);
-					uint32_t attachment_id = m_sub_deps[from_pass_id].get_attachment_id(image);
-					m_sub_deps[from_pass_id].attachment_dependencies[attachment_id].set_final_layout(trans_layout);
+
+					auto &from_att_dep =
+					    m_sub_deps[from_pass_id]
+					        .attachment_dependencies[m_sub_deps[from_pass_id].get_attachment_id(image)];
+					if (from_pass_id == to_pass_id)
+						from_att_dep.may_alias = m_attachment_may_alias;
+					else
+						from_att_dep.set_final_layout(trans_layout);
 				}
 				{
 					state_to.access_mask |= state_to.attachment_init
@@ -256,26 +265,35 @@ public:
 					                            : VkAttachmentLoadAccessFromVkFormat(image->GetFormat());
 					state_to.stage_mask |= VkAttachmentInitialStagesFromVkFormat(image->GetFormat());
 
-					uint32_t to_pass_id = RenderGraphScheduler::GetPassID(ref_to.pass);
 					if (state_from.is_valid_barrier(state_to))
 						m_sub_deps[to_pass_id].add_subpass_dependency(
 						    0,                                                            //
 						    ref_from.pass, state_from.stage_mask, state_from.access_mask, //
 						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
-					uint32_t attachment_id =
-					    m_parent.m_p_scheduled->GetPassInfo(to_pass_id).p_render_pass_info->attachment_id_map.at(image);
-					m_sub_deps[to_pass_id].attachment_dependencies[attachment_id].set_initial_layout(trans_layout);
+
+					auto &to_att_dep =
+					    m_sub_deps[to_pass_id].attachment_dependencies[m_sub_deps[to_pass_id].get_attachment_id(image)];
+					if (from_pass_id == to_pass_id)
+						to_att_dep.may_alias = m_attachment_may_alias;
+					else if (!state_to.attachment_init)
+						to_att_dep.set_initial_layout(trans_layout);
 				}
 			} else if (is_from_attachment) {
 				const auto &ref_from = m_from_references[0];
 				MemoryState state_from = from_func(ref_from);
 
 				uint32_t from_pass_id = RenderGraphScheduler::GetPassID(ref_from.pass);
-				uint32_t attachment_id = m_sub_deps[from_pass_id].get_attachment_id(image);
+				auto &from_att_dep =
+				    m_sub_deps[from_pass_id].attachment_dependencies[m_sub_deps[from_pass_id].get_attachment_id(image)];
 
 				for (const auto &ref_to : m_to_references) {
 					MemoryState state_to = to_func(ref_to);
-					m_sub_deps[from_pass_id].attachment_dependencies[attachment_id].set_final_layout(state_to.layout);
+
+					if (ref_to.pass && from_pass_id == RenderGraphScheduler::GetPassID(ref_to.pass))
+						from_att_dep.may_alias = m_attachment_may_alias;
+					else
+						from_att_dep.set_final_layout(state_to.layout);
+
 					if (state_from.is_valid_barrier(state_to))
 						m_sub_deps[from_pass_id].add_subpass_dependency(
 						    0,                                                            //
@@ -283,12 +301,17 @@ public:
 						    m_to_direct_pass ? ref_to.pass : nullptr, state_to.stage_mask, state_to.access_mask);
 				}
 			} else {
+#ifdef MYVK_RG_DEBUG
+				std::cout << "BEGIN: TO_ATT " << image->GetKey().GetName() << std::endl;
+#endif
 				assert(is_to_attachment);
 				const auto &ref_to = m_to_references[0];
 				MemoryState state_to = to_func(ref_to);
 
 				uint32_t to_pass_id = RenderGraphScheduler::GetPassID(ref_to.pass);
-				uint32_t attachment_id = m_sub_deps[to_pass_id].get_attachment_id(image);
+
+				auto &to_att_dep =
+				    m_sub_deps[to_pass_id].attachment_dependencies[m_sub_deps[to_pass_id].get_attachment_id(image)];
 
 				state_to.access_mask |= state_to.attachment_init
 				                            ? VkAttachmentInitAccessFromVkFormat(image->GetFormat())
@@ -297,16 +320,27 @@ public:
 
 				for (const auto &ref_from : m_from_references) {
 					MemoryState state_from = from_func(ref_from);
-					if (!state_to.attachment_init) // If is init_mode, don't load
-						m_sub_deps[to_pass_id].attachment_dependencies[attachment_id].set_initial_layout(
-						    state_from.layout);
-					if (state_from.is_valid_barrier(state_to))
+
+					if (ref_from.pass && RenderGraphScheduler::GetPassID(ref_from.pass) == to_pass_id)
+						to_att_dep.may_alias = m_attachment_may_alias;
+					else if (!state_to.attachment_init) // If is init_mode, don't load
+						to_att_dep.set_initial_layout(state_from.layout);
+
+					if (state_from.is_valid_barrier(state_to)) {
 						m_sub_deps[to_pass_id].add_subpass_dependency(0, //
 						                                              m_from_direct_pass ? ref_from.pass : nullptr,
 						                                              state_from.stage_mask, state_from.access_mask, //
 						                                              ref_to.pass, state_to.stage_mask,
 						                                              state_to.access_mask);
+#ifdef MYVK_RG_DEBUG
+						std::cout << ref_from.p_input->GetResource()->GetKey().GetName() << " " << state_from.stage_mask
+						          << std::endl;
+#endif
+					}
 				}
+#ifdef MYVK_RG_DEBUG
+				std::cout << "END: TO_ATT " << image->GetKey().GetName() << std::endl;
+#endif
 			}
 		}
 	}
@@ -353,9 +387,17 @@ void RenderGraphExecutor::_process_validation_dependency(const RenderGraphSchedu
 				}
 			}
 
-			if (!mem_alias_refs.empty())
+			if (!mem_alias_refs.empty()) {
+#ifdef MYVK_RG_DEBUG
+				std::cout << "Alias Validation: " << resource->GetKey().GetName() << std::endl;
+				for (const auto &i : mem_alias_refs) {
+					std::cout << i.p_input->GetResource()->GetKey().GetName() << " ";
+				}
+				printf("\n");
+#endif
+				builder.SetAttachmentMayAlias(true);
 				builder.SetFromReferences(mem_alias_refs, true);
-			else {
+			} else {
 				// If used as last frame and no double buffering,
 				if (m_p_resolved->GetIntResourceInfo(resource).p_last_frame_info &&
 				    m_p_allocated->GetIntResourceAlloc(resource).double_buffering == false)

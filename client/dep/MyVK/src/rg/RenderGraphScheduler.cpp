@@ -109,34 +109,55 @@ RenderGraphScheduler::_compute_pass_merge_info(const RenderGraphResolver &resolv
 	// passes before
 	{
 		merge_infos[0].merge_length = resolved.GetPassNode((uint32_t)0).pass->m_p_attachment_data ? 1u : 0u;
-		for (uint32_t i = 1; i < kOrderedPassCount; ++i)
-			merge_infos[i].merge_length =
-			    resolved.GetPassNode(i).pass->m_p_attachment_data && merge_infos[i - 1].area == merge_infos[i].area
-			        ? merge_infos[i - 1].merge_length + 1
-			        : 0; // Both are RenderPass and have equal RenderArea
+		for (uint32_t i = 1; i < kOrderedPassCount; ++i) {
+			if (resolved.GetPassNode(i).pass->m_p_attachment_data) {
+				// Both are RenderPass and have equal RenderArea
+				merge_infos[i].merge_length =
+				    merge_infos[i - 1].area == merge_infos[i].area ? merge_infos[i - 1].merge_length + 1 : 1;
+			} else
+				merge_infos[i].merge_length = 0;
+		}
 	}
 	for (uint32_t i = 0; i < kOrderedPassCount; ++i) {
 		auto &length = merge_infos[i].merge_length;
 		if (length <= 1)
 			continue;
-		const auto test_edge = [&resolved, &length, &merge_infos, i](const RenderGraphResolver::PassEdge *p_edge) {
+		const auto test_edge = [&length, &merge_infos, i](const RenderGraphResolver::PassEdge *p_edge) {
+			if (!p_edge->from.pass)
+				return;
 			if (!UsageIsAttachment(p_edge->to.p_input->GetUsage()) ||
 			    (p_edge->from.p_input && !UsageIsAttachment(p_edge->from.p_input->GetUsage()))) {
 				// If an input dependency is not attachment, then all its producers can't be merged
 				// Or an input dependency is attachment, but it is not produced as an attachment, then the producer
 				// can't be merged
-				length = std::min(length, i - resolved.GetPassOrder(p_edge->from.pass));
+				length = std::min(length, i - RenderGraphResolver::GetPassOrder(p_edge->from.pass));
 			} else if (p_edge->from.p_input) {
 				// If the input dependencies are both attachments
 				assert(p_edge->from.pass);
-				uint32_t from_order = resolved.GetPassOrder(p_edge->from.pass);
+				uint32_t from_order = RenderGraphResolver::GetPassOrder(p_edge->from.pass);
+				length = std::min(length, i - from_order + merge_infos[from_order].merge_length);
+			}
+		};
+		const auto test_extra_edge = [&length, &merge_infos, i](const RenderGraphResolver::PassEdge *p_edge) {
+			if (!p_edge->from.pass)
+				return;
+			if (UsageIsAttachment(p_edge->to.p_input->GetUsage()) !=
+			    UsageIsAttachment(p_edge->from.p_input->GetUsage())) {
+				// If an input dependency is not attachment, then all its producers can't be merged
+				// Or an input dependency is attachment, but it is not produced as an attachment, then the producer
+				// can't be merged
+				length = std::min(length, i - RenderGraphResolver::GetPassOrder(p_edge->from.pass));
+			} else if (p_edge->from.p_input) {
+				// If the input dependencies are both attachments
+				assert(p_edge->from.pass);
+				uint32_t from_order = RenderGraphResolver::GetPassOrder(p_edge->from.pass);
 				length = std::min(length, i - from_order + merge_infos[from_order].merge_length);
 			}
 		};
 		for (auto *p_edge : resolved.GetPassNode(i).input_edges)
 			test_edge(p_edge);
 		for (auto &edge : extra_edge_infos[i].input_edges)
-			test_edge(&edge);
+			test_extra_edge(&edge);
 	}
 
 	return merge_infos;
@@ -157,6 +178,14 @@ void RenderGraphScheduler::extract_grouped_passes(const RenderGraphResolver &res
 	m_render_passes.reserve(possible_render_pass_count);
 
 	std::vector<RenderPassMergeInfo> merge_infos = _compute_pass_merge_info(resolved);
+#ifdef MYVK_RG_DEBUG
+	printf("Merge \n");
+	for (uint32_t i = 0; i < kOrderedPassCount; ++i) {
+		printf("%d (%d %d, %d)\n", merge_infos[i].merge_length, merge_infos[i].area.extent.width,
+		       merge_infos[i].area.extent.height, merge_infos[i].area.layers);
+	}
+	printf("\n");
+#endif
 
 	for (uint32_t i = 0, prev_length = 0; i < kOrderedPassCount; ++i) {
 		const PassBase *pass = resolved.GetPassNode(i).pass;
