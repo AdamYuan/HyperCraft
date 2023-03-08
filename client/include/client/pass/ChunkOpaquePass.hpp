@@ -1,9 +1,7 @@
 #ifndef CUBECRAFT3_CLIENT_PASS_CHUNKOPAQUEPASS_HPP
 #define CUBECRAFT3_CLIENT_PASS_CHUNKOPAQUEPASS_HPP
 
-#include <client/Camera.hpp>
 #include <client/ChunkMesh.hpp>
-#include <client/GlobalTexture.hpp>
 
 #include <myvk_rg/RenderGraph.hpp>
 

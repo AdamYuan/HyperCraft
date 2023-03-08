@@ -4,6 +4,7 @@
 #include "ChunkCullPass.hpp"
 #include "ChunkOpaquePass.hpp"
 #include "ChunkTransparentPass.hpp"
+#include "OITBlendPass.hpp"
 
 #include <myvk_rg/pass/ImGuiPass.hpp>
 #include <myvk_rg/pass/ImageBlitPass.hpp>
@@ -96,14 +97,18 @@ public:
 		    chunk_opaque_pass->GetDepthOutput(),  //
 		    chunk_cull_pass->GetTransparentDrawCmdOutput(), chunk_cull_pass->GetTransparentDrawCountOutput());
 
+		auto oit_blend_pass = CreatePass<OITBlendPass>({"oit_blend_pass"}, chunk_opaque_pass->GetOpaqueOutput(),
+		                                               chunk_transparent_pass->GetAccumOutput(),
+		                                               chunk_transparent_pass->GetRevealOutput());
+
 		auto swapchain_image = CreateResource<myvk_rg::SwapchainImage>({"swapchain_image"}, frame_manager);
 		swapchain_image->SetLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
 
-		// auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, chunk_opaque_pass->GetOpaqueOutput(),
-		//                                                     swapchain_image, VK_FILTER_NEAREST);
-
-		auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, chunk_transparent_pass->GetAccumOutput(),
+		auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, oit_blend_pass->GetColorOutput(),
 		                                                    swapchain_image, VK_FILTER_NEAREST);
+
+		// auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, chunk_transparent_pass->GetRevealOutput(),
+		//                                                    swapchain_image, VK_FILTER_NEAREST);
 
 		auto imgui_pass = CreatePass<myvk_rg::ImGuiPass>({"imgui_pass"}, copy_pass->GetDstOutput());
 

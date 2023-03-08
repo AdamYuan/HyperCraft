@@ -1,9 +1,7 @@
 #ifndef CUBECRAFT3_CLIENT_PASS_CHUNK_TRANSPARENT_PASS_HPP
 #define CUBECRAFT3_CLIENT_PASS_CHUNK_TRANSPARENT_PASS_HPP
 
-#include <client/Camera.hpp>
 #include <client/ChunkMesh.hpp>
-#include <client/GlobalTexture.hpp>
 
 #include <myvk_rg/RenderGraph.hpp>
 
@@ -78,7 +76,7 @@ public:
 		                                           {{0, 0, VK_FORMAT_R32G32_UINT, 0}});
 		pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
-		                                                VK_CULL_MODE_BACK_BIT);
+		                                                VK_CULL_MODE_NONE);
 		pipeline_state.m_depth_stencil_state.Enable(VK_TRUE, VK_FALSE);
 		pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_1_BIT);
 
@@ -86,7 +84,7 @@ public:
 		pipeline_state.m_viewport_state.Enable({{0, 0, (float)extent.width, (float)extent.height, 0.0f, 1.0f}},
 		                                       {{{0, 0}, extent}});
 
-		// WBOIT blend function
+		// WBOIT blend functions
 		VkPipelineColorBlendAttachmentState accum = {};
 		accum.blendEnable = VK_TRUE;
 		accum.srcColorBlendFactor = accum.srcAlphaBlendFactor = accum.dstColorBlendFactor = accum.dstAlphaBlendFactor =
