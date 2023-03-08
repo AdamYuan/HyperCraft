@@ -97,7 +97,7 @@ public:
 		    chunk_opaque_pass->GetDepthOutput(),  //
 		    chunk_cull_pass->GetTransparentDrawCmdOutput(), chunk_cull_pass->GetTransparentDrawCountOutput());
 
-		auto oit_blend_pass = CreatePass<OITBlendPass>({"oit_blend_pass"}, chunk_opaque_pass->GetOpaqueOutput(),
+		auto oit_blend_pass = CreatePass<OITBlendPass>({"oit_blend_pass"}, chunk_opaque_pass->GetColorOutput(),
 		                                               chunk_transparent_pass->GetAccumOutput(),
 		                                               chunk_transparent_pass->GetRevealOutput());
 
@@ -106,9 +106,6 @@ public:
 
 		auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, oit_blend_pass->GetColorOutput(),
 		                                                    swapchain_image, VK_FILTER_NEAREST);
-
-		// auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, chunk_transparent_pass->GetRevealOutput(),
-		//                                                    swapchain_image, VK_FILTER_NEAREST);
 
 		auto imgui_pass = CreatePass<myvk_rg::ImGuiPass>({"imgui_pass"}, copy_pass->GetDstOutput());
 

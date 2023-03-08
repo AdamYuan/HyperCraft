@@ -29,7 +29,7 @@ public:
 		    myvk::Sampler::Create(GetRenderGraphPtr()->GetDevicePtr(), VK_FILTER_LINEAR,
 		                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE));
 
-		AddColorAttachmentInput<0, myvk_rg::Usage::kColorAttachmentW>({"opaque"}, color_image);
+		AddColorAttachmentInput<0, myvk_rg::Usage::kColorAttachmentW>({"color"}, color_image);
 		SetDepthAttachmentInput<myvk_rg::Usage::kDepthAttachmentRW>({"depth"}, depth_image);
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_cmd"}, draw_cmd_buffer);
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_count"}, draw_count_buffer);
@@ -77,7 +77,7 @@ public:
 		m_pipeline = myvk::GraphicsPipeline::Create(pipeline_layout, GetVkRenderPass(), shader_stages, pipeline_state,
 		                                            GetSubpass());
 	}
-	inline auto GetOpaqueOutput() { return MakeImageOutput({"opaque"}); }
+	inline auto GetColorOutput() { return MakeImageOutput({"color"}); }
 	inline auto GetDepthOutput() { return MakeImageOutput({"depth"}); }
 	inline void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const final {
 		command_buffer->CmdBindPipeline(m_pipeline);
