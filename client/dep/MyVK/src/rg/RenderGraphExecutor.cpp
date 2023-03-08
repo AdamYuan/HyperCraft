@@ -75,7 +75,10 @@ struct RenderGraphExecutor::SubpassDependencies {
 		auto it = p_attachment_id_map->find(image);
 		if (it != p_attachment_id_map->end())
 			return it->second;
-		return extended_attachment_id_map.at(image);
+		it = extended_attachment_id_map.find(image);
+		if (it != extended_attachment_id_map.end())
+			return it->second;
+		return -1;
 	}
 
 	uint32_t pass_id{};
@@ -156,6 +159,17 @@ public:
 		                          UsageIsAttachment(m_from_references[0].p_input->GetUsage());
 		bool is_to_attachment = m_to_direct_pass && m_to_references.size() == 1 && m_to_references[0].p_input &&
 		                        UsageIsAttachment(m_to_references[0].p_input->GetUsage());
+		if (is_from_attachment || is_to_attachment) {
+			// Check attachment
+			assert(m_resource->GetType() == ResourceType::kImage);
+			auto *image = static_cast<const ImageBase *>(m_resource);
+			if (is_from_attachment &&
+			    m_sub_deps[RenderGraphScheduler::GetPassID(m_from_references[0].pass)].get_attachment_id(image) == -1)
+				is_from_attachment = false;
+			if (is_to_attachment &&
+			    m_sub_deps[RenderGraphScheduler::GetPassID(m_to_references[0].pass)].get_attachment_id(image) == -1)
+				is_to_attachment = false;
+		}
 
 		if (!is_from_attachment && !is_to_attachment) {
 			// Not Attachment-related, then Add a Vulkan Barrier
@@ -248,7 +262,8 @@ public:
 						    0,                                                            //
 						    ref_from.pass, state_from.stage_mask, state_from.access_mask, //
 						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
-					uint32_t attachment_id = m_sub_deps[to_pass_id].get_attachment_id(image);
+					uint32_t attachment_id =
+					    m_parent.m_p_scheduled->GetPassInfo(to_pass_id).p_render_pass_info->attachment_id_map.at(image);
 					m_sub_deps[to_pass_id].attachment_dependencies[attachment_id].set_initial_layout(trans_layout);
 				}
 			} else if (is_from_attachment) {
@@ -339,14 +354,14 @@ void RenderGraphExecutor::_process_validation_dependency(const RenderGraphSchedu
 			}
 
 			if (!mem_alias_refs.empty())
-				builder.SetFromReferences(mem_alias_refs, false);
+				builder.SetFromReferences(mem_alias_refs, true);
 			else {
 				// If used as last frame and no double buffering,
 				if (m_p_resolved->GetIntResourceInfo(resource).p_last_frame_info &&
 				    m_p_allocated->GetIntResourceAlloc(resource).double_buffering == false)
 					builder.SetFromReferences(RenderGraphScheduler::GetLastReferences<Trait::kType>(
 					                              int_res_info.p_last_frame_info->last_references),
-					                          false);
+					                          true);
 				else
 					builder.SetFromReferences(
 					    RenderGraphScheduler::GetLastReferences<Trait::kType>(int_res_info.last_references), false);
