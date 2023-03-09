@@ -255,7 +255,7 @@ public:
 					    m_sub_deps[from_pass_id]
 					        .attachment_dependencies[m_sub_deps[from_pass_id].get_attachment_id(image)];
 					if (from_pass_id == to_pass_id)
-						from_att_dep.may_alias = m_attachment_may_alias;
+						from_att_dep.may_alias |= m_attachment_may_alias;
 					else
 						from_att_dep.set_final_layout(trans_layout);
 				}
@@ -274,7 +274,7 @@ public:
 					auto &to_att_dep =
 					    m_sub_deps[to_pass_id].attachment_dependencies[m_sub_deps[to_pass_id].get_attachment_id(image)];
 					if (from_pass_id == to_pass_id)
-						to_att_dep.may_alias = m_attachment_may_alias;
+						to_att_dep.may_alias |= m_attachment_may_alias;
 					else if (!state_to.attachment_init)
 						to_att_dep.set_initial_layout(trans_layout);
 				}
@@ -290,7 +290,7 @@ public:
 					MemoryState state_to = to_func(ref_to);
 
 					if (ref_to.pass && from_pass_id == RenderGraphScheduler::GetPassID(ref_to.pass))
-						from_att_dep.may_alias = m_attachment_may_alias;
+						from_att_dep.may_alias |= m_attachment_may_alias;
 					else
 						from_att_dep.set_final_layout(state_to.layout);
 
@@ -322,7 +322,7 @@ public:
 					MemoryState state_from = from_func(ref_from);
 
 					if (ref_from.pass && RenderGraphScheduler::GetPassID(ref_from.pass) == to_pass_id)
-						to_att_dep.may_alias = m_attachment_may_alias;
+						to_att_dep.may_alias |= m_attachment_may_alias;
 					else if (!state_to.attachment_init) // If is init_mode, don't load
 						to_att_dep.set_initial_layout(state_from.layout);
 
