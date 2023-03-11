@@ -156,10 +156,11 @@ public:
 	template <typename FromFunc, typename ToFunc> inline void Build(FromFunc &&from_func, ToFunc &&to_func) {
 		assert(m_from_direct_pass || m_to_direct_pass);
 
-		bool is_from_attachment = m_from_direct_pass && m_from_references.size() == 1 && m_from_references[0].p_input &&
+		bool is_from_attachment = m_from_references.size() == 1 && m_from_references[0].p_input &&
 		                          UsageIsAttachment(m_from_references[0].p_input->GetUsage());
-		bool is_to_attachment = m_to_direct_pass && m_to_references.size() == 1 && m_to_references[0].p_input &&
+		bool is_to_attachment = m_to_references.size() == 1 && m_to_references[0].p_input &&
 		                        UsageIsAttachment(m_to_references[0].p_input->GetUsage());
+		// TODO: Should m_from/to_direct_pass be taken into account ?
 		if (is_from_attachment || is_to_attachment) {
 			// Check attachment
 			assert(m_resource->GetType() == ResourceType::kImage);
@@ -250,13 +251,12 @@ public:
 				uint32_t to_pass_id = RenderGraphScheduler::GetPassID(ref_to.pass);
 
 				{
-
 					auto &from_att_dep =
 					    m_sub_deps[from_pass_id]
 					        .attachment_dependencies[m_sub_deps[from_pass_id].get_attachment_id(image)];
 					if (from_pass_id == to_pass_id)
 						from_att_dep.may_alias |= m_attachment_may_alias;
-					else
+					else if (!state_to.attachment_init)
 						from_att_dep.set_final_layout(trans_layout);
 				}
 				{
@@ -291,7 +291,7 @@ public:
 
 					if (ref_to.pass && from_pass_id == RenderGraphScheduler::GetPassID(ref_to.pass))
 						from_att_dep.may_alias |= m_attachment_may_alias;
-					else
+					else if (!state_to.attachment_init)
 						from_att_dep.set_final_layout(state_to.layout);
 
 					if (state_from.is_valid_barrier(state_to))

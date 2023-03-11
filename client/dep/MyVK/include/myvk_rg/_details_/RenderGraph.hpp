@@ -44,8 +44,8 @@ public:
 		static_assert(std::is_base_of_v<RenderGraph<Derived>, Derived>);
 
 		auto ret = std::make_shared<Derived>();
-		dynamic_cast<RenderGraphBase *>(ret.get())->MYVK_RG_INITIALIZER_FUNC(main_queue_ptr);
-		ret->MYVK_RG_INITIALIZER_FUNC(std::forward<Args>(args)...);
+		dynamic_cast<RenderGraphBase *>(ret.get())->Initialize(main_queue_ptr);
+		ret->Initialize(std::forward<Args>(args)...);
 		return ret;
 	}
 	inline RenderGraph() { m_p_result_pool_data = &_ResultPool::GetPoolData(); }

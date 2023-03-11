@@ -56,7 +56,7 @@ private:
 	std::unique_ptr<Compiler> m_compiler{};
 	mutable bool m_exe_flip{};
 
-	void MYVK_RG_INITIALIZER_FUNC(const myvk::Ptr<myvk::Queue> &main_queue);
+	void Initialize(const myvk::Ptr<myvk::Queue> &main_queue);
 
 	void compile() const;
 

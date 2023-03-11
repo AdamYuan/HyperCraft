@@ -1,15 +1,6 @@
 #include "myvk/Image.hpp"
 #include <set>
 
-static inline uint32_t simple_ctz(uint32_t x) {
-	if (x & 0x80000000u)
-		return 32u;
-	uint32_t ret{1};
-	while (x >> ret)
-		++ret;
-	return ret;
-}
-
 namespace myvk {
 Ptr<Image> Image::Create(const Ptr<Device> &device, const VkImageCreateInfo &create_info,
                          VmaAllocationCreateFlags allocation_flags, VmaMemoryUsage memory_usage,
@@ -101,12 +92,6 @@ Ptr<Image> Image::CreateTexture2DArray(const Ptr<Device> &device, const VkExtent
 
 	return Create(device, create_info, 0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, access_queue);
 }
-
-uint32_t Image::QueryMipLevel(uint32_t w) { return simple_ctz(w); }
-
-uint32_t Image::QueryMipLevel(const VkExtent2D &size) { return simple_ctz(size.width | size.height); }
-
-uint32_t Image::QueryMipLevel(const VkExtent3D &size) { return simple_ctz(size.width | size.height | size.depth); }
 
 Image::~Image() {
 	if (m_image)

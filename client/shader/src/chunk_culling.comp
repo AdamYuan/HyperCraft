@@ -30,7 +30,7 @@ layout(set = 0, binding = 5) uniform uuCamera {
 	mat4 uViewProjection;
 };
 
-// layout(set = 2, binding = 0) uniform sampler2D uDepthHierarchy;
+layout(set = 0, binding = 6) uniform sampler2D uDepthHierarchy;
 
 layout(push_constant) uniform uuPushConstant { uint uMeshCount, uDrawCmdOffset, uCountOffset; };
 
@@ -81,13 +81,12 @@ void GetClipInfo(in const AABB aabb, inout vec3 clip_min, inout vec3 clip_max, i
 bool FrustumCull(in const uint cull_bits) { return (cull_bits & 127u) != 0; }
 
 bool OcclusionCull(in const vec3 clip_min, in const vec3 clip_max, in const uint cull_bits) {
-	/* if ((cull_bits & 128u) == 0) // if any projected.w <= 0
-	    return false;
+	if ((cull_bits & 128u) == 0) // if any projected.w <= 0
+		return false;
 	vec2 uv_min = clip_min.xy * 0.5 + 0.5, uv_max = clip_max.xy * 0.5 + 0.5;
 	vec2 uv_size = uv_max.xy - uv_min.xy, tex_size = vec2(textureSize(uDepthHierarchy, 0));
 	float lod = ceil(log2(max(uv_size.x, uv_size.y) * max(tex_size.x, tex_size.y)));
-	return textureLod(uDepthHierarchy, (uv_min + uv_max) * 0.5, lod).r < clip_min.z; */
-	return false;
+	return textureLod(uDepthHierarchy, (uv_min + uv_max) * 0.5, lod).r < clip_min.z;
 }
 
 void main() {

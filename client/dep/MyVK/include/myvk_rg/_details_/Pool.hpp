@@ -352,7 +352,7 @@ private:
 			    if constexpr (std::is_base_of_v<PassBase, Derived>)
 			        resource_ptr->set_producer_pass_ptr((PassBase *)static_cast<const Derived *>(this));
 			} */
-			ptr->MYVK_RG_INITIALIZER_FUNC(std::forward<Args>(args)...);
+			ptr->Initialize(std::forward<Args>(args)...);
 			return ptr;
 		} else {
 			return m_data.template ValueInitialize<Index, TypeToCons>(it, std::forward<Args>(args)...);

@@ -12,10 +12,10 @@ private:
 	myvk::Ptr<myvk::GraphicsPipeline> m_pipeline;
 
 public:
-	MYVK_RG_INLINE_INITIALIZER(myvk_rg::ImageInput block_texture_image, myvk_rg::ImageInput light_map_image,
-	                           myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer,
-	                           myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image,
-	                           myvk_rg::BufferInput draw_cmd_buffer, myvk_rg::BufferInput draw_count_buffer) {
+	inline void Initialize(myvk_rg::ImageInput block_texture_image, myvk_rg::ImageInput light_map_image,
+	                       myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer,
+	                       myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image,
+	                       myvk_rg::BufferInput draw_cmd_buffer, myvk_rg::BufferInput draw_count_buffer) {
 		AddDescriptorInput<0, myvk_rg::Usage::kStorageBufferR, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"mesh_info"},
 		                                                                                              mesh_info_buffer);
 		AddDescriptorInput<1, myvk_rg::Usage::kUniformBuffer, VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT>({"camera"},

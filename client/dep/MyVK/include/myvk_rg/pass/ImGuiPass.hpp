@@ -11,11 +11,12 @@ class ImGuiPass final : public myvk_rg::GraphicsPassBase {
 private:
 	myvk::Ptr<myvk::ImGuiRenderer> m_imgui_renderer;
 
-public:
-	MYVK_RG_INLINE_INITIALIZER(myvk_rg::ImageInput image) {
+	MYVK_RG_OBJECT_FRIENDS
+	inline void Initialize(myvk_rg::ImageInput image) {
 		AddColorAttachmentInput<0, myvk_rg::Usage::kColorAttachmentRW>({"image"}, image);
 	}
 
+public:
 	inline void CreatePipeline() final {
 		m_imgui_renderer = myvk::ImGuiRenderer::Create(GetVkRenderPass(), GetSubpass(), 1);
 	}

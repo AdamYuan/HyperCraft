@@ -16,9 +16,9 @@ private:
 	myvk::Ptr<myvk::ComputePipeline> m_pipeline;
 
 public:
-	MYVK_RG_INLINE_INITIALIZER(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
-	                           myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer,
-	                           myvk_rg::ImageInput depth_hierarchy) {
+	inline void Initialize(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
+	                       myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer,
+	                       myvk_rg::ImageInput depth_hierarchy) {
 		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
 
 		auto opaque_draw_cmd_buffer = CreateResource<myvk_rg::ManagedBuffer>({"opaque_draw_cmd"});
@@ -49,8 +49,22 @@ public:
 		    {"mesh_info"}, mesh_info_buffer);
 		AddDescriptorInput<5, myvk_rg::Usage::kUniformBuffer, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT>({"camera"},
 		                                                                                              camera_buffer);
-		// AddDescriptorInput<4, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT>(
-		//     {"depth_hierarchy"}, depth_hierarchy, nullptr);
+
+		VkSamplerCreateInfo create_info = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+		create_info.magFilter = VK_FILTER_LINEAR;
+		create_info.minFilter = VK_FILTER_LINEAR;
+		create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		create_info.minLod = 0.0f;
+		create_info.maxLod = VK_LOD_CLAMP_NONE;
+		VkSamplerReductionModeCreateInfo reduction_create_info = {VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO};
+		reduction_create_info.reductionMode = VK_SAMPLER_REDUCTION_MODE_MAX;
+		create_info.pNext = &reduction_create_info;
+		AddDescriptorInput<6, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT>(
+		    {"depth_hierarchy"}, depth_hierarchy,
+		    myvk::Sampler::Create(GetRenderGraphPtr()->GetDevicePtr(), create_info));
 	}
 	inline void Update(const std::vector<std::shared_ptr<ChunkMeshCluster>> &prepared_clusters) {
 		m_p_prepared_clusters = &prepared_clusters;

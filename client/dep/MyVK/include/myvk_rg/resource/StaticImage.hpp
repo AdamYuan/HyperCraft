@@ -9,7 +9,7 @@ private:
 	myvk::Ptr<myvk::ImageView> m_image_view;
 
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(myvk::Ptr<myvk::ImageView> image_view, VkImageLayout layout) {
+	inline void Initialize(myvk::Ptr<myvk::ImageView> image_view, VkImageLayout layout) {
 		m_image_view = std::move(image_view);
 		SetSrcLayout(layout);
 		SetDstLayout(layout);

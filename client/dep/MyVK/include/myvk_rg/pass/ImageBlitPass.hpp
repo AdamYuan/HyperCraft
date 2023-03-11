@@ -10,7 +10,7 @@ private:
 	VkFilter m_filter{};
 
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(myvk_rg::ImageInput src, myvk_rg::ImageInput dst, VkFilter filter) {
+	inline void Initialize(myvk_rg::ImageInput src, myvk_rg::ImageInput dst, VkFilter filter) {
 		m_src = src, m_dst = dst;
 		m_filter = filter;
 		AddInput<myvk_rg::Usage::kTransferImageSrc, VK_PIPELINE_STAGE_2_BLIT_BIT>({"src"}, src);

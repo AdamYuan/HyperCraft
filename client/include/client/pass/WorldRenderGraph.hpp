@@ -4,6 +4,8 @@
 #include "ChunkCullPass.hpp"
 #include "ChunkOpaquePass.hpp"
 #include "ChunkTransparentPass.hpp"
+#include "DepthHierarchyPass.hpp"
+#include "FixTJunctionPass.hpp"
 #include "OITBlendPass.hpp"
 
 #include <myvk_rg/pass/ImGuiPass.hpp>
@@ -29,6 +31,7 @@ public:
 		                       ->GetBuffer()
 		                       ->GetMappedData());
 	}
+	inline void UpdateDepthHierarchy() { GetPass<DepthHierarchyPass>({"depth_hierarchy_pass"})->UpdateLevelCount(); }
 	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
 	                               std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> *p_post_updates,
 	                               std::size_t post_update_threshold = 256u) {
@@ -48,9 +51,9 @@ public:
 		GetPass<ChunkTransparentPass>({"chunk_transparent_pass"})->Update(m_prepared_clusters);
 	}
 
-	MYVK_RG_INLINE_INITIALIZER(const myvk::Ptr<myvk::FrameManager> &frame_manager,
-	                           const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
-	                           const std::shared_ptr<GlobalTexture> &global_texture_ptr) {
+	inline void Initialize(const myvk::Ptr<myvk::FrameManager> &frame_manager,
+	                       const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
+	                       const std::shared_ptr<GlobalTexture> &global_texture_ptr) {
 		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
 
 		// Global Images
@@ -79,8 +82,13 @@ public:
 		depth_image->SetLoadOp(VK_ATTACHMENT_LOAD_OP_CLEAR);
 		depth_image->SetClearColorValue({1.0f});
 
-		auto chunk_cull_pass = CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_mesh_pool_ptr,
-		                                                 chunk_mesh_info_buffer, camera_buffer, nullptr);
+		auto lf_depth_image = CreateResource<myvk_rg::LastFrameImage>({"lf_depth"});
+
+		auto depth_hierarchy_pass = CreatePass<DepthHierarchyPass>({"depth_hierarchy_pass"}, lf_depth_image);
+
+		auto chunk_cull_pass =
+		    CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_mesh_pool_ptr, chunk_mesh_info_buffer, camera_buffer,
+		                              depth_hierarchy_pass->GetDepthHierarchyOutput());
 		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>({"chunk_opaque_pass"},                //
 		                                                     block_texture_image, light_map_image, //
 		                                                     chunk_mesh_info_buffer,               //
@@ -104,10 +112,17 @@ public:
 		auto swapchain_image = CreateResource<myvk_rg::SwapchainImage>({"swapchain_image"}, frame_manager);
 		swapchain_image->SetLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
 
-		auto copy_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"}, oit_blend_pass->GetColorOutput(),
-		                                                    swapchain_image, VK_FILTER_NEAREST);
+		auto fix_t_junction_pass =
+		    CreatePass<FixTJunctionPass>({"fix_t_junction_pass"}, oit_blend_pass->GetColorOutput(),
+		                                 chunk_opaque_pass->GetDepthOutput(), swapchain_image);
 
-		auto imgui_pass = CreatePass<myvk_rg::ImGuiPass>({"imgui_pass"}, copy_pass->GetDstOutput());
+		lf_depth_image->SetCurrentResource(fix_t_junction_pass->GetFixedDepthOutput());
+
+		// auto blit_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"},
+		// fix_t_junction_pass->GetFixedDepthOutput(),
+		//                                                     swapchain_image, VK_FILTER_NEAREST);
+
+		auto imgui_pass = CreatePass<myvk_rg::ImGuiPass>({"imgui_pass"}, fix_t_junction_pass->GetFixedColorOutput());
 
 		AddResult({"final"}, imgui_pass->GetImageOutput());
 	}

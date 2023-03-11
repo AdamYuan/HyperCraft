@@ -6,6 +6,16 @@
 
 namespace myvk {
 class ImageBase : public DeviceObjectBase {
+private:
+	static inline uint32_t simple_ctz(uint32_t x) {
+		if (x & 0x80000000u)
+			return 32u;
+		uint32_t ret{1};
+		while (x >> ret)
+			++ret;
+		return ret;
+	}
+
 protected:
 	VkImage m_image{VK_NULL_HANDLE};
 
@@ -34,6 +44,12 @@ public:
 	uint32_t GetMipLevels() const { return m_mip_levels; }
 
 	uint32_t GetArrayLayers() const { return m_array_layers; }
+
+	inline static uint32_t QueryMipLevel(uint32_t w) { return simple_ctz(w); }
+	inline static uint32_t QueryMipLevel(const VkExtent2D &size) { return simple_ctz(size.width | size.height); }
+	inline static uint32_t QueryMipLevel(const VkExtent3D &size) {
+		return simple_ctz(size.width | size.height | size.depth);
+	}
 
 	VkImageSubresourceRange GetSubresourceRange(VkImageAspectFlags aspect_mask) const {
 		return {aspect_mask, 0, m_mip_levels, 0, m_array_layers};

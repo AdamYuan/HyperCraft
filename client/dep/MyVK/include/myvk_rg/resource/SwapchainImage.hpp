@@ -10,7 +10,7 @@ private:
 	myvk::Ptr<myvk::FrameManager> m_frame_manager;
 
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(const myvk::Ptr<myvk::FrameManager> &frame_manager) {
+	inline void Initialize(const myvk::Ptr<myvk::FrameManager> &frame_manager) {
 		m_frame_manager = frame_manager;
 		SetDstLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}

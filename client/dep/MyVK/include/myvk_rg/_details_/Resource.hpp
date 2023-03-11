@@ -189,7 +189,7 @@ private:
 	const ImageBase *m_pointed_image{};
 
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(const PassBase *producer_pass, const Input *producer_input, const ImageBase *image) {
+	inline void Initialize(const PassBase *producer_pass, const Input *producer_input, const ImageBase *image) {
 		m_producer_pass = producer_pass;
 		m_producer_input = producer_input;
 		m_pointed_image = image->Visit([](auto *image) -> const ImageBase * {
@@ -227,7 +227,7 @@ private:
 	const BufferBase *m_pointed_buffer{};
 
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(const PassBase *producer_pass, const Input *producer_input, const BufferBase *buffer) {
+	inline void Initialize(const PassBase *producer_pass, const Input *producer_input, const BufferBase *buffer) {
 		m_producer_pass = producer_pass;
 		m_producer_input = producer_input;
 		m_pointed_buffer = buffer->Visit([](auto *buffer) -> const BufferBase * {
@@ -324,7 +324,7 @@ private:
 	friend class RenderGraphResolver;
 
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER() {}
+	inline void Initialize() {}
 
 	void *get_mapped_data() const;
 
@@ -435,7 +435,7 @@ private:
 
 	friend class RenderGraphResolver;
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(VkFormat format, VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D) {
+	inline void Initialize(VkFormat format, VkImageViewType view_type = VK_IMAGE_VIEW_TYPE_2D) {
 		m_format = format;
 		m_view_type = view_type;
 		SetCanvasSize();
@@ -478,12 +478,12 @@ private:
 
 	friend class RenderGraphResolver;
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(VkImageViewType view_type, std::vector<const ImageAlias *> &&images) {
+	inline void Initialize(VkImageViewType view_type, std::vector<const ImageAlias *> &&images) {
 		m_view_type = view_type;
 		m_images = std::move(images);
 	}
 	template <typename Iterator>
-	MYVK_RG_INLINE_INITIALIZER(VkImageViewType view_type, Iterator images_begin, Iterator images_end) {
+	inline void Initialize(VkImageViewType view_type, Iterator images_begin, Iterator images_end) {
 		m_view_type = view_type;
 		m_images = {images_begin, images_end};
 	}
@@ -529,9 +529,9 @@ private:
 
 	MYVK_RG_OBJECT_FRIENDS
 	// Allow setting pointed_image later
-	MYVK_RG_INLINE_INITIALIZER() {}
-	MYVK_RG_INLINE_INITIALIZER(const InternalImageBase *image) { SetCurrentResource(image); }
-	MYVK_RG_INLINE_INITIALIZER(const ImageBase *image) { SetCurrentResource(image); }
+	inline void Initialize() {}
+	inline void Initialize(const InternalImageBase *image) { SetCurrentResource(image); }
+	inline void Initialize(const ImageBase *image) { SetCurrentResource(image); }
 
 public:
 	inline constexpr ResourceState GetState() const { return ResourceState::kLastFrame; }
@@ -570,9 +570,9 @@ private:
 
 	MYVK_RG_OBJECT_FRIENDS
 	// Allow setting pointed_buffer later
-	MYVK_RG_INLINE_INITIALIZER() {}
-	MYVK_RG_INLINE_INITIALIZER(const ManagedBuffer *buffer) { SetCurrentResource(buffer); }
-	MYVK_RG_INLINE_INITIALIZER(const BufferBase *buffer) { SetCurrentResource(buffer); }
+	inline void Initialize() {}
+	inline void Initialize(const ManagedBuffer *buffer) { SetCurrentResource(buffer); }
+	inline void Initialize(const BufferBase *buffer) { SetCurrentResource(buffer); }
 
 public:
 	inline constexpr ResourceState GetState() const { return ResourceState::kLastFrame; }
@@ -767,17 +767,6 @@ protected:
 	inline Type *CreateResourceForce(const PoolKey &resource_key, Args &&...args) {
 		return _ResourcePool::template CreateAndInitializeForce<0, Type, Args...>(resource_key,
 		                                                                          std::forward<Args>(args)...);
-	}
-	// TODO: Don't use typename... Args.
-	template <typename... Args> inline CombinedImage *MakeCombinedImage(const PoolKey &resource_key, Args &&...args) {
-		return CreateResourceForce<CombinedImage, Args...>(resource_key, std::forward<Args>(args)...);
-	}
-	template <typename... Args> inline LastFrameImage *MakeLastFrameImage(const PoolKey &resource_key, Args &&...args) {
-		return CreateResourceForce<LastFrameImage, Args...>(resource_key, std::forward<Args>(args)...);
-	}
-	template <typename... Args>
-	inline LastFrameBuffer *MakeLastFrameBuffer(const PoolKey &resource_key, Args &&...args) {
-		return CreateResourceForce<LastFrameBuffer, Args...>(resource_key, std::forward<Args>(args)...);
 	}
 	inline void DeleteResource(const PoolKey &resource_key) { return _ResourcePool::Delete(resource_key); }
 

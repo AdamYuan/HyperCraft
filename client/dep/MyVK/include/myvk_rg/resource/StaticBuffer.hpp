@@ -12,7 +12,7 @@ private:
 	myvk::Ptr<myvk::BufferBase> m_buffer_base;
 
 	MYVK_RG_OBJECT_FRIENDS
-	MYVK_RG_INLINE_INITIALIZER(myvk::Ptr<Buffer> buffer) {
+	inline void Initialize(myvk::Ptr<Buffer> buffer) {
 		m_buffer = std::move(buffer);
 		m_buffer_base = m_buffer;
 	}

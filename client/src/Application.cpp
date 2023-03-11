@@ -89,6 +89,7 @@ void Application::draw_frame(double delta) {
 		world_rg->SetTransferCapacity(8 * 1024 * 1024, delta);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 		world_rg->UpdateCamera(m_camera);
+		world_rg->UpdateDepthHierarchy();
 		world_rg->CmdUpdateChunkMesh(command_buffer, &post_updates, 64);
 		world_rg->CmdExecute(command_buffer);
 	}
@@ -119,7 +120,7 @@ Application::Application() {
 	m_world = World::Create();
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create();
-	m_camera->m_speed = 64.0f;
+	m_camera->m_speed = 32.0f;
 	m_world_renderer = WorldRenderer::Create(m_device, m_world);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);

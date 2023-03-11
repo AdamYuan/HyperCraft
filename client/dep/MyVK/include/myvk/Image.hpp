@@ -17,12 +17,6 @@ public:
 	                         VmaMemoryUsage memory_usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
 	                         const std::vector<Ptr<Queue>> &access_queues = {});
 
-	static uint32_t QueryMipLevel(uint32_t w);
-
-	static uint32_t QueryMipLevel(const VkExtent2D &size);
-
-	static uint32_t QueryMipLevel(const VkExtent3D &size);
-
 	static Ptr<Image> CreateTexture2D(const Ptr<Device> &device, const VkExtent2D &size, uint32_t mip_level,
 	                                  VkFormat format, VkImageUsageFlags usage,
 	                                  const std::vector<Ptr<Queue>> &access_queue = {});
