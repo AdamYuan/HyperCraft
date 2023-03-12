@@ -55,11 +55,12 @@ void RenderGraphBase::compile() const {
 
 	uint8_t exe_compile_phrase = m_compile_phrase;
 	if (m_compile_phrase & CAST8(CompilePhrase::kResolve))
-		exe_compile_phrase |=
-		    CAST8(CompilePhrase::kSchedule | CompilePhrase::kCreateDescriptor | CompilePhrase::kAllocate |
-		          CompilePhrase::kPrepareExecutor | CompilePhrase::kPreBindDescriptor);
+		exe_compile_phrase |= CAST8(CompilePhrase::kSchedule | CompilePhrase::kCreateDescriptor |
+		                            CompilePhrase::kAllocate | CompilePhrase::kPrepareExecutor |
+		                            CompilePhrase::kPreBindDescriptor | CompilePhrase::kInitializeResource);
 	if (m_compile_phrase & CAST8(CompilePhrase::kAllocate))
-		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor | CompilePhrase::kPreBindDescriptor);
+		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor | CompilePhrase::kPreBindDescriptor |
+		                            CompilePhrase::kInitializeResource);
 	if (m_compile_phrase & CAST8(CompilePhrase::kSchedule))
 		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor);
 	if (m_compile_phrase & CAST8(CompilePhrase::kCreateDescriptor))
@@ -79,6 +80,9 @@ void RenderGraphBase::compile() const {
 		                             m_compiler->allocator);
 	if (exe_compile_phrase & CAST8(CompilePhrase::kPreBindDescriptor))
 		m_compiler->descriptor.PreBind(m_compiler->allocator);
+	if (exe_compile_phrase & CAST8(CompilePhrase::kInitializeResource))
+		m_compiler->allocator.Initialize(m_main_queue_ptr);
+	m_first_exe = true;
 #undef CAST8
 }
 
@@ -87,6 +91,7 @@ void RenderGraphBase::CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_b
 	m_compiler->descriptor.ExecutionBind(m_exe_flip);
 	m_compiler->executor.CmdExecute(command_buffer, m_exe_flip);
 	m_exe_flip ^= 1u;
+	m_first_exe = false;
 }
 
 // Resource GetVk functions

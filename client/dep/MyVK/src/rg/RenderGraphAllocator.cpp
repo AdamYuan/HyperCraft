@@ -75,11 +75,11 @@ public:
 
 void RenderGraphAllocator::_maintain_combined_image(const CombinedImage *image) {
 	// Visit Each Child Image, Update Size and Base Layer (Relative, need to be accumulated after)
-	SubImageSize &cur_size = m_allocated_image_views[m_p_resolved->GetIntImageViewID(image)].size;
+	SubImageSize &cur_size = m_allocated_image_views[RenderGraphResolver::GetIntImageViewID(image)].size;
 	image->ForEachExpandedImage([this, &cur_size](auto *sub_image) -> void {
 		if constexpr (ResourceVisitorTrait<decltype(sub_image)>::kIsCombinedOrManagedImage) {
 			// Merge the Size of the Current Child Image
-			auto &sub_image_alloc = m_allocated_image_views[m_p_resolved->GetIntImageViewID(sub_image)];
+			auto &sub_image_alloc = m_allocated_image_views[RenderGraphResolver::GetIntImageViewID(sub_image)];
 			if constexpr (ResourceVisitorTrait<decltype(sub_image)>::kClass == ResourceClass::kManagedImage)
 				sub_image_alloc.size = sub_image->GetSize();
 			else if constexpr (ResourceVisitorTrait<decltype(sub_image)>::kClass == ResourceClass::kCombinedImage)
@@ -92,10 +92,10 @@ void RenderGraphAllocator::_maintain_combined_image(const CombinedImage *image) 
 }
 
 void RenderGraphAllocator::_accumulate_combined_image_base_layer(const CombinedImage *image) {
-	uint32_t cur_base_layer = m_allocated_image_views[m_p_resolved->GetIntImageViewID(image)].base_layer;
+	uint32_t cur_base_layer = m_allocated_image_views[RenderGraphResolver::GetIntImageViewID(image)].base_layer;
 	image->ForEachExpandedImage([this, cur_base_layer](auto *sub_image) -> void {
 		if constexpr (ResourceVisitorTrait<decltype(sub_image)>::kIsCombinedOrManagedImage) {
-			auto &sub_image_alloc = m_allocated_image_views[m_p_resolved->GetIntImageViewID(sub_image)];
+			auto &sub_image_alloc = m_allocated_image_views[RenderGraphResolver::GetIntImageViewID(sub_image)];
 			sub_image_alloc.base_layer += cur_base_layer;
 			if constexpr (ResourceVisitorTrait<decltype(sub_image)>::kClass == ResourceClass::kCombinedImage)
 				_accumulate_combined_image_base_layer(sub_image);
@@ -107,7 +107,7 @@ void RenderGraphAllocator::update_resource_info() {
 	// Update VkBufferUsage
 	for (auto &buffer_alloc : m_allocated_buffers) {
 		const auto &buffer_info = buffer_alloc.GetBufferInfo();
-		buffer_alloc.vk_buffer_usages = 0;
+		buffer_alloc.vk_buffer_usages = buffer_info.buffer->GetExtraUsages();
 		for (const auto &ref : buffer_info.references)
 			buffer_alloc.vk_buffer_usages |= UsageGetCreationUsages(ref.p_input->GetUsage());
 	}
@@ -116,7 +116,7 @@ void RenderGraphAllocator::update_resource_info() {
 		const auto &image_info = image_alloc.GetImageInfo();
 		// image_alloc.persistence = false;
 
-		auto &image_view_alloc = m_allocated_image_views[m_p_resolved->GetIntImageViewID(image_info.image)];
+		auto &image_view_alloc = m_allocated_image_views[RenderGraphResolver::GetIntImageViewID(image_info.image)];
 		image_view_alloc.base_layer = 0;
 
 		image_info.image->Visit([this, &image_alloc, &image_view_alloc](auto *image) -> void {
@@ -140,13 +140,16 @@ void RenderGraphAllocator::update_resource_info() {
 				image_alloc.vk_image_usages |= UsageGetCreationUsages(ref.p_input->GetUsage());
 	}
 
-	// Update VkImageType
+	// Update VkImageType and VkImageUsages
 	for (uint32_t image_view_id = 0; image_view_id < m_p_resolved->GetIntImageViewCount(); ++image_view_id) {
 		const auto &image_view_info = m_p_resolved->GetIntImageViewInfo(image_view_id);
 		image_view_info.image->Visit([this](const auto *image) {
-			if constexpr (ResourceVisitorTrait<decltype(image)>::kIsInternal) {
+			using Trait = ResourceVisitorTrait<decltype(image)>;
+			if constexpr (Trait::kIsInternal) {
 				auto &image_alloc = m_allocated_images[m_p_resolved->GetIntImageID(image)];
 				UpdateVkImageTypeFromVkImageViewType(&image_alloc.vk_image_type, image->GetViewType());
+				if constexpr (Trait::kState == ResourceState::kManaged)
+					image_alloc.vk_image_usages |= image->GetExtraUsages();
 			} else
 				assert(false);
 		});
@@ -253,6 +256,7 @@ void RenderGraphAllocator::create_vk_image_views() {
 	for (uint32_t image_view_id = 0; image_view_id < m_p_resolved->GetIntImageViewCount(); ++image_view_id) {
 		const auto *image = m_p_resolved->GetIntImageViewInfo(image_view_id).image;
 		auto &image_view_alloc = m_allocated_image_views[image_view_id];
+		image_view_alloc.int_image = image;
 		image->Visit([this, &image_view_alloc](const auto *image) {
 			if constexpr (ResourceVisitorTrait<decltype(image)>::kIsInternal) {
 				VkImageViewCreateInfo create_info = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
@@ -603,6 +607,45 @@ void RenderGraphAllocator::Allocate(const myvk::Ptr<myvk::Device> &device, const
 	}
 	printf("\n");
 #endif
+}
+
+void RenderGraphAllocator::Initialize(const myvk::Ptr<myvk::Queue> &queue) const {
+	myvk::Ptr<myvk::CommandBuffer> command_buffer;
+	const auto check_begin_cmd_buffer = [&command_buffer, &queue]() {
+		if (!command_buffer) {
+			command_buffer = myvk::CommandBuffer::Create(myvk::CommandPool::Create(queue));
+			command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		}
+	};
+	for (const auto &image_view_alloc : m_allocated_image_views) {
+		image_view_alloc.int_image->Visit(
+		    [&image_view_alloc, &command_buffer, &check_begin_cmd_buffer](const auto *image) {
+			    if constexpr (ResourceVisitorTrait<decltype(image)>::kState == ResourceState::kManaged) {
+				    if (image->GetInitializeFunc()) {
+					    check_begin_cmd_buffer();
+					    image->GetInitializeFunc()(command_buffer, image_view_alloc.myvk_image_views[0]);
+					    if (image_view_alloc.myvk_image_views[1] != image_view_alloc.myvk_image_views[0])
+						    image->GetInitializeFunc()(command_buffer, image_view_alloc.myvk_image_views[1]);
+				    }
+			    }
+		    });
+	}
+	for (const auto &buffer_alloc : m_allocated_buffers) {
+		const auto *buffer = buffer_alloc.GetBufferInfo().buffer;
+		if (buffer->GetInitializeFunc()) {
+			check_begin_cmd_buffer();
+			buffer->GetInitializeFunc()(command_buffer, buffer_alloc.myvk_buffers[0]);
+			if (buffer_alloc.myvk_buffers[1] != buffer_alloc.myvk_buffers[0])
+				buffer->GetInitializeFunc()(command_buffer, buffer_alloc.myvk_buffers[1]);
+		}
+	}
+
+	if (command_buffer) {
+		command_buffer->End();
+		auto fence = myvk::Fence::Create(queue->GetDevicePtr());
+		command_buffer->Submit(fence);
+		fence->Wait();
+	}
 }
 
 } // namespace myvk_rg::_details_

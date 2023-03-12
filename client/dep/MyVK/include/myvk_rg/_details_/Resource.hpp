@@ -259,9 +259,10 @@ public:
 };
 
 // Managed Resources
-template <typename Derived, typename SizeType> class ManagedResourceInfo {
+template <typename Derived, typename SizeType, typename VkType, typename VkUsageEnum> class ManagedResourceInfo {
 public:
 	using SizeFunc = std::function<SizeType(const VkExtent2D &)>;
+	using InitializeFunc = std::function<void(const myvk::Ptr<myvk::CommandBuffer> &, const myvk::Ptr<VkType> &)>;
 
 private:
 	inline RenderGraphBase *get_render_graph_ptr() {
@@ -281,15 +282,10 @@ private:
 	// bool m_persistence{false};
 	mutable SizeType m_size{};
 	SizeFunc m_size_func{};
+	InitializeFunc m_initialize_func{};
+	VkUsageEnum m_extra_usages{};
 
 public:
-	/* inline bool GetPersistence() const { return m_persistence; }
-	inline void SetPersistence(bool persistence = true) {
-	    if (m_persistence != persistence) {
-	        m_persistence = persistence;
-	        get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kAllocate);
-	    }
-	} */
 	inline const SizeType &GetSize() const {
 		if (m_size_func)
 			m_size = m_size_func(get_render_graph_ptr()->GetCanvasSize());
@@ -309,9 +305,23 @@ public:
 		m_size_func = func;
 		set_size_changed_compile_phrease();
 	}
+
+	template <typename Func> inline void SetInitializeFunc(Func &&func) {
+		m_initialize_func = func;
+		get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kInitializeResource);
+	}
+	inline const InitializeFunc &GetInitializeFunc() const { return m_initialize_func; }
+
+	inline void SetExtraUsages(VkUsageEnum extra_usages) {
+		m_extra_usages = extra_usages;
+		get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kAllocate);
+	}
+	inline VkUsageEnum GetExtraUsages() const { return m_extra_usages; }
 };
 
-class ManagedBuffer final : public BufferBase, public ManagedResourceInfo<ManagedBuffer, VkDeviceSize> {
+class ManagedBuffer final
+    : public BufferBase,
+      public ManagedResourceInfo<ManagedBuffer, VkDeviceSize, myvk::BufferBase, VkBufferUsageFlags> {
 private:
 	mutable struct {
 	private:
@@ -428,7 +438,7 @@ public:
 
 class ManagedImage final : public InternalImageBase,
                            public ImageAttachmentInfo<ManagedImage>,
-                           public ManagedResourceInfo<ManagedImage, SubImageSize> {
+                           public ManagedResourceInfo<ManagedImage, SubImageSize, myvk::ImageView, VkImageUsageFlags> {
 private:
 	VkImageViewType m_view_type{};
 	VkFormat m_format{};

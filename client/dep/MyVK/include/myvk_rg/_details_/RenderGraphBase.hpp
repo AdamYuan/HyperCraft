@@ -18,7 +18,8 @@ enum class CompilePhrase : uint8_t {
 	kSchedule = 4u,
 	kAllocate = 8u,
 	kPrepareExecutor = 16u,
-	kPreBindDescriptor = 32u
+	kPreBindDescriptor = 32u,
+	kInitializeResource = 64u
 };
 
 inline constexpr CompilePhrase operator|(CompilePhrase x, CompilePhrase y) {
@@ -54,7 +55,7 @@ private:
 
 	struct Compiler;
 	std::unique_ptr<Compiler> m_compiler{};
-	mutable bool m_exe_flip{};
+	mutable bool m_exe_flip{}, m_first_exe{};
 
 	void Initialize(const myvk::Ptr<myvk::Queue> &main_queue);
 
@@ -85,6 +86,7 @@ public:
 			SetCompilePhrases(CompilePhrase::kAllocate | CompilePhrase::kSchedule);
 		}
 	}
+	inline bool IsFirstExecute() const { return m_first_exe; }
 	inline const VkExtent2D &GetCanvasSize() const { return m_canvas_size; }
 
 	void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const;

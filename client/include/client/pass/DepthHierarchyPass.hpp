@@ -16,6 +16,7 @@ private:
 	public:
 		inline void Initialize(uint32_t cur_level, myvk_rg::ImageInput prev_image,
 		                       const myvk::Ptr<myvk::Sampler> &sampler) {
+			m_level = cur_level;
 			auto cur_image = CreateResource<myvk_rg::ManagedImage>({"cur_image"}, VK_FORMAT_R32_SFLOAT);
 			cur_image->SetSizeFunc([cur_level](const VkExtent2D &extent) {
 				VkExtent2D half_extent = {extent.width >> 1u, extent.height >> 1u};
@@ -51,6 +52,10 @@ private:
 
 			myvk::GraphicsPipelineState pipeline_state = {};
 			auto extent = GetRenderGraphPtr()->GetCanvasSize();
+			extent.width >>= m_level;
+			extent.height >>= m_level;
+			extent.width = std::max(1u, extent.width);
+			extent.height = std::max(1u, extent.height);
 			pipeline_state.m_viewport_state.Enable(
 			    std::vector<VkViewport>{{0, 0, (float)extent.width, (float)extent.height}},
 			    std::vector<VkRect2D>{{{0, 0}, extent}});
@@ -66,9 +71,11 @@ private:
 		}
 
 		inline void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const final {
+			// if (!GetRenderGraphPtr()->IsFirstExecute()) {
 			command_buffer->CmdBindPipeline(m_pipeline);
 			command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet()}, m_pipeline);
 			command_buffer->CmdDraw(3, 1, 0, 0);
+			//}
 		}
 
 		inline auto GetCurLevelOutput() { return MakeImageOutput({"cur_image"}); }

@@ -9,10 +9,9 @@ private:
 
 public:
 	inline void Initialize(myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image,
-	                       myvk_rg::ImageInput fixed_color_image) {
+	                       myvk_rg::ImageInput fixed_color_image, myvk_rg::ImageInput fixed_depth_image) {
 		auto sampler = myvk::Sampler::Create(GetRenderGraphPtr()->GetDevicePtr(), VK_FILTER_NEAREST,
 		                                     VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-		auto fixed_depth_image = CreateResource<myvk_rg::ManagedImage>({"fixed_depth"}, VK_FORMAT_R32_SFLOAT);
 		AddDescriptorInput<0, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT>(
 		    {"color"}, color_image, sampler);
 		AddDescriptorInput<1, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT>(
@@ -22,7 +21,8 @@ public:
 	}
 	inline void Initialize(myvk_rg::ImageInput color_image, myvk_rg::ImageInput depth_image) {
 		auto fixed_color_image = CreateResource<myvk_rg::ManagedImage>({"fixed_color"}, color_image->GetFormat());
-		Initialize(color_image, depth_image, fixed_color_image);
+		auto fixed_depth_image = CreateResource<myvk_rg::ManagedImage>({"fixed_depth"}, VK_FORMAT_R32_SFLOAT);
+		Initialize(color_image, depth_image, fixed_color_image, fixed_depth_image);
 	}
 
 	inline void CreatePipeline() final {
