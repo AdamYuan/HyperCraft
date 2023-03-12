@@ -45,17 +45,23 @@ public:
 	inline virtual ~AliasOutputPool() = default;
 
 protected:
-	inline BufferAlias *MakeBufferAliasOutput(const PoolKey &buffer_alias_output_key,
-	                                          const BufferAlias *buffer_output) {
+	inline BufferAlias *CreateBufferAliasOutput(const PoolKey &buffer_alias_output_key,
+	                                            const BufferAlias *buffer_output) {
 		return make_alias_output<BufferAlias>(buffer_alias_output_key, buffer_output);
 	}
-	inline ImageAlias *MakeImageAliasOutput(const PoolKey &image_alias_output_key, const ImageAlias *image_output) {
+	inline ImageAlias *CreateImageAliasOutput(const PoolKey &image_alias_output_key, const ImageAlias *image_output) {
 		return make_alias_output<ImageAlias>(image_alias_output_key, image_output);
 	}
-	inline void RemoveBufferAliasOutput(const PoolKey &buffer_alias_output_key) {
+	inline BufferAlias *GetBufferAliasOutput(const PoolKey &buffer_alias_output_key) {
+		return Pool<Derived, BufferAlias>::template Get<0, BufferAlias>(buffer_alias_output_key);
+	}
+	inline ImageAlias *GetImageAliasOutput(const PoolKey &image_alias_output_key) {
+		return Pool<Derived, ImageAlias>::template Get<0, ImageAlias>(image_alias_output_key);
+	}
+	inline void DeleteBufferAliasOutput(const PoolKey &buffer_alias_output_key) {
 		Pool<Derived, BufferAlias>::Delete(buffer_alias_output_key);
 	}
-	inline void RemoveImageAliasOutput(const PoolKey &image_alias_output_key) {
+	inline void DeleteImageAliasOutput(const PoolKey &image_alias_output_key) {
 		Pool<Derived, ImageAlias>::Delete(image_alias_output_key);
 	}
 	inline void ClearBufferAliasOutputs() { Pool<Derived, BufferAlias>::Clear(); }
@@ -121,7 +127,7 @@ private:
 	template <typename Type, typename AliasType> inline AliasType *make_output(const PoolKey &input_key) {
 		const Input *p_input = _InputPool::template Get<0, Input>(input_key);
 		assert(p_input && !UsageIsReadOnly(p_input->GetUsage()));
-		if (!p_input || UsageIsReadOnly(p_input->GetUsage())) {  // Read-Only input should not produce an output
+		if (!p_input || UsageIsReadOnly(p_input->GetUsage())) { // Read-Only input should not produce an output
 			assert(false);
 			return nullptr;
 		}
