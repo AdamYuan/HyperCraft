@@ -1,4 +1,4 @@
-name: Linux GCC
+name: Windows MinGW
 
 on:
   push:
@@ -16,12 +16,26 @@ jobs:
       matrix:
         config:
           - {
-            name: "Linux X11 64",
-            os: ubuntu-latest,
-            artifact: "linux_x11_64.7z",
+            name: "Windows MinGW 32",
+            os: windows-latest,
+            artifact: "windows_mingw_32.7z",
             build_type: "Release",
-            cc: "gcc-11",
-            cxx: "g++-11",
+            sys: mingw32,
+            env: i686,
+            cc: "i686-w64-mingw32-gcc",
+            cxx: "i686-w64-mingw32-g++",
+            archiver: "7z a",
+            generators: "Ninja"
+          }
+          - {
+            name: "Windows MinGW 64",
+            os: windows-latest,
+            artifact: "windows_mingw_64.7z",
+            build_type: "Release",
+            sys: mingw64,
+            env: x86_64,
+            cc: "x86_64-w64-mingw32-gcc",
+            cxx: "x86_64-w64-mingw32-g++",
             archiver: "7z a",
             generators: "Ninja"
           }
@@ -29,31 +43,33 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install ninja-build xorg-dev gcc-11 g++-11
+      - uses: msys2/setup-msys2@v2
+        with:
+          update: false
+          msystem: ${{ matrix.config.sys }}
+          install: mingw-w64-${{ matrix.config.env }}-gcc cmake ninja
 
       - name: Configure
-        shell: bash
+        shell: msys2 {0}
         run: |
           mkdir build
           mkdir instdir
           cmake \
             -S . \
             -B . \
-            -DCMAKE_C_COMPILER=${{ matrix.config.cc }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }} \
+            -DCMAKE_SYSTEM_NAME=Windows \
+            -DCMAKE_C_COMPILER="${{ matrix.config.cc }}" \
+            -DCMAKE_CXX_COMPILER="${{ matrix.config.cxx }}" \
             -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
             -G "${{ matrix.config.generators }}" \
             -DCMAKE_INSTALL_PREFIX:PATH=instdir
 
       - name: Build
-        shell: bash
+        shell: msys2 {0}
         run: cmake --build . --config ${{ matrix.config.build_type }}
 
       - name: Install Strip
-        shell: bash
+        shell: msys2 {0}
         run: cmake --install . --strip
 
       - name: Pack
