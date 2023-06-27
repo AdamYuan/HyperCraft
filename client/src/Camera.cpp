@@ -5,6 +5,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+namespace hc::client {
+
 void Camera::move_forward(float dist, float dir) {
 	m_position.x -= glm::sin(m_yaw + dir) * dist;
 	m_position.z -= glm::cos(m_yaw + dir) * dist;
@@ -58,3 +60,5 @@ void Camera::Update(Camera::UniformData *p_data) {
 	glm::mat4 view_projection = fetch_matrix();
 	*p_data = {glm::vec4(m_position, 0.0), view_projection};
 }
+
+} // namespace hc::client

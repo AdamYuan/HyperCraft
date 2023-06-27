@@ -1,8 +1,11 @@
-#ifndef CUBECRAFT3_CLIENT_CHUNK_WORKER_HPP
-#define CUBECRAFT3_CLIENT_CHUNK_WORKER_HPP
+#ifndef HYPERCRAFT_CLIENT_CHUNK_WORKER_HPP
+#define HYPERCRAFT_CLIENT_CHUNK_WORKER_HPP
 
 #include <client/Chunk.hpp>
-#include <client/WorkerBase.hpp>
+
+#include <common/WorkerBase.hpp>
+
+namespace hc::client {
 
 class ChunkWorkerBase : public WorkerBase {
 private:
@@ -11,7 +14,7 @@ private:
 protected:
 	std::shared_ptr<Chunk> m_chunk_ptr;
 	virtual inline bool lock() { return (m_chunk_ptr = m_chunk_weak_ptr.lock()) != nullptr; }
-	void push_worker(std::unique_ptr<ChunkWorkerBase> &&worker) const;
+	void try_push_worker(std::unique_ptr<ChunkWorkerBase> &&worker) const;
 
 public:
 	inline explicit ChunkWorkerBase(const std::weak_ptr<Chunk> &chunk_weak_ptr) : m_chunk_weak_ptr(chunk_weak_ptr) {}
@@ -19,6 +22,10 @@ public:
 };
 
 class ChunkWorkerS26Base : public ChunkWorkerBase {
+private:
+	using Block = block::Block;
+	using Light = block::Light;
+
 protected:
 	std::shared_ptr<Chunk> m_neighbour_chunk_ptr[26];
 	inline bool lock() override {
@@ -29,14 +36,12 @@ protected:
 				return false;
 		return true;
 	}
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, Block>::type get_block(T x, T y, T z) const {
+	template <typename T> inline Block get_block(T x, T y, T z) const {
 		uint32_t nei_idx = Chunk::GetBlockNeighbourIndex(x, y, z);
 		return nei_idx == 26 ? m_chunk_ptr->GetBlock(x, y, z)
 		                     : m_neighbour_chunk_ptr[nei_idx]->GetBlockFromNeighbour(x, y, z);
 	}
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, Light>::type get_light(T x, T y, T z) const {
+	template <typename T> inline Light get_light(T x, T y, T z) const {
 		uint32_t nei_idx = Chunk::GetBlockNeighbourIndex(x, y, z);
 		return nei_idx == 26 ? m_chunk_ptr->GetLight(x, y, z)
 		                     : m_neighbour_chunk_ptr[nei_idx]->GetLightFromNeighbour(x, y, z);
@@ -54,5 +59,7 @@ class ChunkWorkerS6Base : public ChunkWorkerBase {
 
 	~ChunkWorkerS6Base() override = default;
 };
+
+} // namespace hc::client
 
 #endif

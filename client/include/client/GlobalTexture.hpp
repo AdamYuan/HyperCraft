@@ -1,11 +1,13 @@
-#ifndef CUBECRAFT3_CLIENT_GLOBAL_TEXTURE_HPP
-#define CUBECRAFT3_CLIENT_GLOBAL_TEXTURE_HPP
+#ifndef HYPERCRAFT_CLIENT_GLOBAL_TEXTURE_HPP
+#define HYPERCRAFT_CLIENT_GLOBAL_TEXTURE_HPP
 
 #include <myvk/CommandPool.hpp>
 #include <myvk/DescriptorSet.hpp>
 #include <myvk/Image.hpp>
 #include <myvk/ImageView.hpp>
 #include <myvk/Sampler.hpp>
+
+namespace hc::client {
 
 class GlobalTexture {
 private:
@@ -24,5 +26,7 @@ public:
 	inline const auto &GetBlockTextureView() const { return m_block_view; }
 	inline const auto &GetLightMapView() const { return m_lightmap_view; }
 };
+
+} // namespace hc::client
 
 #endif

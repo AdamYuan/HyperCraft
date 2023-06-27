@@ -2,14 +2,16 @@
 // Created by adamyuan on 1/25/22.
 //
 
-#ifndef CUBECRAFT3_COMMON_POSITION_HPP
-#define CUBECRAFT3_COMMON_POSITION_HPP
+#ifndef HYPERCRAFT_COMMON_POSITION_HPP
+#define HYPERCRAFT_COMMON_POSITION_HPP
 
 #include <cinttypes>
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
 
 #include "Size.hpp"
+
+namespace hc {
 
 using ChunkPos1 = int16_t;
 using ChunkPos2 = glm::vec<2, ChunkPos1>;
@@ -61,5 +63,7 @@ NeighbourIndex2CmpXYZ(uint32_t idx, T *cmp_xyz) {
 	cmp_xyz[1] = kRevLookUp[idx % 3u];
 	cmp_xyz[0] = kRevLookUp[idx / 3u];
 }
+
+} // namespace hc
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_CLIENT_CAMERA_HPP
-#define CUBECRAFT3_CLIENT_CAMERA_HPP
+#ifndef HYPERCRAFT_CLIENT_CAMERA_HPP
+#define HYPERCRAFT_CLIENT_CAMERA_HPP
 
 #include <client/Config.hpp>
 
@@ -12,6 +12,8 @@
 #define PIF 3.14159265358979323846f
 
 struct GLFWwindow;
+
+namespace hc::client {
 
 class Camera {
 public:
@@ -37,5 +39,7 @@ public:
 	void Control(GLFWwindow *window, double delta);
 	void Update(UniformData *p_data);
 };
+
+} // namespace hc::client
 
 #endif

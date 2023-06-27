@@ -285,7 +285,7 @@ public:
 
 					if (state_from.is_valid_barrier(state_to))
 						m_sub_deps[to_pass_id].add_subpass_dependency(
-						    0, //
+						    0,                      //
 						    in_cur_frame ? ref_from.pass : nullptr, state_from.stage_mask,
 						    state_from.access_mask, //
 						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
@@ -316,7 +316,7 @@ public:
 						from_att_dep.set_final_layout(state_to.layout);
 
 					if (state_from.is_valid_barrier(state_to))
-						m_sub_deps[from_pass_id].add_subpass_dependency(0, //
+						m_sub_deps[from_pass_id].add_subpass_dependency(0,                      //
 						                                                ref_from.pass, state_from.stage_mask,
 						                                                state_from.access_mask, //
 						                                                in_cur_frame ? ref_to.pass : nullptr,
@@ -351,7 +351,7 @@ public:
 
 					if (state_from.is_valid_barrier(state_to)) {
 						m_sub_deps[to_pass_id].add_subpass_dependency(
-						    0, //
+						    0,                      //
 						    in_cur_frame ? ref_from.pass : nullptr, state_from.stage_mask,
 						    state_from.access_mask, //
 						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
@@ -616,7 +616,8 @@ void RenderGraphExecutor::create_render_passes_and_framebuffers(
 					uint32_t att_id = p_input->GetResource()->Visit(get_att_id);
 					attachments[att_id].references.push_back({p_input, subpass_id});
 
-					subpass_desc.depth_attachment = {VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2};
+					subpass_desc.depth_attachment =
+					    std::optional<VkAttachmentReference2>{{VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2}};
 					auto &att_ref = subpass_desc.depth_attachment.value();
 					att_ref.attachment = att_id;
 					att_ref.layout = UsageGetImageLayout(p_input->GetUsage());

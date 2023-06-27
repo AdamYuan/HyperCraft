@@ -1,0 +1,27 @@
+kAir = 0,
+kStone,
+kCobblestone,
+kDirt,
+kGrassBlock,
+kGrass,
+kSand,
+kDeadBush,
+kGravel,
+kGlass,
+kSnow,
+kBlueIce,
+kIce,
+kSandstone,
+kWater,
+
+// TREE
+kLeaves,
+kLog,
+kPlank,
+
+// Decorations
+kApple,
+kCactus,
+kVine,
+kRedMushroom,
+kBrownMushroom,

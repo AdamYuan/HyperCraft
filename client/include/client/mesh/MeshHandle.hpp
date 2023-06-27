@@ -1,11 +1,13 @@
-#ifndef CUBECRAFT3_CLIENT_MESH_HPP
-#define CUBECRAFT3_CLIENT_MESH_HPP
+#ifndef HYPERCRAFT_CLIENT_MESH_HPP
+#define HYPERCRAFT_CLIENT_MESH_HPP
 
 #include <memory>
 #include <vk_mem_alloc.h>
 
 #include "MeshCluster.hpp"
 #include "MeshPool.hpp"
+
+namespace hc::client::mesh {
 
 template <typename Vertex, typename Index, typename Info> class MeshHandle {
 private:
@@ -105,5 +107,7 @@ public:
 		    std::make_unique<LocalErase>(m_cluster_ptr->GetClusterID(), m_mesh_id, m_vertex_alloc, m_index_alloc));
 	}
 };
+
+} // namespace hc::client
 
 #endif

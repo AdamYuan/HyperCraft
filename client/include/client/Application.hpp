@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_CLIENT_APPLICATION_HPP
-#define CUBECRAFT3_CLIENT_APPLICATION_HPP
+#ifndef HYPERCRAFT_CLIENT_APPLICATION_HPP
+#define HYPERCRAFT_CLIENT_APPLICATION_HPP
 
 #include <GLFW/glfw3.h>
 #include <myvk/FrameManager.hpp>
@@ -10,7 +10,11 @@
 #include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
 
-#include <client/pass/WorldRenderGraph.hpp>
+#include <client/rg/WorldRenderGraph.hpp>
+
+#include <common/WorkPool.hpp>
+
+namespace hc::client {
 
 class Application {
 private:
@@ -26,7 +30,7 @@ private:
 
 	// frame objects
 	std::shared_ptr<myvk::FrameManager> m_frame_manager;
-	myvk::Ptr<WorldRenderGraph> m_world_render_graphs[kFrameCount];
+	myvk::Ptr<rg::WorldRenderGraph> m_world_render_graphs[kFrameCount];
 
 	// game objects and resources
 	std::shared_ptr<GlobalTexture> m_global_texture;
@@ -36,6 +40,9 @@ private:
 
 	// game client
 	std::shared_ptr<ClientBase> m_client;
+
+	// worker
+	std::shared_ptr<WorkPool> m_work_pool;
 
 	void create_glfw_window();
 	void create_vulkan_base();
@@ -53,5 +60,7 @@ public:
 	void Run();
 	~Application();
 };
+
+} // namespace hc::client
 
 #endif

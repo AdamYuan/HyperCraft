@@ -1,0 +1,34 @@
+#include <algorithm>
+#include <block/Block.hpp>
+#include <utility>
+
+namespace hc::block {
+
+template <uint16_t Data> using BlockDataTrait = BlockTrait<Data & 0xffu>;
+
+template <uint16_t Data>
+inline static constexpr BlockMeta kBlockDataVariant = std::min<BlockMeta>(
+    (Data >> 8u) & ((1u << BlockDataTrait<Data>::kVariantBits) - 1), BlockDataTrait<Data>::kVariants - 1u);
+
+template <uint16_t Data>
+inline static constexpr BlockMeta kBlockDataTransform = std::min<BlockMeta>(
+    (Data >> (8u + BlockDataTrait<Data>::kVariantBits)) & ((1u << BlockDataTrait<Data>::kTransformBits) - 1u),
+    BlockDataTrait<Data>::kTransforms - 1);
+
+template <typename DataSequence> struct BlockDataTable;
+template <std::size_t... DataArray> struct BlockDataTable<std::index_sequence<DataArray...>> {
+	inline static constexpr BlockProperty kProperties[] = {
+	    BlockProperty(BlockDataTrait<DataArray>::template GetProperty<kBlockDataVariant<DataArray>,
+	                                                                  kBlockDataTransform<DataArray>>())...};
+};
+template <typename IDSequence> struct BlockIDTable;
+template <std::size_t... IDArray> struct BlockIDTable<std::index_sequence<IDArray...>> {
+	inline static constexpr BlockMeta kVariantBits[] = {(BlockTrait<IDArray>::kVariantBits)...};
+	inline static constexpr BlockMeta kTransformBits[] = {(BlockTrait<IDArray>::kTransformBits)...};
+};
+
+const BlockProperty *Block::kBlockDataProperties = BlockDataTable<std::make_index_sequence<65536>>::kProperties;
+const uint8_t *Block::kBlockIDVariantBits = BlockIDTable<std::make_index_sequence<256>>::kVariantBits;
+const uint8_t *Block::kBlockIDTransformBits = BlockIDTable<std::make_index_sequence<256>>::kTransformBits;
+
+} // namespace hc::block

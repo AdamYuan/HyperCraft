@@ -1,11 +1,13 @@
-#ifndef CUBECRAFT3_CLIENT_ENET_CLIENT_HPP
-#define CUBECRAFT3_CLIENT_ENET_CLIENT_HPP
+#ifndef HYPERCRAFT_CLIENT_ENET_CLIENT_HPP
+#define HYPERCRAFT_CLIENT_ENET_CLIENT_HPP
 
 #include <client/ClientBase.hpp>
 
 #include <enet/enet.h>
 
 #include <future>
+
+namespace hc::client {
 
 class ENetClient : public ClientBase, public std::enable_shared_from_this<ENetClient> {
 private:
@@ -28,5 +30,7 @@ public:
 		}
 	}
 };
+
+} // namespace hc::client
 
 #endif

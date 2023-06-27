@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(CubeCraft3)
+project(HyperCraft)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -17,6 +17,7 @@ add_library(common_dep STATIC
         sqlite3.h
         sqlite3ext.h
         )
+add_library(hc::common::dep ALIAS common_dep)
 
 target_compile_definitions(common_dep PUBLIC GLM_FORCE_SWIZZLE)
 target_include_directories(common_dep PUBLIC .)

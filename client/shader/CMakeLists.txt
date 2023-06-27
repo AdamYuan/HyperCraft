@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(CubeCraft3)
+project(HyperCraft)
 
 set(SHADER_SRC
         chunk.vert
@@ -37,5 +37,6 @@ add_custom_target(
         ${SHADER_U32}
 )
 add_library(client_shader INTERFACE)
+add_library(hc::client::shader ALIAS client_shader)
 add_dependencies(client_shader client_shader_u32)
 target_include_directories(client_shader INTERFACE include)

@@ -1,7 +1,9 @@
-#ifndef CUBECRAFT3_CLIENT_CHUNK_GENERATOR_HPP
-#define CUBECRAFT3_CLIENT_CHUNK_GENERATOR_HPP
+#ifndef HYPERCRAFT_CLIENT_CHUNK_GENERATOR_HPP
+#define HYPERCRAFT_CLIENT_CHUNK_GENERATOR_HPP
 
 #include <client/ChunkWorkerBase.hpp>
+
+namespace hc::client {
 
 class ChunkGenerator : public ChunkWorkerBase {
 public:
@@ -13,5 +15,7 @@ public:
 	~ChunkGenerator() override = default;
 	void Run() override;
 };
+
+} // namespace hc::client
 
 #endif

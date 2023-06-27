@@ -2,6 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
+namespace hc {
+
 std::unique_ptr<WorldDatabase> WorldDatabase::Create(const char *filename) {
 	std::unique_ptr<WorldDatabase> ret = std::make_unique<WorldDatabase>();
 	if (sqlite3_open_v2(filename, &ret->m_db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr) != SQLITE_OK)
@@ -33,9 +35,7 @@ std::unique_ptr<WorldDatabase> WorldDatabase::Create(const char *filename) {
 	return ret;
 }
 
-void WorldDatabase::SetSeed(uint32_t seed) {
-	
-}
+void WorldDatabase::SetSeed(uint32_t seed) {}
 
 uint32_t WorldDatabase::GetSeed() { return 0; }
 
@@ -47,3 +47,5 @@ WorldDatabase::~WorldDatabase() {
 	if (m_db)
 		sqlite3_close_v2(m_db);
 }
+
+} // namespace hc

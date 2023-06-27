@@ -1,6 +1,8 @@
 #include <client/ENetClient.hpp>
 #include <spdlog/spdlog.h>
 
+namespace hc::client {
+
 std::shared_ptr<ENetClient> ENetClient::Create(const std::shared_ptr<World> &world_ptr, const char *host_str,
                                                uint16_t port, uint32_t timeout) {
 	ENetHost *host;
@@ -49,3 +51,5 @@ ENetPeer *ENetClient::connect(std::string &&host, uint16_t port, uint32_t timeou
 		return nullptr;
 	}
 }
+
+} // namespace hc::client

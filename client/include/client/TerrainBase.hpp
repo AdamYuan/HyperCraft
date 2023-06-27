@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_CLIENT_TERRAIN_BASE_HPP
-#define CUBECRAFT3_CLIENT_TERRAIN_BASE_HPP
+#ifndef HYPERCRAFT_CLIENT_TERRAIN_BASE_HPP
+#define HYPERCRAFT_CLIENT_TERRAIN_BASE_HPP
 
 #include <atomic>
 #include <cinttypes>
@@ -9,6 +9,8 @@
 #include <unordered_map>
 
 #include <spdlog/spdlog.h>
+
+namespace hc::client {
 
 class Chunk;
 class TerrainBase {
@@ -68,5 +70,7 @@ public:
 		return generated;
 	}
 };
+
+} // namespace hc::client
 
 #endif

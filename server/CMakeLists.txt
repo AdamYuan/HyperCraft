@@ -1,18 +1,18 @@
 cmake_minimum_required(VERSION 3.15)
-project(CubeCraft3)
+project(HyperCraft)
 
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(dep)
-if (NOT TARGET CubeCraft3_common)
+if (NOT TARGET hc::common)
     add_subdirectory(../common ../common)
 endif ()
 
-add_executable(CubeCraft3_server
+add_executable(HyperCraft_server
         src/main.cpp
         src/ENetServer.cpp
-        include/server/ENetServer.hpp
         )
 
-target_link_libraries(CubeCraft3_server PRIVATE server_dep CubeCraft3_common)
-target_include_directories(CubeCraft3_server PRIVATE include)
+target_link_libraries(HyperCraft_server
+        PRIVATE hc::server::dep hc::common)
+target_include_directories(HyperCraft_server PRIVATE include)

@@ -9,7 +9,14 @@
 
 #include <myvk/ImGuiHelper.hpp>
 
+#include <client/ChunkGenerator.hpp>
+#include <client/ENetClient.hpp>
+#include <client/LocalClient.hpp>
+#include <common/WorldDatabase.hpp>
+
 #include <random>
+
+namespace hc::client {
 
 void Application::create_glfw_window() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -96,16 +103,11 @@ void Application::draw_frame(double delta) {
 	command_buffer->End();
 
 	if (!post_updates.empty())
-		m_world->PushWorker(
+		m_work_pool->PushWorker(
 		    std::make_unique<PostUpdateWorker>(m_world_renderer->GetChunkMeshPool(), std::move(post_updates)));
 
 	m_frame_manager->Render();
 }
-
-#include <client/ChunkGenerator.hpp>
-#include <client/ENetClient.hpp>
-#include <client/LocalClient.hpp>
-#include <common/WorldDatabase.hpp>
 
 Application::Application() {
 	glfwInit();
@@ -117,7 +119,9 @@ Application::Application() {
 
 	m_transfer_queue = m_main_queue;
 
-	m_world = World::Create();
+	m_work_pool = WorkPool::Create(std::max<std::size_t>(std::thread::hardware_concurrency() * 3 / 4, 1));
+
+	m_world = World::Create(m_work_pool);
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create();
 	m_camera->m_speed = 32.0f;
@@ -127,13 +131,15 @@ Application::Application() {
 
 	auto chunk_renderer = m_world_renderer->GetChunkMeshPool();
 	for (auto &world_rg : m_world_render_graphs) {
-		world_rg = WorldRenderGraph::Create(m_main_queue, m_frame_manager, chunk_renderer, m_global_texture);
+		world_rg = rg::WorldRenderGraph::Create(m_main_queue, m_frame_manager, chunk_renderer, m_global_texture);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 	}
 }
 
 void Application::Run() {
 	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
+
+	int concurrency = m_work_pool->GetConcurrency();
 
 	while (!glfwWindowShouldClose(m_window)) {
 		glfwPollEvents();
@@ -151,8 +157,12 @@ void Application::Run() {
 		ImGui::Text("fps: %f", ImGui::GetIO().Framerate);
 		ImGui::Text("frame time: %.1f ms", delta.count() * 1000.0f);
 		ImGui::Text("cam: %f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
-		ImGui::Text("workers (approx): %zu", m_world->GetApproxWorkerCount());
+		ImGui::Text("workers (approx): %zu", m_work_pool->GetApproxWorkerCount());
 		ImGui::Text("delta: %f", delta.count());
+
+		if (ImGui::DragInt("concurrency", &concurrency, 1, 1, (int)std::thread::hardware_concurrency()))
+			m_work_pool->Relaunch(std::clamp<std::size_t>(concurrency, 1, std::thread::hardware_concurrency()));
+
 		ImGui::End();
 
 		ImGui::Render();
@@ -160,7 +170,7 @@ void Application::Run() {
 		draw_frame(delta.count());
 	}
 	m_frame_manager->WaitIdle();
-	m_world->Join();
+	m_work_pool->Join();
 }
 
 Application::~Application() {
@@ -182,3 +192,5 @@ void Application::glfw_framebuffer_resize_callback(GLFWwindow *window, int width
 	auto *app = (Application *)glfwGetWindowUserPointer(window);
 	app->m_frame_manager->Resize();
 }
+
+} // namespace hc::client

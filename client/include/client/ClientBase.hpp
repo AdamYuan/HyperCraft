@@ -1,10 +1,12 @@
-#ifndef CUBECRAFT3_CLIENT_CLIENT_BASE_HPP
-#define CUBECRAFT3_CLIENT_CLIENT_BASE_HPP
+#ifndef HYPERCRAFT_CLIENT_CLIENT_BASE_HPP
+#define HYPERCRAFT_CLIENT_CLIENT_BASE_HPP
 
 #include <client/TerrainBase.hpp>
 #include <client/World.hpp>
 
 #include <spdlog/spdlog.h>
+
+namespace hc::client {
 
 class ClientBase {
 protected:
@@ -17,5 +19,7 @@ public:
 	inline const std::unique_ptr<TerrainBase> &GetTerrain() const { return m_terrain; }
 	virtual bool IsConnected() = 0;
 };
+
+} // namespace hc::client
 
 #endif

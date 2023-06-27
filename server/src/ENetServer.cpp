@@ -3,6 +3,8 @@
 
 #include <iostream>
 
+namespace hc::server {
+
 std::shared_ptr<ENetServer> ENetServer::Create(const std::shared_ptr<WorldDatabase> &level_db, uint16_t port) {
 	ENetAddress address;
 	address.host = ENET_HOST_ANY;
@@ -26,9 +28,7 @@ void ENetServer::Join() {
 	m_event_thread.join();
 }
 
-ENetServer::~ENetServer() {
-	enet_host_destroy(m_host);
-}
+ENetServer::~ENetServer() { enet_host_destroy(m_host); }
 
 void ENetServer::RunShell() {
 	std::string line;
@@ -70,3 +70,5 @@ void ENetServer::event_thread_func() {
 	}
 	spdlog::info("Quit event thread");
 }
+
+} // namespace hc::server

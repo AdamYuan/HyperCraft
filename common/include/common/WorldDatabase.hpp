@@ -1,13 +1,15 @@
-#ifndef CUBECRAFT3_COMMON_DATABASE_HPP
-#define CUBECRAFT3_COMMON_DATABASE_HPP
+#ifndef HYPERCRAFT_COMMON_DATABASE_HPP
+#define HYPERCRAFT_COMMON_DATABASE_HPP
 
 #include <memory>
 #include <sqlite3.h>
 
+namespace hc {
+
 class WorldDatabase {
 private:
 	sqlite3 *m_db{nullptr};
-	sqlite3_stmt *m_set_property_stmt, *m_get_property_stmt;
+	sqlite3_stmt *m_set_property_stmt{}, *m_get_property_stmt{};
 
 public:
 	static std::unique_ptr<WorldDatabase> Create(const char *filename); // TODO: Make it unique_ptr
@@ -18,5 +20,7 @@ public:
 
 	~WorldDatabase();
 };
+
+} // namespace hc
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_CLIENT_WORLD_RENDERER_HPP
-#define CUBECRAFT3_CLIENT_WORLD_RENDERER_HPP
+#ifndef HYPERCRAFT_CLIENT_WORLD_RENDERER_HPP
+#define HYPERCRAFT_CLIENT_WORLD_RENDERER_HPP
 
 #include <client/Camera.hpp>
 #include <client/ChunkMesh.hpp>
@@ -15,6 +15,8 @@
 #include <queue>
 #include <unordered_map>
 #include <vector>
+
+namespace hc::client {
 
 class WorldRenderer : public std::enable_shared_from_this<WorldRenderer> {
 private:
@@ -36,5 +38,7 @@ public:
 
 	inline const auto &GetChunkMeshPool() const { return m_chunk_mesh_pool; }
 };
+
+} // namespace hc::client
 
 #endif

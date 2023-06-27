@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_COMMON_BYTE_STREAM_HPP
-#define CUBECRAFT3_COMMON_BYTE_STREAM_HPP
+#ifndef HYPERCRAFT_COMMON_BYTE_STREAM_HPP
+#define HYPERCRAFT_COMMON_BYTE_STREAM_HPP
 
 #include <algorithm>
 #include <cinttypes>
@@ -7,6 +7,8 @@
 #include <vector>
 
 #include <common/Endian.hpp>
+
+namespace hc {
 
 class InputByteStream {
 private:
@@ -20,7 +22,7 @@ public:
 			T data;
 			uint8_t bytes[sizeof(T)];
 		} u = {x};
-		if constexpr (is_big_endian()) // reverse bytes in big endian machine
+		if constexpr (IsBigEndian()) // reverse bytes in big endian machine
 			std::reverse(u.bytes, u.bytes + sizeof(T));
 		m_data.insert(m_data.end(), u.bytes, u.bytes + sizeof(T));
 	}
@@ -43,7 +45,7 @@ public:
 			uint8_t bytes[sizeof(T)];
 		} u;
 		std::copy(m_begin, m_begin + sizeof(T), u.bytes);
-		if constexpr (is_big_endian()) // reverse bytes in big endian machine
+		if constexpr (IsBigEndian()) // reverse bytes in big endian machine
 			std::reverse(u.bytes, u.bytes + sizeof(T));
 		m_begin += sizeof(T);
 		return u.data;
@@ -54,5 +56,7 @@ public:
 		return ret;
 	}
 };
+
+} // namespace hc
 
 #endif

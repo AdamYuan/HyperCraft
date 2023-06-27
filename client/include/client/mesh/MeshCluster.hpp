@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_CLIENT_MESH_GROUP_HPP
-#define CUBECRAFT3_CLIENT_MESH_GROUP_HPP
+#ifndef HYPERCRAFT_CLIENT_MESH_GROUP_HPP
+#define HYPERCRAFT_CLIENT_MESH_GROUP_HPP
 
 #include <atomic>
 #include <memory>
@@ -13,6 +13,8 @@
 #include "MeshInfo.hpp"
 
 #include <spdlog/include/spdlog/spdlog.h>
+
+namespace hc::client::mesh {
 
 // Used for zero-overhead rendering (with GPU culling)
 template <typename Vertex, typename Index, typename Info> class MeshCluster {
@@ -172,5 +174,7 @@ public:
 	    sizeof(Index) == 4 ? VK_INDEX_TYPE_UINT32
 	                       : (sizeof(Index) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT8_EXT);
 };
+
+} // namespace hc::client::mesh
 
 #endif

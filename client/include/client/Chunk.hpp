@@ -1,8 +1,8 @@
-#ifndef CUBECRAFT3_CLIENT_CHUNK_HPP
-#define CUBECRAFT3_CLIENT_CHUNK_HPP
+#ifndef HYPERCRAFT_CLIENT_CHUNK_HPP
+#define HYPERCRAFT_CLIENT_CHUNK_HPP
 
-#include <common/Block.hpp>
-#include <common/Light.hpp>
+#include <block/Block.hpp>
+#include <block/Light.hpp>
 #include <common/Position.hpp>
 #include <common/Size.hpp>
 #include <glm/glm.hpp>
@@ -14,20 +14,24 @@
 #include <memory>
 #include <vector>
 
+namespace hc::client {
+
 class World;
 
 class Chunk : public std::enable_shared_from_this<Chunk> {
+private:
+	using Block = block::Block;
+	using Light = block::Light;
+
 public:
 	static constexpr uint32_t kSize = kChunkSize;
 
-	template <typename T>
-	static inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type Index2XYZ(uint32_t idx,
-	                                                                                                  T *xyz) {
+	template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+	static inline constexpr void Index2XYZ(uint32_t idx, T *xyz) {
 		return ChunkIndex2XYZ(idx, xyz);
 	}
-	template <typename T>
-	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type XYZ2Index(T x, T y,
-	                                                                                                      T z) {
+	template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+	static inline constexpr uint32_t XYZ2Index(T x, T y, T z) {
 		return ChunkXYZ2Index(x, y, z);
 	}
 	template <typename T>
@@ -45,7 +49,7 @@ public:
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
 	CmpXYZ2NeighbourIndex(T cmp_x, T cmp_y, T cmp_z) {
-		return ::CmpXYZ2NeighbourIndex(cmp_x, cmp_y, cmp_z);
+		return hc::CmpXYZ2NeighbourIndex(cmp_x, cmp_y, cmp_z);
 	}
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
@@ -55,27 +59,18 @@ public:
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, void>::type
 	NeighbourIndex2CmpXYZ(uint32_t idx, T *cmp_xyz) {
-		return ::NeighbourIndex2CmpXYZ(idx, cmp_xyz);
+		return hc::NeighbourIndex2CmpXYZ(idx, cmp_xyz);
 	}
 
 	inline const ChunkPos3 &GetPosition() const { return m_position; }
 
 	// Block Getter and Setter
 	inline const Block *GetBlockData() const { return m_blocks; }
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, Block>::type GetBlock(T x, T y, T z) const {
-		return m_blocks[XYZ2Index(x, y, z)];
-	}
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, Block &>::type GetBlockRef(T x, T y, T z) {
-		return m_blocks[XYZ2Index(x, y, z)];
-	}
+	template <typename T> inline Block GetBlock(T x, T y, T z) const { return m_blocks[XYZ2Index(x, y, z)]; }
+	template <typename T> inline Block &GetBlockRef(T x, T y, T z) { return m_blocks[XYZ2Index(x, y, z)]; }
 	inline Block GetBlock(uint32_t idx) const { return m_blocks[idx]; }
 	inline Block &GetBlockRef(uint32_t idx) { return m_blocks[idx]; }
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, void>::type SetBlock(T x, T y, T z, Block b) {
-		m_blocks[XYZ2Index(x, y, z)] = b;
-	}
+	template <typename T> inline void SetBlock(T x, T y, T z, Block b) { m_blocks[XYZ2Index(x, y, z)] = b; }
 	inline void SetBlock(uint32_t idx, Block b) { m_blocks[idx] = b; }
 
 	// Light Getter and Setter
@@ -107,8 +102,8 @@ public:
 	GetBlockFromNeighbour(T x, T y, T z) const {
 		return m_blocks[XYZ2Index((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
 	}
-	template <typename T>
-	inline typename std::enable_if<std::is_unsigned<T>::value, Block>::type GetBlockFromNeighbour(T x, T y, T z) const {
+	template <typename T, typename = std::enable_if_t<std::is_unsigned_v<T>>>
+	inline Block GetBlockFromNeighbour(T x, T y, T z) const {
 		return m_blocks[XYZ2Index(x % kSize, y % kSize, z % kSize)];
 	}
 	template <typename T>
@@ -124,33 +119,23 @@ public:
 	// World (parent)
 	inline std::shared_ptr<World> LockWorld() const { return m_world_weak_ptr.lock(); }
 
-	// Flags
-	bool IsGenerated() const { return m_generated_flag.load(std::memory_order_acquire); }
-	void SetGeneratedFlag() { m_generated_flag.store(true, std::memory_order_release); }
-	bool IsMeshed() const { return m_meshed_flag.load(std::memory_order_acquire); }
-	void SetMeshedFlag() { m_meshed_flag.store(true, std::memory_order_release); }
+	// Initial Flags
+	bool IsGenerated() const { return m_initial_generated_flag.load(std::memory_order_acquire); }
+	void SetGeneratedFlag() { m_initial_generated_flag.store(true, std::memory_order_release); }
+	bool IsMeshed() const { return m_initial_meshed_flag.load(std::memory_order_acquire); }
+	void SetMeshedFlag() { m_initial_meshed_flag.store(true, std::memory_order_release); }
 
-	// Versions
-	inline void PendMeshVersion() { m_mesh_version.Pend(); }
-	inline void PendLightVersion() { m_light_version.Pend(); }
+	// Sync
+	inline auto &GetMeshSync() { return m_mesh_sync; }
+	inline auto &GetLightSync() { return m_light_sync; }
 
-	inline uint64_t FetchMeshVersion() { return m_mesh_version.Fetch(); }
-	inline uint64_t FetchLightVersion() { return m_light_version.Fetch(); }
-
-	inline bool IsLatestMesh() const { return m_mesh_version.IsLatest(); }
-	inline bool IsLatestLight() const { return m_light_version.IsLatest(); }
-
-	inline void SwapMesh(uint64_t version, std::vector<std::unique_ptr<ChunkMeshHandle>> &mesh_handles) {
-		std::scoped_lock lock{m_mesh_mutex};
-		if (!m_mesh_version.Done(version))
-			return;
-		std::swap(m_mesh_handles, mesh_handles);
+	inline void PushMesh(uint64_t version, std::vector<std::unique_ptr<ChunkMeshHandle>> &mesh_handles) {
+		m_mesh_sync.Done(version, [this, &mesh_handles]() { m_mesh_handles = std::move(mesh_handles); });
 	}
 	inline void PushLight(uint64_t version, const Light *light_buffer) {
-		std::scoped_lock lock{m_light_mutex};
-		if (!m_light_version.Done(version))
-			return;
-		std::copy(light_buffer, light_buffer + kChunkSize * kChunkSize * kChunkSize, m_lights);
+		m_light_sync.Done(version, [this, light_buffer]() {
+			std::copy(light_buffer, light_buffer + kChunkSize * kChunkSize * kChunkSize, m_lights);
+		});
 	}
 
 	// Creation
@@ -161,11 +146,7 @@ public:
 		return ret;
 	}
 
-	// Mesh Removal
-	inline std::vector<std::unique_ptr<ChunkMeshHandle>> &&MoveMeshes() {
-		std::scoped_lock lock{m_mesh_mutex};
-		return std::move(m_mesh_handles);
-	}
+	// Finalize
 	inline void SetMeshFinalize() const {
 		for (const auto &i : m_mesh_handles)
 			i->SetFinalize();
@@ -180,54 +161,35 @@ private:
 	std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
 	std::weak_ptr<World> m_world_weak_ptr;
 
-	std::mutex m_mesh_mutex, m_light_mutex;
 	std::vector<std::unique_ptr<ChunkMeshHandle>> m_mesh_handles;
 
-	template <bool DoneInMutex = false> struct Version {
+	struct Sync {
 	private:
-		std::atomic_uint64_t m_pending{0}, m_fetched{0}, m_done{0};
+		std::atomic_bool m_pending{};
+		std::atomic_uint64_t m_version{};
+		std::mutex m_done_mutex;
 
 	public:
-		inline void Pend() { ++m_pending; }
-		inline uint64_t Fetch() {
-			uint64_t target = m_pending.load(std::memory_order_acquire);
-
-			uint64_t prev = m_fetched.load(std::memory_order_acquire);
-			do {
-				if (target <= prev)
-					return 0;
-			} while (
-			    !m_fetched.compare_exchange_weak(prev, target, std::memory_order_release, std::memory_order_relaxed));
-			return target;
+		inline bool IsPending() { return m_pending.load(std::memory_order_acquire); }
+		inline void Pend() { m_pending.store(true, std::memory_order_release); }
+		inline void Cancel() { m_pending.store(false, std::memory_order_release); }
+		inline uint64_t FetchVersion() {
+			m_pending.store(false, std::memory_order_release);
+			return m_version.fetch_add(1, std::memory_order_acq_rel) + 1;
 		}
-		inline bool Done(uint64_t v) {
-			uint64_t target = m_fetched.load(std::memory_order_acquire);
-			assert(target >= v); // TODO: remove assert
-			if (target > v)
-				return false;
-
-			if constexpr (DoneInMutex) {
-				uint64_t prev = m_done.load(std::memory_order_acquire);
-				if (v > prev) {
-					m_done.store(v, std::memory_order_release);
-					return true;
-				}
-			} else {
-				uint64_t prev = m_done.load(std::memory_order_acquire);
-				do {
-					if (prev >= v)
-						return false;
-				} while (!m_done.compare_exchange_weak(prev, v, std::memory_order_release, std::memory_order_relaxed));
+		template <typename DoneFunc> inline bool Done(uint64_t version, DoneFunc &&done_func) {
+			std::scoped_lock lock{m_done_mutex};
+			if (version == m_version.load(std::memory_order_acquire)) {
+				done_func();
 				return true;
 			}
 			return false;
 		}
-		inline bool IsLatest() const {
-			return m_done.load(std::memory_order_acquire) == m_pending.load(std::memory_order_acquire);
-		}
 	};
-	std::atomic_bool m_generated_flag{}, m_meshed_flag{};
-	Version<true> m_mesh_version{}, m_light_version{};
+	std::atomic_bool m_initial_generated_flag{false}, m_initial_meshed_flag{false};
+	Sync m_mesh_sync{}, m_light_sync{};
 };
+
+} // namespace hc::client
 
 #endif

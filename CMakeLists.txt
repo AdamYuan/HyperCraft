@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(CubeCraft3)
+project(HyperCraft)
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-D_USE_MATH_DEFINES)
@@ -24,4 +24,4 @@ endif ()
 add_subdirectory(client)
 add_subdirectory(server)
 
-install(TARGETS CubeCraft3_client CubeCraft3_server RUNTIME DESTINATION)
+install(TARGETS HyperCraft_client HyperCraft_server RUNTIME DESTINATION)

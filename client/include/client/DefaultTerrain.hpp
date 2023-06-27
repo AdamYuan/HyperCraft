@@ -1,9 +1,8 @@
-#ifndef CUBECRAFT3_CLIENT_DEFAULT_TERRAIN_HPP
-#define CUBECRAFT3_CLIENT_DEFAULT_TERRAIN_HPP
+#ifndef HYPERCRAFT_CLIENT_DEFAULT_TERRAIN_HPP
+#define HYPERCRAFT_CLIENT_DEFAULT_TERRAIN_HPP
 
+#include <block/Block.hpp>
 #include <client/TerrainBase.hpp>
-#include <common/Biome.hpp>
-#include <common/Block.hpp>
 #include <common/Position.hpp>
 #include <common/Size.hpp>
 
@@ -14,11 +13,34 @@
 
 #include <spdlog/spdlog.h>
 
+namespace hc::client {
+
 class DefaultTerrain : public TerrainBase {
 private:
+	using Block = block::Block;
+	using Blocks = block::Blocks;
+	using BlockFace = block::BlockFace;
+	using BlockFaces = block::BlockFaces;
+	using BlockVariants = block::BlockVariants;
+
+	using Biome = uint8_t;
+	struct Biomes {
+		enum : Biome {
+			kOcean = 0,
+			kPlain,
+			kSavanna,
+			kTundra,
+			kGlacier,
+			kDesert,
+			kForest,
+			kTropicalForest,
+			kBorealForest
+		};
+	};
+
 	// Biome
-	static constexpr uint32_t kBiomeMapSize = 4, kSampleScale = 1, kOceanSampleScale = 16, kHeightRange = 256;
-	static constexpr Biome kBiomeMap[kBiomeMapSize][kBiomeMapSize] = {
+	inline static constexpr uint32_t kBiomeMapSize = 4, kSampleScale = 1, kOceanSampleScale = 16, kHeightRange = 256;
+	inline static constexpr Biome kBiomeMap[kBiomeMapSize][kBiomeMapSize] = {
 	    // [precipitation][temperature]
 	    {Biomes::kGlacier, Biomes::kTundra, Biomes::kDesert, Biomes::kDesert},
 	    {Biomes::kGlacier, Biomes::kSavanna, Biomes::kSavanna, Biomes::kDesert},
@@ -35,7 +57,8 @@ private:
 	}
 	inline static constexpr float biome_prop_remap(float prop) { return std::clamp(prop, -0.4f, 0.4f) * 1.25f + 0.5f; }
 	inline static constexpr float cubic(float x, float a, float b, float c) {
-		return x * x * x * a + x * x * b + x * c;
+		float x2 = x * x;
+		return x * (x2 * a + c) + x2 * b;
 	}
 	inline static constexpr float biome_height_transform(Biome biome, float height) {
 		switch (biome) {
@@ -142,7 +165,7 @@ private:
 	private:
 		std::unordered_map<glm::i32vec3, Block> m_blocks;
 		int32_t m_y_min{INT32_MAX}, m_y_max{INT32_MIN};
-		inline constexpr static bool block_cover(Block old, Block cur) {
+		inline static bool block_cover(Block old, Block cur) {
 			return old.GetIndirectLightPass() == cur.GetIndirectLightPass()
 			           ? (old.GetID() == cur.GetID() ? cur.GetMeta() > old.GetMeta() : cur.GetID() > old.GetID())
 			           : cur.GetIndirectLightPass() < old.GetIndirectLightPass();
@@ -267,12 +290,12 @@ private:
 			int32_t trunk_height = rng() % 22 + 8;
 			for (int32_t i = 0; i < trunk_height; ++i) {
 				glm::i32vec3 pos = {x, i + y, z};
-				SetBlock(pos.x, pos.y, pos.z, Block::MakeTreeLog(BlockMetas::Tree::kJungle, 1));
+				SetBlock(pos.x, pos.y, pos.z, {Blocks::kLog, BlockVariants::Tree::kJungle, 1});
 				BlockFace vine_face = rng() % 6;
 				if ((vine_face >> 1) == 1) // ignore y axis
 					continue;
-				glm::i32vec3 vine_pos = BlockFaceProceed(pos, vine_face);
-				SetBlock(vine_pos.x, vine_pos.y, vine_pos.z, {Blocks::kVine, vine_face});
+				glm::i32vec3 vine_pos = block::BlockFaceProceed(pos, vine_face);
+				SetBlock(vine_pos.x, vine_pos.y, vine_pos.z, {Blocks::kVine, 0, vine_face});
 			}
 
 			// root
@@ -284,7 +307,7 @@ private:
 
 				if (d.x || d.z)
 					set_block_line(x, y + root_height, z, d.x, d.y, d.z,
-					               Block::MakeTreeLog(BlockMetas::Tree::kJungle, 1));
+					               {Blocks::kLog, BlockVariants::Tree::kJungle, 1});
 				else
 					break;
 			}
@@ -294,19 +317,20 @@ private:
 			// TODO: add vine for crown and branches
 			int32_t crown_thickness = std::clamp(trunk_height / 7, 2, 4) + rng() % 2,
 			        crown_radius = std::max(crown_thickness - (int32_t)(rng() % 2), 2);
-			set_block_disc(x, y + trunk_height, z, crown_radius / 2, {Blocks::kLeaves, BlockMetas::Tree::kJungle});
+			set_block_disc(x, y + trunk_height, z, crown_radius / 2,
+			               {Blocks::kLeaves, BlockVariants::Tree::kJungle, 0});
 			if (crown_radius > 2) {
 				set_block_disc(x, y + trunk_height - 1, z, 4 * crown_radius / 5,
-				               {Blocks::kLeaves, BlockMetas::Tree::kJungle});
+				               {Blocks::kLeaves, BlockVariants::Tree::kJungle, 0});
 				for (int32_t i = 2; i < crown_thickness; ++i) {
 					set_block_disc(x, y + trunk_height - i, z, crown_radius,
-					               {Blocks::kLeaves, BlockMetas::Tree::kJungle});
+					               {Blocks::kLeaves, BlockVariants::Tree::kJungle, 0});
 				}
 				vine_begin.y = y + trunk_height - 2;
 			} else {
 				for (int32_t i = 1; i < crown_thickness; ++i) {
 					set_block_disc(x, y + trunk_height - i, z, crown_radius,
-					               {Blocks::kLeaves, BlockMetas::Tree::kJungle});
+					               {Blocks::kLeaves, BlockVariants::Tree::kJungle, 0});
 				}
 				vine_begin.y = y + trunk_height - 1;
 			}
@@ -330,7 +354,7 @@ private:
 
 				int32_t vine_length = (vine_rng >> 2u) % trunk_height;
 				for (int32_t l = 0; l < vine_length; ++l) {
-					SetBlock(vine_begin.x, vine_begin.y - l, vine_begin.z, {Blocks::kVine, vine_face});
+					SetBlock(vine_begin.x, vine_begin.y - l, vine_begin.z, {Blocks::kVine, 0, vine_face});
 				}
 			}
 
@@ -341,15 +365,16 @@ private:
 					int32_t bry = y + trunk_height - crown_thickness / 2 - i;
 					glm::i32vec3 d = {rng() % 9 - 4, rng() % 5 - 1, rng() % 9 - 4};
 					set_block_line(x, bry, z, d.x, d.y, d.z,
-					               Block::MakeTreeLog(BlockMetas::Tree::kJungle, get_branch_axis(d)));
+					               Block(Blocks::kLog, BlockVariants::Tree::kJungle, get_branch_axis(d)));
 					int32_t r = i < branch_range / 2 ? rng() % 2 + 1 : 1;
-					set_block_cluster(x + d.x, bry + d.y, z + d.z, r, {Blocks::kLeaves, BlockMetas::Tree::kJungle});
+					set_block_cluster(x + d.x, bry + d.y, z + d.z, r,
+					                  {Blocks::kLeaves, BlockVariants::Tree::kJungle, 0});
 
 					int32_t vine_rng = rng();
 					int32_t vine_length = vine_rng % trunk_height;
 					BlockFace vine_face = (vine_rng & 1) | ((vine_rng & 2) ? BlockFaces::kRight : BlockFaces::kFront);
 					for (int32_t l = 0; l < vine_length; ++l) {
-						SetBlock(x + d.x, bry + d.y - r - 1, z + d.z, {Blocks::kVine, vine_face});
+						SetBlock(x + d.x, bry + d.y - r - 1, z + d.z, {Blocks::kVine, 0, vine_face});
 					}
 				}
 			}
@@ -359,7 +384,7 @@ private:
 		inline auto GenSpruceTree(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
 			int32_t trunk_height = rng() % 10 + 12;
 			for (int32_t i = 0; i < trunk_height; ++i)
-				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kSpruce, 1));
+				SetBlock(x, i + y, z, Block(Blocks::kLog, BlockVariants::Tree::kSpruce, 1));
 
 			int32_t branch_range = 2 * trunk_height / 3 + rng() % 3;
 			int32_t bottom_radius = std::min(branch_range / 3 + int32_t(rng() % 2), 3);
@@ -369,14 +394,14 @@ private:
 				if (r == 0)
 					continue;
 				set_block_disc(x, y + trunk_height - i - 1, z, rng() % 16 >= i ? r : 2 * r / 3,
-				               {Blocks::kLeaves, BlockMetas::Tree::kSpruce});
+				               {Blocks::kLeaves, BlockVariants::Tree::kSpruce, 0});
 
 				for (uint32_t b = 0; b < 2; ++b) {
 					float a = float(rng() % 20) / 10 * 3.14;
 					glm::i32vec3 d = {int32_t((float)r * std::cos(a)), -r / 2, int32_t((float)r * std::sin(a))};
 					if (d.x || d.z)
 						set_block_line(x, y + trunk_height - i - 1, z, d.x, d.y, d.z,
-						               Block::MakeTreeLog(BlockMetas::Tree::kSpruce, get_branch_axis(d)));
+						               Block(Blocks::kLog, BlockVariants::Tree::kSpruce, get_branch_axis(d)));
 					else
 						break;
 				}
@@ -389,8 +414,8 @@ private:
 			int32_t trunk_height = rng() % 5 + 5;
 			int32_t main_crown_size = rng() % 3 + 1;
 			for (int32_t i = 0; i < trunk_height + main_crown_size; ++i)
-				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kOak, 1));
-			set_block_cluster(x, y + trunk_height, z, main_crown_size, {Blocks::kLeaves, BlockMetas::Tree::kOak});
+				SetBlock(x, i + y, z, Block(Blocks::kLog, BlockVariants::Tree::kOak, 1));
+			set_block_cluster(x, y + trunk_height, z, main_crown_size, {Blocks::kLeaves, BlockVariants::Tree::kOak, 0});
 
 			if (apple && main_crown_size > 1) {
 				for (uint32_t i = 0; i < main_crown_size * 2; ++i)
@@ -405,8 +430,9 @@ private:
 
 				glm::i32vec3 d = {rng() % 5 - 2, rng() % 4 + 1, rng() % 5 - 2};
 				set_block_line(x, bry, z, d.x, d.y, d.z,
-				               Block::MakeTreeLog(BlockMetas::Tree::kOak, get_branch_axis(d)));
-				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kOak});
+				               Block(Blocks::kLog, BlockVariants::Tree::kOak, get_branch_axis(d)));
+				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size,
+				                  {Blocks::kLeaves, BlockVariants::Tree::kOak, 0});
 
 				if (apple && crown_size > 1) {
 					for (uint32_t j = 0; j < crown_size; ++j)
@@ -422,8 +448,9 @@ private:
 			int32_t trunk_height = rng() % 6 + 10;
 			int32_t main_crown_size = rng() % 2 + 1;
 			for (int32_t i = 0; i < trunk_height + main_crown_size; ++i)
-				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kBirch, 1));
-			set_block_cluster(x, y + trunk_height, z, main_crown_size, {Blocks::kLeaves, BlockMetas::Tree::kBirch});
+				SetBlock(x, i + y, z, Block(Blocks::kLog, BlockVariants::Tree::kBirch, 1));
+			set_block_cluster(x, y + trunk_height, z, main_crown_size,
+			                  {Blocks::kLeaves, BlockVariants::Tree::kBirch, 0});
 
 			uint32_t branch_count = rng() % 2 + 4;
 			for (uint32_t i = 0; i < branch_count; ++i) {
@@ -432,8 +459,9 @@ private:
 				glm::i32vec3 d = {rng() % 9 - 4, rng() % 3, rng() % 9 - 4};
 				int32_t crown_size = (d.x * d.x + d.y * d.y + d.z * d.z >= 9) ? 2 : (rng() % 2 + 1);
 				set_block_line(x, bry, z, d.x, d.y, d.z,
-				               Block::MakeTreeLog(BlockMetas::Tree::kBirch, get_branch_axis(d)));
-				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kBirch});
+				               Block(Blocks::kLog, BlockVariants::Tree::kBirch, get_branch_axis(d)));
+				set_block_cluster(x + d.x, bry + d.y, z + d.z, crown_size,
+				                  {Blocks::kLeaves, BlockVariants::Tree::kBirch, 0});
 			}
 		}
 
@@ -441,7 +469,7 @@ private:
 		inline auto GenAcaciaTree(RNG &rng, int32_t x, int32_t y, int32_t z) -> decltype(rng() - 1, void()) {
 			int32_t trunk_height = rng() % 4 + 4;
 			for (int32_t i = 0; i < trunk_height; ++i)
-				SetBlock(x, i + y, z, Block::MakeTreeLog(BlockMetas::Tree::kAcacia, 1));
+				SetBlock(x, i + y, z, Block(Blocks::kLog, BlockVariants::Tree::kAcacia, 1));
 
 			uint32_t branch_count = rng() % 4 + 2;
 			for (uint32_t i = 0; i < branch_count; ++i) {
@@ -449,13 +477,15 @@ private:
 
 				glm::i32vec3 d = {rng() % 7 - 3, rng() % 3 + 1, rng() % 7 - 3};
 				set_block_line(x, bry, z, d.x, d.y, d.z,
-				               Block::MakeTreeLog(BlockMetas::Tree::kAcacia, get_branch_axis(d)));
+				               Block(Blocks::kLog, BlockVariants::Tree::kAcacia, get_branch_axis(d)));
 
 				// generate crown
 				int32_t crown_size = rng() % 3 + 1;
-				set_block_disc(x + d.x, bry + d.y, z + d.z, crown_size, {Blocks::kLeaves, BlockMetas::Tree::kAcacia});
+				set_block_disc(x + d.x, bry + d.y, z + d.z, crown_size,
+				               {Blocks::kLeaves, BlockVariants::Tree::kAcacia, 0});
 				if (rng() % (4 - crown_size) == 0 && crown_size > 1)
-					set_block_disc(x + d.x, bry + d.y + 1, z + d.z, 1, {Blocks::kLeaves, BlockMetas::Tree::kAcacia});
+					set_block_disc(x + d.x, bry + d.y + 1, z + d.z, 1,
+					               {Blocks::kLeaves, BlockVariants::Tree::kAcacia, 0});
 			}
 		}
 
@@ -513,5 +543,7 @@ public:
 	inline static std::unique_ptr<TerrainBase> Create(uint32_t seed) { return std::make_unique<DefaultTerrain>(seed); }
 	void Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t light_map[kChunkSize * kChunkSize]) override;
 };
+
+} // namespace hc::client
 
 #endif

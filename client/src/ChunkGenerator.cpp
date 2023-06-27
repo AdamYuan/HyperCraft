@@ -7,6 +7,8 @@
 
 #include <spdlog/spdlog.h>
 
+namespace hc::client {
+
 void ChunkGenerator::Run() {
 	if (!lock())
 		return;
@@ -44,9 +46,11 @@ void ChunkGenerator::Run() {
 	             m_chunk_ptr->GetPosition().z); */
 
 	for (uint32_t i = 0; i < Chunk::kSize * Chunk::kSize * Chunk::kSize; ++i)
-		if (m_chunk_ptr->GetBlock(i) != Blocks::kAir) {
-			push_worker(ChunkMesher::CreateWithInitialLight(m_chunk_ptr));
+		if (m_chunk_ptr->GetBlock(i) != block::Blocks::kAir) {
+			try_push_worker(ChunkMesher::TryCreateWithInitialLight(m_chunk_ptr));
 			return;
 		}
 	m_chunk_ptr->SetMeshedFlag();
 }
+
+} // namespace hc::client

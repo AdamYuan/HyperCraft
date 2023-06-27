@@ -5,34 +5,16 @@
 
 #include <client/ChunkGenerator.hpp>
 #include <client/ChunkMesher.hpp>
+#include <client/Config.hpp>
 
-void World::launch_worker_threads() {
-	m_worker_threads.resize(std::max(std::thread::hardware_concurrency() * 2 / 3, 1u));
-	for (auto &i : m_worker_threads)
-		i = std::thread(&World::worker_thread_func, this);
-}
-void World::worker_thread_func() {
-	moodycamel::ConsumerToken consumer_token{m_workers};
-	while (m_worker_threads_running.load(std::memory_order_acquire)) {
-		std::unique_ptr<WorkerBase> worker{};
+namespace hc::client {
 
-		if (m_workers.wait_dequeue_timed(consumer_token, worker, std::chrono::milliseconds(10))) {
-			worker->Run();
-			worker = nullptr;
-		}
-	}
-}
-
-void World::Join() {
+World::~World() {
 	for (const auto &i : m_chunks)
 		i.second->SetMeshFinalize();
-	m_worker_threads_running.store(false, std::memory_order_release);
-	for (auto &i : m_worker_threads)
-		i.join();
 }
 
 #include "WorldLoadingList.inl"
-
 void World::Update(const glm::vec3 &position) {
 	constexpr int16_t kR = 11;
 
@@ -52,8 +34,11 @@ void World::Update(const glm::vec3 &position) {
 			if (glm::distance((glm::vec3)current_chunk_pos, (glm::vec3)it->first) > kR + 2) {
 				it = m_chunks.erase(it);
 			} else {
-				if (!it->second->IsMeshed())
-					new_nei_workers.push_back(ChunkMesher::CreateWithInitialLight(it->second));
+				if (!it->second->IsMeshed()) {
+					auto worker = ChunkMesher::TryCreateWithInitialLight(it->second);
+					if (worker)
+						new_nei_workers.push_back(std::move(worker));
+				}
 				++it;
 			}
 		}
@@ -64,8 +49,8 @@ void World::Update(const glm::vec3 &position) {
 				new_workers.push_back(ChunkGenerator::Create(PushChunk(pos)));
 		}
 
-		PushWorkers(std::move(new_workers));
-		PushWorkers(std::move(new_nei_workers));
+		m_work_pool_ptr->PushWorkers(std::move(new_workers));
+		m_work_pool_ptr->PushWorkers(std::move(new_nei_workers));
 	}
 }
 
@@ -96,3 +81,5 @@ std::shared_ptr<Chunk> World::FindChunk(const ChunkPos3 &position) const {
 	auto it = m_chunks.find(position);
 	return it == m_chunks.end() ? nullptr : it->second;
 }
+
+} // namespace hc::client

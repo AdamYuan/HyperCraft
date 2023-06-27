@@ -1,5 +1,5 @@
-#ifndef CUBECRAFT3_CLIENT_MESH_RENDERER_HPP
-#define CUBECRAFT3_CLIENT_MESH_RENDERER_HPP
+#ifndef HYPERCRAFT_CLIENT_MESH_RENDERER_HPP
+#define HYPERCRAFT_CLIENT_MESH_RENDERER_HPP
 
 #include "MeshCluster.hpp"
 #include "MeshInfo.hpp"
@@ -11,6 +11,8 @@
 #include <concurrentqueue.h>
 
 #include <myvk/CommandBuffer.hpp>
+
+namespace hc::client::mesh {
 
 template <typename Vertex, typename Index, typename Info> class MeshPool : public myvk::DeviceObjectBase {
 public:
@@ -255,5 +257,7 @@ public:
 			vmaDestroyBuffer(m_pool_ptr->GetDevicePtr()->GetAllocatorHandle(), m_buffer, m_allocation);
 	}
 };
+
+} // namespace hc::client::mesh
 
 #endif
