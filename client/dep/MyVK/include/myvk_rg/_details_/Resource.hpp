@@ -87,8 +87,7 @@ public:
 	inline const VkClearValue &GetClearValue() const { return m_clear_value; }
 };
 
-// External
-// Managed Resources
+// External Resources
 template <typename Derived> class ExternalResourceInfo {
 private:
 	inline RenderGraphBase *get_render_graph_ptr() {
@@ -100,7 +99,6 @@ private:
 		return static_cast<const ObjectBase *>(static_cast<const Derived *>(this))->GetRenderGraphPtr();
 	}
 
-	bool m_is_static{false};
 	VkPipelineStageFlags2 m_src_stages{VK_PIPELINE_STAGE_2_NONE}, m_dst_stages{VK_PIPELINE_STAGE_2_NONE};
 	VkAccessFlags2 m_src_accesses{VK_ACCESS_2_NONE}, m_dst_accesses{VK_ACCESS_2_NONE};
 
@@ -259,7 +257,7 @@ public:
 };
 
 // Managed Resources
-template <typename Derived, typename SizeType, typename VkUsageEnum> class ManagedResourceInfo {
+template <typename Derived, typename SizeType /*, typename VkUsageEnum*/> class ManagedResourceInfo {
 public:
 	using SizeFunc = std::function<SizeType(const VkExtent2D &)>;
 
@@ -298,7 +296,7 @@ public:
 	}
 	inline bool HaveSizeFunc() const { return m_size_func; }
 	inline const SizeFunc &GetSizeFunc() const { return m_size_func; }
-	template <typename Func> inline void SetSizeFunc(Func &&func) {
+	inline void SetSizeFunc(const SizeFunc &func) {
 		m_size_func = func;
 		set_size_changed_compile_phrease();
 	}
@@ -309,8 +307,7 @@ public:
 	inline VkUsageEnum GetExtraUsages() const { return m_extra_usages; } */
 };
 
-class ManagedBuffer final : public BufferBase,
-                            public ManagedResourceInfo<ManagedBuffer, VkDeviceSize, VkBufferUsageFlags> {
+class ManagedBuffer final : public BufferBase, public ManagedResourceInfo<ManagedBuffer, VkDeviceSize> {
 private:
 	mutable struct {
 	private:
@@ -427,7 +424,7 @@ public:
 
 class ManagedImage final : public InternalImageBase,
                            public ImageAttachmentInfo<ManagedImage>,
-                           public ManagedResourceInfo<ManagedImage, SubImageSize, VkImageUsageFlags> {
+                           public ManagedResourceInfo<ManagedImage, SubImageSize> {
 private:
 	VkImageViewType m_view_type{};
 	VkFormat m_format{};
@@ -539,7 +536,7 @@ private:
 	InitTransferFunc m_init_transfer_func{};
 
 public:
-	template <typename Func> inline void SetInitTransferFunc(Func &&func) {
+	inline void SetInitTransferFunc(const InitTransferFunc &func) {
 		if ((m_init_transfer_func == nullptr) != (func == nullptr))
 			get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kAllocate);
 		else
