@@ -426,6 +426,7 @@ void RenderGraphResolver::extract_resource_references() {
 				int_res_info.p_last_frame_info = &m_last_frame_resources.back();
 			}
 
+			int_res_info.p_last_frame_info->lf_resource = resource;
 			int_res_info.p_last_frame_info->references.push_back({p_input, node.pass});
 			if (!resource_lf_pass_visited.GetRelation(int_res_id, order)) {
 				int_res_info.p_last_frame_info->last_references.push_back({p_input, node.pass});

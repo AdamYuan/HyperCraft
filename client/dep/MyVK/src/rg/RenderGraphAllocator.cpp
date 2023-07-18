@@ -108,7 +108,11 @@ void RenderGraphAllocator::update_resource_info() {
 	for (auto &buffer_alloc : m_allocated_buffers) {
 		const auto &buffer_info = buffer_alloc.GetBufferInfo();
 		// buffer_alloc.vk_buffer_usages = buffer_info.buffer->GetExtraUsages();
-		buffer_alloc.vk_buffer_usages = buffer_info.p_last_frame_info ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0;
+		buffer_alloc.vk_buffer_usages = buffer_info.p_last_frame_info && static_cast<const LastFrameBuffer *>(
+		                                                                     buffer_info.p_last_frame_info->lf_resource)
+		                                                                     ->GetInitTransferFunc()
+		                                    ? VK_BUFFER_USAGE_TRANSFER_DST_BIT
+		                                    : 0;
 		for (const auto &ref : buffer_info.references)
 			buffer_alloc.vk_buffer_usages |= UsageGetCreationUsages(ref.p_input->GetUsage());
 	}
@@ -132,7 +136,11 @@ void RenderGraphAllocator::update_resource_info() {
 				assert(false);
 		});
 
-		image_alloc.vk_image_usages = image_info.p_last_frame_info ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
+		image_alloc.vk_image_usages = image_info.p_last_frame_info && static_cast<const LastFrameImage *>(
+		                                                                  image_info.p_last_frame_info->lf_resource)
+		                                                                  ->GetInitTransferFunc()
+		                                  ? VK_IMAGE_USAGE_TRANSFER_DST_BIT
+		                                  : 0;
 		image_alloc.vk_image_type = VK_IMAGE_TYPE_2D;
 		for (const auto &ref : image_info.references)
 			image_alloc.vk_image_usages |= UsageGetCreationUsages(ref.p_input->GetUsage());

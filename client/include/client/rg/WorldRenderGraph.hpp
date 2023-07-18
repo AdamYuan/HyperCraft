@@ -86,11 +86,10 @@ public:
 
 		auto fixed_depth_image = CreateResource<myvk_rg::ManagedImage>({"fixed_depth"}, VK_FORMAT_R32_SFLOAT);
 
-		auto lf_depth_image = CreateResource<myvk_rg::LastFrameImage>(
-		    {"lf_depth"}, fixed_depth_image,
-		    [](const myvk::Ptr<myvk::CommandBuffer> &command_buffer, const myvk::Ptr<myvk::ImageView> &image_view) {
-			    command_buffer->CmdClearColorImage(image_view->GetImagePtr(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			                                       {{1.0, 1.0, 1.0, 1.0}});
+		auto lf_depth_image = CreateResource<myvk_rg::LastFrameImage>({"lf_depth"}, fixed_depth_image);
+		lf_depth_image->SetInitTransferFunc(
+		    [](const myvk::Ptr<myvk::CommandBuffer> &command_buffer, const myvk::Ptr<myvk::ImageBase> &image) {
+			    command_buffer->CmdClearColorImage(image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, {{1.0, 1.0, 1.0, 1.0}});
 		    });
 
 		auto depth_hierarchy_pass = CreatePass<DepthHierarchyPass>({"depth_hierarchy_pass"}, lf_depth_image);

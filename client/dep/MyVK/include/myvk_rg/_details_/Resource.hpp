@@ -540,33 +540,26 @@ private:
 
 public:
 	template <typename Func> inline void SetInitTransferFunc(Func &&func) {
+		if ((m_init_transfer_func == nullptr) != (func == nullptr))
+			get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kAllocate);
+		else
+			get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kInitLastFrameResource);
+
 		m_init_transfer_func = func;
-		get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kInitLastFrameResource);
 	}
 	inline const InitTransferFunc &GetInitTransferFunc() const { return m_init_transfer_func; }
 };
 
 // Last Frame Resources
-class LastFrameImage final : public ImageBase, public LastFrameResourceInfo<LastFrameImage, myvk::ImageView> {
+class LastFrameImage final : public ImageBase, public LastFrameResourceInfo<LastFrameImage, myvk::ImageBase> {
 private:
 	const InternalImageBase *m_pointed_image{};
-
-	inline static void cmd_default_init_transfer(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
-	                                             const myvk::Ptr<myvk::ImageView> &image_view) {
-		command_buffer->CmdClearColorImage(image_view->GetImagePtr(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, {});
-	}
 
 	MYVK_RG_OBJECT_FRIENDS
 	// Allow setting pointed_image later
 	inline void Initialize() {}
-	inline void Initialize(const InternalImageBase *image, const InitTransferFunc &init_transfer_func) {
-		SetCurrentResource(image);
-		SetInitTransferFunc(init_transfer_func);
-	}
-	inline void Initialize(const ImageBase *image, const InitTransferFunc &init_transfer_func) {
-		SetCurrentResource(image);
-		SetInitTransferFunc(init_transfer_func);
-	}
+	inline void Initialize(const InternalImageBase *image) { SetCurrentResource(image); }
+	inline void Initialize(const ImageBase *image) { SetCurrentResource(image); }
 
 public:
 	inline constexpr ResourceState GetState() const { return ResourceState::kLastFrame; }
@@ -606,14 +599,8 @@ private:
 	MYVK_RG_OBJECT_FRIENDS
 	// Allow setting pointed_buffer later
 	inline void Initialize() {}
-	inline void Initialize(const ManagedBuffer *buffer, const InitTransferFunc &init_transfer_func) {
-		SetCurrentResource(buffer);
-		SetInitTransferFunc(init_transfer_func);
-	}
-	inline void Initialize(const BufferBase *buffer, const InitTransferFunc &init_transfer_func) {
-		SetCurrentResource(buffer);
-		SetInitTransferFunc(init_transfer_func);
-	}
+	inline void Initialize(const ManagedBuffer *buffer) { SetCurrentResource(buffer); }
+	inline void Initialize(const BufferBase *buffer) { SetCurrentResource(buffer); }
 
 public:
 	inline constexpr ResourceState GetState() const { return ResourceState::kLastFrame; }

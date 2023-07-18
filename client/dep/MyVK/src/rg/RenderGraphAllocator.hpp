@@ -39,6 +39,7 @@ public:
 			return *static_cast<const RenderGraphResolver::IntImageInfo *>(p_info);
 		}
 		friend class RenderGraphAllocator;
+		friend class RenderGraphLFInit;
 	};
 	struct IntBufferAlloc final : public IntResourceAlloc {
 		myvk::Ptr<myvk::BufferBase> myvk_buffers[2]{};
@@ -51,6 +52,7 @@ public:
 			return *static_cast<const RenderGraphResolver::IntBufferInfo *>(p_info);
 		}
 		friend class RenderGraphAllocator;
+		friend class RenderGraphLFInit;
 	};
 	struct IntImageViewAlloc {
 		const InternalImageBase *int_image;

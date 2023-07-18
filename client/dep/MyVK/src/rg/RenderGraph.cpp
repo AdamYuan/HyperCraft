@@ -20,6 +20,7 @@ struct RenderGraphBase::Compiler {
 	RenderGraphScheduler scheduler;
 	RenderGraphAllocator allocator;
 	RenderGraphExecutor executor;
+	RenderGraphLFInit lf_init;
 };
 
 void RenderGraphBase::Initialize(const myvk::Ptr<myvk::Queue> &main_queue) {
@@ -48,8 +49,8 @@ void RenderGraphBase::compile() const {
 	 * The RenderGraph Compile Phrases
 	 *
 	 *            /-----> Schedule ------\
-	 *           |                       |--> Prepare Executor & LastFrame Init
-	 * Resolve --|------> Allocate -----<
+	 *           |                       |--> Prepare Executor
+	 * Resolve --|------> Allocate -----<|--> LastFrame Init
 	 *           |                       |--> Pre-bind Descriptor
 	 *            \-> Create Descriptor -/
 	 */
@@ -63,7 +64,7 @@ void RenderGraphBase::compile() const {
 		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor | CompilePhrase::kPreBindDescriptor |
 		                            CompilePhrase::kInitLastFrameResource);
 	if (m_compile_phrase & CAST8(CompilePhrase::kSchedule))
-		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor | CompilePhrase::kInitLastFrameResource);
+		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor);
 	if (m_compile_phrase & CAST8(CompilePhrase::kCreateDescriptor))
 		exe_compile_phrase |= CAST8(CompilePhrase::kPreBindDescriptor);
 	m_compile_phrase = 0u;
@@ -82,8 +83,7 @@ void RenderGraphBase::compile() const {
 	if (exe_compile_phrase & CAST8(CompilePhrase::kPreBindDescriptor))
 		m_compiler->descriptor.PreBind(m_compiler->allocator);
 	if (exe_compile_phrase & CAST8(CompilePhrase::kInitLastFrameResource))
-		RenderGraphLFInit::InitLastFrameResources(m_main_queue_ptr, m_compiler->resolver, m_compiler->scheduler,
-		                                          m_compiler->allocator);
+		m_compiler->lf_init.InitLastFrameResources(m_main_queue_ptr, m_compiler->allocator);
 	m_first_exe = true;
 #undef CAST8
 }

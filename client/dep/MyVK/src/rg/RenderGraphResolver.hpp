@@ -22,6 +22,7 @@ struct ResourceReference {
 class RenderGraphResolver {
 public:
 	struct LFResourceInfo {
+		const ResourceBase *lf_resource;
 		std::vector<ResourceReference> references, last_references;
 	};
 	struct IntResourceInfo {
