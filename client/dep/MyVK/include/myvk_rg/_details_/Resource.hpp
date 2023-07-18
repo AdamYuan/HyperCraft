@@ -259,10 +259,9 @@ public:
 };
 
 // Managed Resources
-template <typename Derived, typename SizeType, typename VkType, typename VkUsageEnum> class ManagedResourceInfo {
+template <typename Derived, typename SizeType, typename VkUsageEnum> class ManagedResourceInfo {
 public:
 	using SizeFunc = std::function<SizeType(const VkExtent2D &)>;
-	using InitializeFunc = std::function<void(const myvk::Ptr<myvk::CommandBuffer> &, const myvk::Ptr<VkType> &)>;
 
 private:
 	inline RenderGraphBase *get_render_graph_ptr() {
@@ -279,11 +278,9 @@ private:
 			get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kSchedule);
 	}
 
-	// bool m_persistence{false};
 	mutable SizeType m_size{};
 	SizeFunc m_size_func{};
-	InitializeFunc m_initialize_func{};
-	VkUsageEnum m_extra_usages{};
+	// VkUsageEnum m_extra_usages{};
 
 public:
 	inline const SizeType &GetSize() const {
@@ -305,23 +302,15 @@ public:
 		m_size_func = func;
 		set_size_changed_compile_phrease();
 	}
-
-	template <typename Func> inline void SetInitializeFunc(Func &&func) {
-		m_initialize_func = func;
-		get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kInitializeResource);
+	/* inline void SetExtraUsages(VkUsageEnum extra_usages) {
+	    m_extra_usages = extra_usages;
+	    get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kAllocate);
 	}
-	inline const InitializeFunc &GetInitializeFunc() const { return m_initialize_func; }
-
-	inline void SetExtraUsages(VkUsageEnum extra_usages) {
-		m_extra_usages = extra_usages;
-		get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kAllocate);
-	}
-	inline VkUsageEnum GetExtraUsages() const { return m_extra_usages; }
+	inline VkUsageEnum GetExtraUsages() const { return m_extra_usages; } */
 };
 
-class ManagedBuffer final
-    : public BufferBase,
-      public ManagedResourceInfo<ManagedBuffer, VkDeviceSize, myvk::BufferBase, VkBufferUsageFlags> {
+class ManagedBuffer final : public BufferBase,
+                            public ManagedResourceInfo<ManagedBuffer, VkDeviceSize, VkBufferUsageFlags> {
 private:
 	mutable struct {
 	private:
@@ -424,7 +413,7 @@ public:
 			if (m_layers == r.m_layers && m_base_mip_level + m_mip_levels == r.m_base_mip_level)
 				m_mip_levels += r.m_mip_levels; // Merge MipMap
 			else if (m_base_mip_level == r.m_base_mip_level && m_mip_levels == r.m_mip_levels)
-				m_layers += r.m_layers; // Merge Layer
+				m_layers += r.m_layers;         // Merge Layer
 			else
 				assert(false);
 		}
@@ -438,7 +427,7 @@ public:
 
 class ManagedImage final : public InternalImageBase,
                            public ImageAttachmentInfo<ManagedImage>,
-                           public ManagedResourceInfo<ManagedImage, SubImageSize, myvk::ImageView, VkImageUsageFlags> {
+                           public ManagedResourceInfo<ManagedImage, SubImageSize, VkImageUsageFlags> {
 private:
 	VkImageViewType m_view_type{};
 	VkFormat m_format{};
@@ -533,15 +522,51 @@ public:
 };
 
 // Last Frame Resources
-class LastFrameImage final : public ImageBase {
+template <typename Derived, typename VkType> class LastFrameResourceInfo {
+public:
+	using InitTransferFunc = std::function<void(const myvk::Ptr<myvk::CommandBuffer> &, const myvk::Ptr<VkType> &)>;
+
+private:
+	inline RenderGraphBase *get_render_graph_ptr() {
+		static_assert(std::is_base_of_v<ObjectBase, Derived>);
+		return static_cast<ObjectBase *>(static_cast<Derived *>(this))->GetRenderGraphPtr();
+	}
+	inline RenderGraphBase *get_render_graph_ptr() const {
+		static_assert(std::is_base_of_v<ObjectBase, Derived>);
+		return static_cast<const ObjectBase *>(static_cast<const Derived *>(this))->GetRenderGraphPtr();
+	}
+
+	InitTransferFunc m_init_transfer_func{};
+
+public:
+	template <typename Func> inline void SetInitTransferFunc(Func &&func) {
+		m_init_transfer_func = func;
+		get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kInitLastFrameResource);
+	}
+	inline const InitTransferFunc &GetInitTransferFunc() const { return m_init_transfer_func; }
+};
+
+// Last Frame Resources
+class LastFrameImage final : public ImageBase, public LastFrameResourceInfo<LastFrameImage, myvk::ImageView> {
 private:
 	const InternalImageBase *m_pointed_image{};
+
+	inline static void cmd_default_init_transfer(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
+	                                             const myvk::Ptr<myvk::ImageView> &image_view) {
+		command_buffer->CmdClearColorImage(image_view->GetImagePtr(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, {});
+	}
 
 	MYVK_RG_OBJECT_FRIENDS
 	// Allow setting pointed_image later
 	inline void Initialize() {}
-	inline void Initialize(const InternalImageBase *image) { SetCurrentResource(image); }
-	inline void Initialize(const ImageBase *image) { SetCurrentResource(image); }
+	inline void Initialize(const InternalImageBase *image, const InitTransferFunc &init_transfer_func) {
+		SetCurrentResource(image);
+		SetInitTransferFunc(init_transfer_func);
+	}
+	inline void Initialize(const ImageBase *image, const InitTransferFunc &init_transfer_func) {
+		SetCurrentResource(image);
+		SetInitTransferFunc(init_transfer_func);
+	}
 
 public:
 	inline constexpr ResourceState GetState() const { return ResourceState::kLastFrame; }
@@ -574,15 +599,21 @@ public:
 	const myvk::Ptr<myvk::ImageView> &GetVkImageView() const;
 };
 
-class LastFrameBuffer final : public BufferBase {
+class LastFrameBuffer final : public BufferBase, public LastFrameResourceInfo<LastFrameBuffer, myvk::BufferBase> {
 private:
 	const ManagedBuffer *m_pointed_buffer{};
 
 	MYVK_RG_OBJECT_FRIENDS
 	// Allow setting pointed_buffer later
 	inline void Initialize() {}
-	inline void Initialize(const ManagedBuffer *buffer) { SetCurrentResource(buffer); }
-	inline void Initialize(const BufferBase *buffer) { SetCurrentResource(buffer); }
+	inline void Initialize(const ManagedBuffer *buffer, const InitTransferFunc &init_transfer_func) {
+		SetCurrentResource(buffer);
+		SetInitTransferFunc(init_transfer_func);
+	}
+	inline void Initialize(const BufferBase *buffer, const InitTransferFunc &init_transfer_func) {
+		SetCurrentResource(buffer);
+		SetInitTransferFunc(init_transfer_func);
+	}
 
 public:
 	inline constexpr ResourceState GetState() const { return ResourceState::kLastFrame; }

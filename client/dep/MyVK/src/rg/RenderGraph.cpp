@@ -3,6 +3,7 @@
 #include "RenderGraphAllocator.hpp"
 #include "RenderGraphDescriptor.hpp"
 #include "RenderGraphExecutor.hpp"
+#include "RenderGraphLFInit.hpp"
 #include "RenderGraphResolver.hpp"
 #include "RenderGraphScheduler.hpp"
 
@@ -47,7 +48,7 @@ void RenderGraphBase::compile() const {
 	 * The RenderGraph Compile Phrases
 	 *
 	 *            /-----> Schedule ------\
-	 *           |                       |--> Prepare Executor
+	 *           |                       |--> Prepare Executor & LastFrame Init
 	 * Resolve --|------> Allocate -----<
 	 *           |                       |--> Pre-bind Descriptor
 	 *            \-> Create Descriptor -/
@@ -57,12 +58,12 @@ void RenderGraphBase::compile() const {
 	if (m_compile_phrase & CAST8(CompilePhrase::kResolve))
 		exe_compile_phrase |= CAST8(CompilePhrase::kSchedule | CompilePhrase::kCreateDescriptor |
 		                            CompilePhrase::kAllocate | CompilePhrase::kPrepareExecutor |
-		                            CompilePhrase::kPreBindDescriptor | CompilePhrase::kInitializeResource);
+		                            CompilePhrase::kPreBindDescriptor | CompilePhrase::kInitLastFrameResource);
 	if (m_compile_phrase & CAST8(CompilePhrase::kAllocate))
 		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor | CompilePhrase::kPreBindDescriptor |
-		                            CompilePhrase::kInitializeResource);
+		                            CompilePhrase::kInitLastFrameResource);
 	if (m_compile_phrase & CAST8(CompilePhrase::kSchedule))
-		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor);
+		exe_compile_phrase |= CAST8(CompilePhrase::kPrepareExecutor | CompilePhrase::kInitLastFrameResource);
 	if (m_compile_phrase & CAST8(CompilePhrase::kCreateDescriptor))
 		exe_compile_phrase |= CAST8(CompilePhrase::kPreBindDescriptor);
 	m_compile_phrase = 0u;
@@ -80,8 +81,9 @@ void RenderGraphBase::compile() const {
 		                             m_compiler->allocator);
 	if (exe_compile_phrase & CAST8(CompilePhrase::kPreBindDescriptor))
 		m_compiler->descriptor.PreBind(m_compiler->allocator);
-	if (exe_compile_phrase & CAST8(CompilePhrase::kInitializeResource))
-		m_compiler->allocator.Initialize(m_main_queue_ptr);
+	if (exe_compile_phrase & CAST8(CompilePhrase::kInitLastFrameResource))
+		RenderGraphLFInit::InitLastFrameResources(m_main_queue_ptr, m_compiler->resolver, m_compiler->scheduler,
+		                                          m_compiler->allocator);
 	m_first_exe = true;
 #undef CAST8
 }

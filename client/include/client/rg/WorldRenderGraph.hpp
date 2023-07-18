@@ -85,27 +85,13 @@ public:
 		depth_image->SetClearColorValue({1.0f});
 
 		auto fixed_depth_image = CreateResource<myvk_rg::ManagedImage>({"fixed_depth"}, VK_FORMAT_R32_SFLOAT);
-		fixed_depth_image->SetInitializeFunc(
+
+		auto lf_depth_image = CreateResource<myvk_rg::LastFrameImage>(
+		    {"lf_depth"}, fixed_depth_image,
 		    [](const myvk::Ptr<myvk::CommandBuffer> &command_buffer, const myvk::Ptr<myvk::ImageView> &image_view) {
-			    command_buffer->CmdPipelineBarrier(
-			        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, {},
-			        {
-			            image_view->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-			                                         VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-			        });
 			    command_buffer->CmdClearColorImage(image_view->GetImagePtr(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 			                                       {{1.0, 1.0, 1.0, 1.0}});
-			    command_buffer->CmdPipelineBarrier(
-			        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, {}, {},
-			        {
-			            image_view->GetMemoryBarrier(VK_IMAGE_ASPECT_COLOR_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-			                                         VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL),
-			        });
 		    });
-		fixed_depth_image->SetExtraUsages(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-
-		auto lf_depth_image = CreateResource<myvk_rg::LastFrameImage>({"lf_depth"}, fixed_depth_image);
 
 		auto depth_hierarchy_pass = CreatePass<DepthHierarchyPass>({"depth_hierarchy_pass"}, lf_depth_image);
 

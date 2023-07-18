@@ -107,7 +107,8 @@ void RenderGraphAllocator::update_resource_info() {
 	// Update VkBufferUsage
 	for (auto &buffer_alloc : m_allocated_buffers) {
 		const auto &buffer_info = buffer_alloc.GetBufferInfo();
-		buffer_alloc.vk_buffer_usages = buffer_info.buffer->GetExtraUsages();
+		// buffer_alloc.vk_buffer_usages = buffer_info.buffer->GetExtraUsages();
+		buffer_alloc.vk_buffer_usages = buffer_info.p_last_frame_info ? VK_BUFFER_USAGE_TRANSFER_DST_BIT : 0;
 		for (const auto &ref : buffer_info.references)
 			buffer_alloc.vk_buffer_usages |= UsageGetCreationUsages(ref.p_input->GetUsage());
 	}
@@ -131,7 +132,7 @@ void RenderGraphAllocator::update_resource_info() {
 				assert(false);
 		});
 
-		image_alloc.vk_image_usages = 0;
+		image_alloc.vk_image_usages = image_info.p_last_frame_info ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
 		image_alloc.vk_image_type = VK_IMAGE_TYPE_2D;
 		for (const auto &ref : image_info.references)
 			image_alloc.vk_image_usages |= UsageGetCreationUsages(ref.p_input->GetUsage());
@@ -148,8 +149,8 @@ void RenderGraphAllocator::update_resource_info() {
 			if constexpr (Trait::kIsInternal) {
 				auto &image_alloc = m_allocated_images[m_p_resolved->GetIntImageID(image)];
 				UpdateVkImageTypeFromVkImageViewType(&image_alloc.vk_image_type, image->GetViewType());
-				if constexpr (Trait::kState == ResourceState::kManaged)
-					image_alloc.vk_image_usages |= image->GetExtraUsages();
+				// if constexpr (Trait::kState == ResourceState::kManaged)
+				// 	image_alloc.vk_image_usages |= image->GetExtraUsages();
 			} else
 				assert(false);
 		});
@@ -607,45 +608,6 @@ void RenderGraphAllocator::Allocate(const myvk::Ptr<myvk::Device> &device, const
 	}
 	printf("\n");
 #endif
-}
-
-void RenderGraphAllocator::Initialize(const myvk::Ptr<myvk::Queue> &queue) const {
-	myvk::Ptr<myvk::CommandBuffer> command_buffer;
-	const auto check_begin_cmd_buffer = [&command_buffer, &queue]() {
-		if (!command_buffer) {
-			command_buffer = myvk::CommandBuffer::Create(myvk::CommandPool::Create(queue));
-			command_buffer->Begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-		}
-	};
-	for (const auto &image_view_alloc : m_allocated_image_views) {
-		image_view_alloc.int_image->Visit(
-		    [&image_view_alloc, &command_buffer, &check_begin_cmd_buffer](const auto *image) {
-			    if constexpr (ResourceVisitorTrait<decltype(image)>::kState == ResourceState::kManaged) {
-				    if (image->GetInitializeFunc()) {
-					    check_begin_cmd_buffer();
-					    image->GetInitializeFunc()(command_buffer, image_view_alloc.myvk_image_views[0]);
-					    if (image_view_alloc.myvk_image_views[1] != image_view_alloc.myvk_image_views[0])
-						    image->GetInitializeFunc()(command_buffer, image_view_alloc.myvk_image_views[1]);
-				    }
-			    }
-		    });
-	}
-	for (const auto &buffer_alloc : m_allocated_buffers) {
-		const auto *buffer = buffer_alloc.GetBufferInfo().buffer;
-		if (buffer->GetInitializeFunc()) {
-			check_begin_cmd_buffer();
-			buffer->GetInitializeFunc()(command_buffer, buffer_alloc.myvk_buffers[0]);
-			if (buffer_alloc.myvk_buffers[1] != buffer_alloc.myvk_buffers[0])
-				buffer->GetInitializeFunc()(command_buffer, buffer_alloc.myvk_buffers[1]);
-		}
-	}
-
-	if (command_buffer) {
-		command_buffer->End();
-		auto fence = myvk::Fence::Create(queue->GetDevicePtr());
-		command_buffer->Submit(fence);
-		fence->Wait();
-	}
 }
 
 } // namespace myvk_rg::_details_

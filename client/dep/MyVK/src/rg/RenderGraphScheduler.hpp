@@ -52,6 +52,21 @@ private:
 	void extract_pass_attachments();
 	void extract_resource_transient_info();
 
+	inline static std::span<const ResourceReference>
+	get_last_image_references(const std::vector<ResourceReference> &last_references) {
+		VkImageLayout last_layout{VK_IMAGE_LAYOUT_UNDEFINED};
+		uint32_t i = last_references.size() - 1;
+		for (; ~i; --i) {
+			auto usage = last_references[i].p_input->GetUsage();
+			if (last_layout != VK_IMAGE_LAYOUT_UNDEFINED && UsageGetImageLayout(usage) != last_layout)
+				return std::span{last_references}.subspan(i + 1u);
+			if (UsageIsAttachment(usage) || !UsageIsReadOnly(usage))
+				return std::span{last_references}.subspan(i);
+			last_layout = UsageGetImageLayout(usage);
+		}
+		return last_references;
+	}
+
 public:
 	void Schedule(const RenderGraphResolver &resolved);
 
@@ -68,38 +83,16 @@ public:
 	GetLastReferences(const std::vector<ResourceReference> &last_references) {
 		if constexpr (ResType == ResourceType::kBuffer)
 			return last_references;
-		else {
-			VkImageLayout last_layout{VK_IMAGE_LAYOUT_UNDEFINED};
-			uint32_t i = last_references.size() - 1;
-			for (; ~i; --i) {
-				auto usage = last_references[i].p_input->GetUsage();
-				if (last_layout != VK_IMAGE_LAYOUT_UNDEFINED && UsageGetImageLayout(usage) != last_layout)
-					return std::span{last_references}.subspan(i + 1u);
-				if (UsageIsAttachment(usage) || !UsageIsReadOnly(usage))
-					return std::span{last_references}.subspan(i);
-				last_layout = UsageGetImageLayout(usage);
-			}
-			return last_references;
-		}
+		else
+			return get_last_image_references(last_references);
 	}
 
 	inline static std::span<const ResourceReference>
 	GetLastReferences(ResourceType resource_type, const std::vector<ResourceReference> &last_references) {
 		if (resource_type == ResourceType::kBuffer)
 			return last_references;
-		else {
-			VkImageLayout last_layout{VK_IMAGE_LAYOUT_UNDEFINED};
-			uint32_t i = last_references.size() - 1;
-			for (; ~i; --i) {
-				auto usage = last_references[i].p_input->GetUsage();
-				if (last_layout != VK_IMAGE_LAYOUT_UNDEFINED && UsageGetImageLayout(usage) != last_layout)
-					return std::span{last_references}.subspan(i + 1u);
-				if (UsageIsAttachment(usage) || !UsageIsReadOnly(usage))
-					return std::span{last_references}.subspan(i);
-				last_layout = UsageGetImageLayout(usage);
-			}
-			return last_references;
-		}
+		else
+			return get_last_image_references(last_references);
 	}
 };
 

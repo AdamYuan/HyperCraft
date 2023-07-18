@@ -19,7 +19,7 @@ enum class CompilePhrase : uint8_t {
 	kAllocate = 8u,
 	kPrepareExecutor = 16u,
 	kPreBindDescriptor = 32u,
-	kInitializeResource = 64u
+	kInitLastFrameResource = 64u
 };
 
 inline constexpr CompilePhrase operator|(CompilePhrase x, CompilePhrase y) {

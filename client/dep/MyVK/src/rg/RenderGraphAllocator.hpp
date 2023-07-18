@@ -98,8 +98,6 @@ private:
 public:
 	void Allocate(const myvk::Ptr<myvk::Device> &device, const RenderGraphResolver &resolved);
 
-	void Initialize(const myvk::Ptr<myvk::Queue> &queue) const;
-
 	inline bool IsIntResourceAliased(uint32_t int_resource_id_0, uint32_t int_resource_id_1) const {
 		return m_allocated_resource_aliased_relation.GetRelation(int_resource_id_0, int_resource_id_1);
 	}
