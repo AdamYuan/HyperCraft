@@ -84,7 +84,6 @@ void RenderGraphBase::compile() const {
 		m_compiler->descriptor.PreBind(m_compiler->allocator);
 	if (exe_compile_phrase & CAST8(CompilePhrase::kInitLastFrameResource))
 		m_compiler->lf_init.InitLastFrameResources(m_main_queue_ptr, m_compiler->allocator);
-	m_first_exe = true;
 #undef CAST8
 }
 
@@ -93,7 +92,6 @@ void RenderGraphBase::CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_b
 	m_compiler->descriptor.ExecutionBind(m_exe_flip);
 	m_compiler->executor.CmdExecute(command_buffer, m_exe_flip);
 	m_exe_flip ^= 1u;
-	m_first_exe = false;
 }
 
 // Resource GetVk functions

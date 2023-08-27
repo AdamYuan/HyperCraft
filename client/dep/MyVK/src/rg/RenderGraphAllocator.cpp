@@ -356,11 +356,11 @@ void RenderGraphAllocator::_make_optimal_allocation(MemoryInfo &&memory_info,
 
 	// Sort Resources by required sizes, place large resources first
 	std::sort(memory_info.resources.begin(), memory_info.resources.end(),
-	          [this](const IntResourceAlloc *l, const IntResourceAlloc *r) -> bool {
+	          [](const IntResourceAlloc *l, const IntResourceAlloc *r) -> bool {
 		          return l->vk_memory_requirements.size > r->vk_memory_requirements.size ||
 		                 (l->vk_memory_requirements.size == r->vk_memory_requirements.size &&
-		                  m_p_resolved->GetPassOrder(l->p_info->references[0].pass) <
-		                      m_p_resolved->GetPassOrder(r->p_info->references[0].pass));
+		                  RenderGraphResolver::GetPassOrder(l->p_info->references[0].pass) <
+		                      RenderGraphResolver::GetPassOrder(r->p_info->references[0].pass));
 	          });
 
 	VkDeviceSize allocation_blocks = 0;
@@ -573,7 +573,7 @@ void RenderGraphAllocator::reset_resource_vectors() {
 	for (uint32_t image_id = 0; image_id < m_p_resolved->GetIntImageCount(); ++image_id) {
 		const auto &image_info = m_p_resolved->GetIntImageInfo(image_id);
 		auto &image_alloc = m_allocated_images[image_id];
-		image_alloc.internal_resource_id = m_p_resolved->GetIntResourceID(image_info.image);
+		image_alloc.internal_resource_id = RenderGraphResolver::GetIntResourceID(image_info.image);
 		image_alloc.p_info = &image_info;
 	}
 }

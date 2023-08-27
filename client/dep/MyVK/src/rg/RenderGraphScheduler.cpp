@@ -24,7 +24,7 @@ RenderGraphScheduler::_compute_pass_merge_info(const RenderGraphResolver &resolv
 	// Add Extra Graph Edges to test Unable-to-merge Image Reads
 	std::vector<ExtraEdgeInfo> extra_edge_infos(kOrderedPassCount);
 	{
-		const auto add_extra_edges = [&resolved, &extra_edge_infos](
+		const auto add_extra_edges = [&extra_edge_infos](
 		                                 const std::vector<const RenderGraphResolver::PassEdge *> &output_edges) {
 			std::unordered_map<const ResourceBase *, const RenderGraphResolver::PassEdge *> res_prev_edge;
 			for (auto *p_edge : output_edges) {
@@ -32,7 +32,7 @@ RenderGraphScheduler::_compute_pass_merge_info(const RenderGraphResolver &resolv
 					continue;
 				auto it = res_prev_edge.find(p_edge->resource);
 				if (it != res_prev_edge.end()) {
-					uint32_t to_order = resolved.GetPassOrder(p_edge->to.pass);
+					uint32_t to_order = RenderGraphResolver::GetPassOrder(p_edge->to.pass);
 					extra_edge_infos[to_order].input_edges.push_back({p_edge->resource, it->second->to, p_edge->to});
 					it->second = p_edge;
 				} else
@@ -304,8 +304,8 @@ void RenderGraphScheduler::sort_and_insert_image_dependencies() {
 					bool is_write_or_result = !UsageIsReadOnly(link.p_input->GetUsage());
 					assert(!is_write_or_result || link.pass == links.back().pass);
 					if (prev_is_attachment || image_layout_changed || is_write_or_result) {
-						m_pass_dependencies.push_back(
-						    {p_cur_dep->resource, p_cur_dep->to, {}, DependencyType::kDependency});
+						m_pass_dependencies.push_back({p_cur_dep->resource, p_cur_dep->to,
+						                               std::vector<ResourceReference>{}, DependencyType::kDependency});
 						p_cur_dep = &m_pass_dependencies.back();
 					}
 				}

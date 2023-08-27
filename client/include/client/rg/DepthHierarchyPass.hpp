@@ -73,11 +73,9 @@ private:
 		}
 
 		inline void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const final {
-			// if (!GetRenderGraphPtr()->IsFirstExecute()) {
 			command_buffer->CmdBindPipeline(m_pipeline);
 			command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet()}, m_pipeline);
 			command_buffer->CmdDraw(3, 1, 0, 0);
-			//}
 		}
 
 		inline auto GetCurLevelOutput() { return MakeImageOutput({"cur_image"}); }

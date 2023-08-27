@@ -141,7 +141,7 @@ template <typename RawType> class ResourceTrait {
 private:
 	using Type = std::decay_t<std::remove_pointer_t<std::decay_t<RawType>>>;
 	template <typename Base>
-	static constexpr bool kIsBaseOf = std::is_same_v<Base, RawType> || std::is_base_of_v<Base, RawType>;
+	static constexpr bool kIsBaseOf = std::is_same_v<Base, Type> || std::is_base_of_v<Base, Type>;
 
 public:
 	static constexpr bool kIsResource = kIsBaseOf<ResourceBase>;

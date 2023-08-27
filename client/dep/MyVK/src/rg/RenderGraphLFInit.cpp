@@ -72,7 +72,7 @@ void RenderGraphLFInit::insert_lf_buffer_barriers(const RenderGraphAllocator::In
 	VkBufferMemoryBarrier2 barrier = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
 	barrier.srcQueueFamilyIndex = barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-	const auto push_barrier = [&buffer_alloc, &buffer_info, &barrier](auto &barriers) {
+	const auto push_barrier = [&buffer_alloc, &barrier](auto &barriers) {
 		const myvk::Ptr<myvk::BufferBase> &myvk_buffer_0 = buffer_alloc.myvk_buffers[0];
 		const myvk::Ptr<myvk::BufferBase> &myvk_buffer_1 = buffer_alloc.myvk_buffers[1];
 		barrier.offset = 0;

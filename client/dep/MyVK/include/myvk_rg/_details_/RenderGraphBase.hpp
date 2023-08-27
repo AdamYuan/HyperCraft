@@ -55,7 +55,7 @@ private:
 
 	struct Compiler;
 	std::unique_ptr<Compiler> m_compiler{};
-	mutable bool m_exe_flip{}, m_first_exe{};
+	mutable bool m_exe_flip{};
 
 	void Initialize(const myvk::Ptr<myvk::Queue> &main_queue);
 
@@ -86,7 +86,6 @@ public:
 			SetCompilePhrases(CompilePhrase::kAllocate | CompilePhrase::kSchedule);
 		}
 	}
-	inline bool IsFirstExecute() const { return m_first_exe; }
 	inline const VkExtent2D &GetCanvasSize() const { return m_canvas_size; }
 
 	void CmdExecute(const myvk::Ptr<myvk::CommandBuffer> &command_buffer) const;
