@@ -1,4 +1,5 @@
 #version 450
+#extension GL_KHR_shader_subgroup_ballot : enable
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct AABB {
@@ -104,12 +105,26 @@ void main() {
 		return;
 
 	if (uMeshInfo[mesh_info_idx].transparent == 0) {
-		uint opaque_draw_id = atomicAdd(uOpaqueDrawCounts[uCountOffset], 1u);
+		uvec4 ballot = subgroupBallot(true);
+
+		uint opaque_draw_base_id;
+		if (subgroupElect())
+			opaque_draw_base_id = atomicAdd(uOpaqueDrawCounts[uCountOffset], subgroupBallotBitCount(ballot));
+		opaque_draw_base_id = subgroupBroadcastFirst(opaque_draw_base_id);
+
+		uint opaque_draw_id = opaque_draw_base_id + subgroupBallotExclusiveBitCount(ballot);
 		uOpaqueDrawCommand[uDrawCmdOffset | opaque_draw_id] =
 		    DrawIndexedIndirectCommand(uMeshInfo[mesh_info_idx].index_count, 1, uMeshInfo[mesh_info_idx].first_index,
 		                               uMeshInfo[mesh_info_idx].vertex_offset, mesh_id);
 	} else {
-		uint transparent_draw_id = atomicAdd(uTransparentDrawCounts[uCountOffset], 1u);
+		uvec4 ballot = subgroupBallot(true);
+
+		uint transparent_draw_base_id;
+		if (subgroupElect())
+			transparent_draw_base_id = atomicAdd(uTransparentDrawCounts[uCountOffset], subgroupBallotBitCount(ballot));
+		transparent_draw_base_id = subgroupBroadcastFirst(transparent_draw_base_id);
+
+		uint transparent_draw_id = transparent_draw_base_id + subgroupBallotExclusiveBitCount(ballot);
 		uTransparentDrawCommand[uDrawCmdOffset | transparent_draw_id] =
 		    DrawIndexedIndirectCommand(uMeshInfo[mesh_info_idx].index_count, 1, uMeshInfo[mesh_info_idx].first_index,
 		                               uMeshInfo[mesh_info_idx].vertex_offset, mesh_id);

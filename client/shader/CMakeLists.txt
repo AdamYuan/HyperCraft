@@ -16,7 +16,7 @@ find_program(GLSLC "glslc")
 IF (GLSLC)
     function(add_spirv_shader INPUT_FILE)
         add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/include/client/shader/${INPUT_FILE}.u32
-                COMMAND glslc src/${INPUT_FILE} -o include/client/shader/${INPUT_FILE}.u32 -O -Os -mfmt=num
+                COMMAND glslc src/${INPUT_FILE} -o include/client/shader/${INPUT_FILE}.u32 -O -Os -mfmt=num --target-env=vulkan1.1
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/${INPUT_FILE}
                 )

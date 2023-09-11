@@ -52,12 +52,9 @@ void main() {
 	tex10_trans3_face3_ao2_sl6_tl6 >>= 10u;
 
 	// Texture transformation
-	if ((tex10_trans3_face3_ao2_sl6_tl6 & 1u) != 0)
-		vTexcoord = vTexcoord.yx;
-	if ((tex10_trans3_face3_ao2_sl6_tl6 & 2u) != 0)
-		vTexcoord.x = -vTexcoord.x;
-	if ((tex10_trans3_face3_ao2_sl6_tl6 & 4u) != 0)
-		vTexcoord.y = -vTexcoord.y;
+	vTexcoord = (tex10_trans3_face3_ao2_sl6_tl6 & 1u) == 0u ? vTexcoord : vTexcoord.yx;
+	vTexcoord.x = (tex10_trans3_face3_ao2_sl6_tl6 & 2u) == 0u ? vTexcoord.x : -vTexcoord.x;
+	vTexcoord.y = (tex10_trans3_face3_ao2_sl6_tl6 & 4u) == 0u ? vTexcoord.y : -vTexcoord.y;
 	tex10_trans3_face3_ao2_sl6_tl6 >>= 3u;
 
 	vFace = tex10_trans3_face3_ao2_sl6_tl6 & 0x7u;
