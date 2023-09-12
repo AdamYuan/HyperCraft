@@ -100,7 +100,7 @@ private:
 			});
 			AddDescriptorInput<0, myvk_rg::Usage::kSampledImage, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT>(
 			    {"prev_image"}, prev_image, sampler);
-			AddDescriptorInput<1, myvk_rg::Usage::kStorageImageRW, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT>(
+			AddDescriptorInput<1, myvk_rg::Usage::kStorageImageW, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT>(
 			    {"next_image"}, next_image);
 			AddColorAttachmentInput<0, myvk_rg::Usage::kColorAttachmentW>({"cur_image"}, cur_image);
 		}
