@@ -7,6 +7,7 @@ set(SHADER_SRC
         chunk_transparent.frag
         chunk_culling.comp
         depth_hierarchy.frag
+        depth_hierarchy_2.frag
         quad.vert
         oit_compositor.frag
         post_process.frag

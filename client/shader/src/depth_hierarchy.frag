@@ -1,4 +1,5 @@
 #version 450
+#extension GL_EXT_shader_atomic_float : enable
 
 layout(set = 0, binding = 0) uniform sampler2D uPreviousLod;
 
@@ -15,7 +16,8 @@ void main() {
 	float depth = max(max(d4.x, d4.y), max(d4.z, d4.w));
 
 	// deal with edge cases
-	bool odd_width = (previous_size.x & 1) == 1, odd_height = (previous_size.y & 1) == 1;
+	bool odd_width = previous_base_pos.x == previous_size.x - 3,
+	     odd_height = previous_base_pos.y == previous_size.y - 3;
 	if (odd_width) {
 		depth = max(depth, max(texelFetch(uPreviousLod, previous_base_pos + ivec2(2, 0), 0).r,
 		                       texelFetch(uPreviousLod, previous_base_pos + ivec2(2, 1), 0).r));
