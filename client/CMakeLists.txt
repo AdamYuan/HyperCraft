@@ -25,9 +25,10 @@ add_executable(HyperCraft_client
         src/ENetClient.cpp
         src/LocalClient.cpp
         src/ChunkGenerator.cpp
+        src/ChunkGenerateTask.cpp
         src/DefaultTerrain.cpp
         src/ChunkLighter.cpp
-        )
+)
 
 target_link_libraries(HyperCraft_client
         PRIVATE hc::client::dep hc::client::shader hc::texture hc::common)
