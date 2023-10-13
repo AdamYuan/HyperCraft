@@ -92,11 +92,11 @@ public:
 	inline void SetLight(uint32_t idx, Light l) { m_lights[idx] = l; }
 
 	// Neighbours
-	inline void SetNeighbour(uint32_t idx, const std::weak_ptr<Chunk> &neighbour) {
-		m_neighbour_weak_ptrs[idx] = neighbour;
+	/* inline void SetNeighbour(uint32_t idx, const std::weak_ptr<Chunk> &neighbour) {
+	    m_neighbour_weak_ptrs[idx] = neighbour;
 	}
 	inline bool NeighbourExpired(uint32_t idx) const { return m_neighbour_weak_ptrs[idx].expired(); }
-	inline std::shared_ptr<Chunk> LockNeighbour(uint32_t idx) const { return m_neighbour_weak_ptrs[idx].lock(); }
+	inline std::shared_ptr<Chunk> LockNeighbour(uint32_t idx) const { return m_neighbour_weak_ptrs[idx].lock(); } */
 	template <typename T>
 	inline typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, Block>::type
 	GetBlockFromNeighbour(T x, T y, T z) const {
@@ -116,37 +116,17 @@ public:
 		return m_lights[XYZ2Index(x % kSize, y % kSize, z % kSize)];
 	}
 
-	// World (parent)
-	inline std::shared_ptr<World> LockWorld() const { return m_world_weak_ptr.lock(); }
-
-	// Initial Flags
-	bool IsGenerated() const { return m_initial_generated_flag.load(std::memory_order_acquire); }
-	void SetGeneratedFlag() { m_initial_generated_flag.store(true, std::memory_order_release); }
-	bool IsMeshed() const { return m_initial_meshed_flag.load(std::memory_order_acquire); }
-	void SetMeshedFlag() { m_initial_meshed_flag.store(true, std::memory_order_release); }
-
-	// Sync
-	inline auto &GetMeshSync() { return m_mesh_sync; }
-	inline auto &GetLightSync() { return m_light_sync; }
-
-	inline void PushMesh(uint64_t version, std::vector<std::unique_ptr<ChunkMeshHandle>> &mesh_handles) {
-		m_mesh_sync.Done(version, [this, &mesh_handles]() { m_mesh_handles = std::move(mesh_handles); });
-	}
-	inline void PushLight(uint64_t version, const Light *light_buffer) {
-		m_light_sync.Done(version, [this, light_buffer]() {
-			std::copy(light_buffer, light_buffer + kChunkSize * kChunkSize * kChunkSize, m_lights);
-		});
-	}
-
 	// Creation
-	static inline std::shared_ptr<Chunk> Create(const std::weak_ptr<World> &world, const ChunkPos3 &position) {
+	static inline std::shared_ptr<Chunk> Create(const ChunkPos3 &position) {
 		auto ret = std::make_shared<Chunk>();
 		ret->m_position = position;
-		ret->m_world_weak_ptr = world;
 		return ret;
 	}
 
-	// Finalize
+	// Mesh
+	inline void SetMesh(std::vector<std::unique_ptr<ChunkMeshHandle>> &&mesh_handles) {
+		m_mesh_handles = std::move(mesh_handles);
+	}
 	inline void SetMeshFinalize() const {
 		for (const auto &i : m_mesh_handles)
 			i->SetFinalize();
@@ -158,36 +138,10 @@ private:
 
 	ChunkPos3 m_position{};
 
-	std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
-	std::weak_ptr<World> m_world_weak_ptr;
+	// std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
+	// std::weak_ptr<World> m_world_weak_ptr;
 
 	std::vector<std::unique_ptr<ChunkMeshHandle>> m_mesh_handles;
-
-	struct Sync {
-	private:
-		std::atomic_bool m_pending{};
-		std::atomic_uint64_t m_version{};
-		std::mutex m_done_mutex;
-
-	public:
-		inline bool IsPending() { return m_pending.load(std::memory_order_acquire); }
-		inline void Pend() { m_pending.store(true, std::memory_order_release); }
-		inline void Cancel() { m_pending.store(false, std::memory_order_release); }
-		inline uint64_t FetchVersion() {
-			m_pending.store(false, std::memory_order_release);
-			return m_version.fetch_add(1, std::memory_order_acq_rel) + 1;
-		}
-		template <typename DoneFunc> inline bool Done(uint64_t version, DoneFunc &&done_func) {
-			std::scoped_lock lock{m_done_mutex};
-			if (version == m_version.load(std::memory_order_acquire)) {
-				done_func();
-				return true;
-			}
-			return false;
-		}
-	};
-	std::atomic_bool m_initial_generated_flag{false}, m_initial_meshed_flag{false};
-	Sync m_mesh_sync{}, m_light_sync{};
 };
 
 } // namespace hc::client

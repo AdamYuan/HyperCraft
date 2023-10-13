@@ -9,7 +9,6 @@
 
 #include <myvk/ImGuiHelper.hpp>
 
-#include <client/ChunkGenerator.hpp>
 #include <client/ENetClient.hpp>
 #include <client/LocalClient.hpp>
 #include <common/WorldDatabase.hpp>
@@ -119,13 +118,14 @@ Application::Application() {
 
 	m_transfer_queue = m_main_queue;
 
-	m_work_pool = WorkPool::Create(std::max<std::size_t>(std::thread::hardware_concurrency() * 3 / 4, 1));
+	m_work_pool = WorkPool::Create(1);
 
-	m_world = World::Create(m_work_pool);
+	m_world = World::Create(11, 13);
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create();
 	m_camera->m_speed = 32.0f;
 	m_world_renderer = WorldRenderer::Create(m_device, m_world);
+	m_world_worker = WorldWorker::Create(m_world, std::thread::hardware_concurrency() * 3 / 4);
 	m_client = LocalClient::Create(m_world, "world.db");
 	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 
@@ -139,7 +139,7 @@ Application::Application() {
 void Application::Run() {
 	std::chrono::time_point<std::chrono::steady_clock> prev_time = std::chrono::steady_clock::now();
 
-	int concurrency = m_work_pool->GetConcurrency();
+	int concurrency = m_world_worker->GetConcurrency();
 
 	while (!glfwWindowShouldClose(m_window)) {
 		glfwPollEvents();
@@ -149,7 +149,7 @@ void Application::Run() {
 		prev_time = cur_time;
 		m_camera->Control(m_window, delta.count());
 
-		m_world->Update(m_camera->m_position);
+		m_world->SetCenterPos(m_camera->m_position);
 
 		myvk::ImGuiNewFrame();
 
@@ -157,11 +157,12 @@ void Application::Run() {
 		ImGui::Text("fps: %f", ImGui::GetIO().Framerate);
 		ImGui::Text("frame time: %.1f ms", delta.count() * 1000.0f);
 		ImGui::Text("cam: %f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
-		ImGui::Text("workers (approx): %zu", m_work_pool->GetApproxWorkerCount());
+		ImGui::Text("pending tasks: %zu", m_world->GetChunkTaskPool().GetPendingTaskCount());
+		ImGui::Text("running tasks (approx): %zu", m_world->GetChunkTaskPool().GetRunningTaskCountApprox());
 		ImGui::Text("delta: %f", delta.count());
 
 		if (ImGui::DragInt("concurrency", &concurrency, 1, 1, (int)std::thread::hardware_concurrency()))
-			m_work_pool->Relaunch(std::clamp<std::size_t>(concurrency, 1, std::thread::hardware_concurrency()));
+			m_world_worker->Relaunch(std::clamp<std::size_t>(concurrency, 1, std::thread::hardware_concurrency()));
 
 		ImGui::End();
 
@@ -171,6 +172,7 @@ void Application::Run() {
 	}
 	m_frame_manager->WaitIdle();
 	m_work_pool->Join();
+	m_world_worker->Join();
 }
 
 Application::~Application() {

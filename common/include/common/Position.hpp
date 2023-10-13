@@ -33,7 +33,7 @@ static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint
 template <typename T>
 static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, bool>::type
 IsValidChunkPosition(T x, T y, T z) {
-	return x >= 0 && x < kChunkSize && y >= 0 && y < kChunkSize && z >= 0 && z < kChunkSize;
+	return x >= 0 && x < (T)kChunkSize && y >= 0 && y < (T)kChunkSize && z >= 0 && z < (T)kChunkSize;
 }
 template <typename T>
 static inline constexpr typename std::enable_if<std::is_unsigned<T>::value, bool>::type IsValidChunkPosition(T x, T y,
@@ -51,8 +51,8 @@ CmpXYZ2NeighbourIndex(T cmp_x, T cmp_y, T cmp_z) {
 template <typename T>
 static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
 GetBlockChunkNeighbourIndex(T x, T y, T z) {
-	return CmpXYZ2NeighbourIndex(x < 0 ? -1 : (x >= kChunkSize ? 1 : 0), y < 0 ? -1 : (y >= kChunkSize ? 1 : 0),
-	                             z < 0 ? -1 : (z >= kChunkSize ? 1 : 0));
+	return CmpXYZ2NeighbourIndex(x < 0 ? -1 : (x >= (T)kChunkSize ? 1 : 0), y < 0 ? -1 : (y >= (T)kChunkSize ? 1 : 0),
+	                             z < 0 ? -1 : (z >= (T)kChunkSize ? 1 : 0));
 }
 template <typename T>
 static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, void>::type

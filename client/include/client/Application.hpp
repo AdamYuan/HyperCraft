@@ -9,6 +9,7 @@
 #include <client/ClientBase.hpp>
 #include <client/GlobalTexture.hpp>
 #include <client/WorldRenderer.hpp>
+#include <client/WorldWorker.hpp>
 
 #include <client/rg/WorldRenderGraph.hpp>
 
@@ -37,6 +38,7 @@ private:
 	std::shared_ptr<Camera> m_camera;
 	std::shared_ptr<World> m_world;
 	std::shared_ptr<WorldRenderer> m_world_renderer;
+	std::shared_ptr<WorldWorker> m_world_worker;
 
 	// game client
 	std::shared_ptr<ClientBase> m_client;

@@ -17,17 +17,18 @@ add_executable(HyperCraft_client
         src/Application.cpp
         src/Chunk.cpp
         src/World.cpp
-        src/ChunkWorkerBase.cpp
-        src/ChunkMesher.cpp
         src/WorldRenderer.cpp
         src/Camera.cpp
         src/GlobalTexture.cpp
         src/ENetClient.cpp
         src/LocalClient.cpp
-        src/ChunkGenerator.cpp
-        src/ChunkGenerateTask.cpp
         src/DefaultTerrain.cpp
-        src/ChunkLighter.cpp
+
+        src/WorldWorker.cpp
+        src/ChunkTaskPool.cpp
+        src/ChunkGenerateTask.cpp
+        src/ChunkMeshTask.cpp
+        src/ChunkLightTask.cpp
 )
 
 target_link_libraries(HyperCraft_client

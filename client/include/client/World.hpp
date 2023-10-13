@@ -3,8 +3,10 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/hash.hpp>
 
 #include <blockingconcurrentqueue.h>
+#include <cuckoohash_map.hh>
 
 #include <atomic>
 #include <thread>
@@ -12,7 +14,10 @@
 #include <vector>
 
 #include <client/Chunk.hpp>
+#include <client/ChunkPool.hpp>
+#include <client/ChunkTaskPool.hpp>
 
+#include "Config.hpp"
 #include <common/WorkPool.hpp>
 
 namespace hc::client {
@@ -22,8 +27,8 @@ class ClientBase;
 
 class World : public std::enable_shared_from_this<World> {
 public:
-	inline static std::shared_ptr<World> Create(const std::shared_ptr<WorkPool> &work_pool_ptr) {
-		return std::make_shared<World>(work_pool_ptr);
+	inline static std::shared_ptr<World> Create(ChunkPos1 load_chunk_radius, ChunkPos1 unload_chunk_radius) {
+		return std::make_shared<World>(load_chunk_radius, unload_chunk_radius);
 	}
 
 private:
@@ -35,29 +40,75 @@ private:
 	friend class LocalClient;
 	friend class ENetClient;
 
-	// Chunks
-	std::unordered_map<ChunkPos3, std::shared_ptr<Chunk>> m_chunks;
+	friend class WorldWorker;
 
-	// Work Queue
-	std::shared_ptr<WorkPool> m_work_pool_ptr;
+	static_assert(sizeof(ChunkPos3) <= sizeof(uint64_t));
+	std::atomic_uint64_t m_center_chunk_pos;
+	std::atomic<ChunkPos1> m_load_chunk_radius, m_unload_chunk_radius;
+
+	// Chunks
+	// TODO: Use libcuckoo hashmap
+	ChunkPool m_chunk_pool; // TODO: Implement ChunkPool
+	libcuckoo::cuckoohash_map<ChunkPos3, std::shared_ptr<Chunk>> m_chunks;
+	ChunkTaskPool m_chunk_task_pool;
+
+	void update();
 
 public:
-	inline explicit World(const std::shared_ptr<WorkPool> &work_pool_ptr) : m_work_pool_ptr{work_pool_ptr} {}
+	inline explicit World(ChunkPos1 load_chunk_radius, ChunkPos1 unload_chunk_radius)
+	    : m_chunk_pool{this}, m_chunk_task_pool{this}, m_load_chunk_radius{load_chunk_radius},
+	      m_unload_chunk_radius{unload_chunk_radius} {
+		update();
+	}
 	~World();
 
+	inline void SetCenterPos(const glm::vec3 &pos) {
+		SetCenterChunkPos((glm::i32vec3)pos / (int32_t)Chunk::kSize -
+		                  (glm::i32vec3)glm::lessThan(pos, {0.0f, 0.0f, 0.0f}));
+	}
+	inline void SetCenterChunkPos(const ChunkPos3 &chunk_pos) {
+		if (chunk_pos == GetCenterChunkPos())
+			return;
+
+		uint64_t u64 = 0;
+		std::copy_n((const uint8_t *)(&chunk_pos), sizeof(ChunkPos3), (uint8_t *)(&u64));
+		m_center_chunk_pos.store(u64, std::memory_order_release);
+
+		update();
+	}
+	inline ChunkPos3 GetCenterChunkPos() const {
+		uint64_t u64 = m_center_chunk_pos.load(std::memory_order_acquire);
+		return *((const ChunkPos3 *)(&u64));
+	}
+	inline void SetLoadChunkRadius(ChunkPos1 radius) {
+		radius = std::min(radius, (ChunkPos1)kWorldMaxLoadRadius);
+		if (radius != GetLoadChunkRadius())
+			return;
+		m_load_chunk_radius.store(radius, std::memory_order_release);
+
+		update();
+	}
+	inline ChunkPos1 GetLoadChunkRadius() const { return m_load_chunk_radius.load(std::memory_order_acquire); }
+
+	inline void SetUnloadChunkRadius(ChunkPos1 radius) {
+		if (radius != GetUnloadChunkRadius())
+			return;
+		m_unload_chunk_radius.store(radius, std::memory_order_release);
+
+		update();
+	}
+	inline ChunkPos1 GetUnloadChunkRadius() const { return m_unload_chunk_radius.load(std::memory_order_acquire); }
+
 	inline const std::weak_ptr<WorldRenderer> &GetWorldRendererWeakPtr() const { return m_world_renderer_weak_ptr; }
-	inline std::shared_ptr<WorldRenderer> LockWorldRenderer() const { return m_world_renderer_weak_ptr.lock(); }
+	inline std::shared_ptr<WorldRenderer> LockRenderer() const { return m_world_renderer_weak_ptr.lock(); }
 
 	inline const std::weak_ptr<ClientBase> &GetClientWeakPtr() const { return m_client_weak_ptr; }
 	inline std::shared_ptr<ClientBase> LockClient() const { return m_client_weak_ptr.lock(); }
 
-	inline const auto &GetWorkPoolPtr() const { return m_work_pool_ptr; }
+	const auto &GetChunkTaskPool() const { return m_chunk_task_pool; }
 
 	std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const;
-	std::shared_ptr<Chunk> PushChunk(const ChunkPos3 &position);
-	void EraseChunk(const ChunkPos3 &position) { m_chunks.erase(position); }
-
-	void Update(const glm::vec3 &position);
+	// void EraseChunk(const ChunkPos3 &position) { m_chunks.erase(position); }
 };
 
 } // namespace hc::client
