@@ -32,8 +32,9 @@ public:
 		m_init_light |= init_light;
 	}
 	inline bool IsQueued() const { return m_queued; }
-	std::optional<ChunkTaskRunnerData<ChunkTaskType::kMesh>> Pop(const ChunkTaskPool &task_pool,
+	std::optional<ChunkTaskRunnerData<ChunkTaskType::kMesh>> Pop(const ChunkTaskPoolLocked &task_pool,
 	                                                             const ChunkPos3 &chunk_pos);
+	inline void OnUnload() { m_queued = m_init_light = false; }
 };
 
 template <> class ChunkTaskRunner<ChunkTaskType::kMesh> {

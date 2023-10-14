@@ -6,7 +6,7 @@
 namespace hc::client {
 
 std::optional<ChunkTaskRunnerData<ChunkTaskType::kGenerate>>
-ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPool &task_pool, const ChunkPos3 &chunk_pos) {
+ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPoolLocked &task_pool, const ChunkPos3 &chunk_pos) {
 	if (!m_queued)
 		return std::nullopt;
 	std::shared_ptr<Chunk> chunk;

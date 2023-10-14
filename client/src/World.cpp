@@ -24,7 +24,7 @@ void World::update() {
 	{
 		auto locked_chunks = m_chunks.lock_table();
 		for (auto it = locked_chunks.begin(); it != locked_chunks.end();) {
-			if (glm::distance((glm::vec3)chunk_pos, (glm::vec3)it->first) > (float)unload_radius)
+			if (ChunkPosDistance2(chunk_pos, it->first) > uint32_t(unload_radius * unload_radius))
 				it = locked_chunks.erase(it);
 			else
 				++it;

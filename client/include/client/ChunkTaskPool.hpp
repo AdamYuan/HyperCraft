@@ -18,6 +18,7 @@ namespace hc::client {
 class World;
 class Chunk;
 class ChunkTaskPool;
+class ChunkTaskPoolLocked;
 
 enum class ChunkTaskType { kGenerate, kMesh, kLight, COUNT };
 
@@ -81,6 +82,7 @@ private:
 	RunnerDataVariant produce_runner_data(std::size_t max_tasks);
 
 	friend class ChunkTaskPoolToken;
+	friend class ChunkTaskPoolLocked;
 
 public:
 	inline explicit ChunkTaskPool(World *p_world) : m_world{*p_world}, m_remaining_tasks{0}, m_all_tasks_done{true} {}
@@ -99,23 +101,37 @@ public:
 	inline const World &GetWorld() const { return m_world; }
 	inline World &GetWorld() { return m_world; }
 
-	template <ChunkTaskType... TaskTypes> inline bool AllQueued(const ChunkPos3 &chunk_pos) const {
-		bool ret{false};
-		m_data_map.find_fn(chunk_pos, [&ret](const DataTuple &data) {
-			ret = (std::get<static_cast<std::size_t>(TaskTypes)>(data).IsQueued() && ...);
-		});
-		return ret;
-	}
-	template <ChunkTaskType... TaskTypes> inline bool AnyQueued(const ChunkPos3 &chunk_pos) const {
-		bool ret{false};
-		m_data_map.find_fn(chunk_pos, [&ret](const DataTuple &data) {
-			ret = (std::get<static_cast<std::size_t>(TaskTypes)>(data).IsQueued() || ...);
-		});
-		return ret;
-	}
 	inline auto GetPendingTaskCount() const { return m_data_map.size(); }
 	inline auto GetRunningTaskCountApprox() const { return m_runner_data_queue.size_approx(); }
 	void Run(ChunkTaskPoolToken *p_token, uint32_t timeout_milliseconds, std::size_t producer_max_tasks);
+};
+
+class ChunkTaskPoolLocked {
+private:
+	using DataTuple = typename ChunkTaskDataTuple<>::Type;
+	using RunnerDataVariant = typename ChunkTaskRunnerDataVariant<>::Type;
+
+	World &m_world;
+	libcuckoo::cuckoohash_map<ChunkPos3, DataTuple>::locked_table m_data_map;
+
+public:
+	inline explicit ChunkTaskPoolLocked(ChunkTaskPool *p_pool)
+	    : m_world{p_pool->m_world}, m_data_map{p_pool->m_data_map.lock_table()} {}
+	inline const World &GetWorld() const { return m_world; }
+	inline World &GetWorld() { return m_world; }
+
+	template <ChunkTaskType... TaskTypes> inline bool AllQueued(const ChunkPos3 &chunk_pos) const {
+		auto it = m_data_map.find(chunk_pos);
+		return !(it == m_data_map.end()) &&
+		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).IsQueued() && ...);
+	}
+	template <ChunkTaskType... TaskTypes> inline bool AnyQueued(const ChunkPos3 &chunk_pos) const {
+		auto it = m_data_map.find(chunk_pos);
+		return !(it == m_data_map.end()) &&
+		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).IsQueued() || ...);
+	}
+	inline const auto &GetDataMap() const { return m_data_map; }
+	inline auto &GetDataMap() { return m_data_map; }
 };
 
 class ChunkTaskPoolToken {

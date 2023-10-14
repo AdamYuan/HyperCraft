@@ -36,7 +36,7 @@ static inline constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
 }
 
 std::optional<ChunkTaskRunnerData<ChunkTaskType::kMesh>>
-ChunkTaskData<ChunkTaskType::kMesh>::Pop(const ChunkTaskPool &task_pool, const ChunkPos3 &chunk_pos) {
+ChunkTaskData<ChunkTaskType::kMesh>::Pop(const ChunkTaskPoolLocked &task_pool, const ChunkPos3 &chunk_pos) {
 	if (!m_queued)
 		return std::nullopt;
 
@@ -49,8 +49,8 @@ ChunkTaskData<ChunkTaskType::kMesh>::Pop(const ChunkTaskPool &task_pool, const C
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk_pos;
 
-		// if (task_pool.AnyQueued<ChunkTaskType::kGenerate, ChunkTaskType::kLight>(nei_pos))
-		// 	return std::nullopt;
+		if (task_pool.AnyQueued<ChunkTaskType::kGenerate, ChunkTaskType::kLight>(nei_pos))
+			return std::nullopt;
 
 		std::shared_ptr<Chunk> nei_chunk = task_pool.GetWorld().FindChunk(nei_pos);
 		if (nei_chunk == nullptr)
@@ -111,21 +111,21 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 			        ? chunk->GetLightRef(x, y, z).SetSunlight(lvl)
 			        : m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].SetSunlight(lvl);
 		    });
-		/* algo.PropagateLight(
+		algo.PropagateLight(
 		    std::move(torchlight_entries),
 		    [&neighbour_chunks](auto x, auto y, auto z) -> block::Block {
-		        return neighbour_chunks[Chunk::GetBlockNeighbourIndex(x, y, z)]->GetBlockFromNeighbour(x, y, z);
+			    return neighbour_chunks[Chunk::GetBlockNeighbourIndex(x, y, z)]->GetBlockFromNeighbour(x, y, z);
 		    },
 		    [this, &chunk](auto x, auto y, auto z) -> block::LightLvl {
-		        return Chunk::IsValidPosition(x, y, z)
-		                   ? chunk->GetLight(x, y, z).GetTorchlight()
-		                   : m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].GetTorchlight();
+			    return Chunk::IsValidPosition(x, y, z)
+			               ? chunk->GetLight(x, y, z).GetTorchlight()
+			               : m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].GetTorchlight();
 		    },
 		    [this, &chunk](auto x, auto y, auto z, block::LightLvl lvl) {
-		        Chunk::IsValidPosition(x, y, z)
-		            ? chunk->GetLight(x, y, z).SetTorchlight(lvl)
-		            : m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].SetTorchlight(lvl);
-		    }); */
+			    Chunk::IsValidPosition(x, y, z)
+			        ? chunk->GetLight(x, y, z).SetTorchlight(lvl)
+			        : m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].SetTorchlight(lvl);
+		    });
 
 		meshes = BlockMeshAlgo<BlockAlgoConfig<
 		    uint32_t, BlockAlgoBound<uint32_t>{0, 0, 0, kChunkSize, kChunkSize, kChunkSize}, kBlockAlgoSwizzleYZX>>{}

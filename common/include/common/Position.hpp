@@ -17,6 +17,23 @@ using ChunkPos1 = int16_t;
 using ChunkPos2 = glm::vec<2, ChunkPos1>;
 using ChunkPos3 = glm::vec<3, ChunkPos1>;
 
+static inline constexpr uint32_t ChunkPosLength2(ChunkPos1 p) { return p * p; }
+static inline constexpr uint32_t ChunkPosDistance2(ChunkPos1 l, ChunkPos1 r) {
+	return ChunkPosLength2(ChunkPos1(l - r));
+}
+static inline constexpr uint32_t ChunkPosLength2(const ChunkPos2 &p) {
+	return (uint32_t)p.x * (uint32_t)p.x + (uint32_t)p.y * (uint32_t)p.y;
+}
+static inline constexpr uint32_t ChunkPosDistance2(const ChunkPos2 &l, const ChunkPos2 &r) {
+	return ChunkPosLength2(l - r);
+}
+static inline constexpr uint32_t ChunkPosLength2(const ChunkPos3 &p) {
+	return (uint32_t)p.x * (uint32_t)p.x + (uint32_t)p.y * (uint32_t)p.y + (uint32_t)p.z * (uint32_t)p.z;
+}
+static inline constexpr uint32_t ChunkPosDistance2(const ChunkPos3 &l, const ChunkPos3 &r) {
+	return ChunkPosLength2(l - r);
+}
+
 template <typename T>
 static inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type ChunkIndex2XYZ(uint32_t idx,
                                                                                                        T *xyz) {

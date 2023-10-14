@@ -23,10 +23,11 @@ public:
 
 	inline void Push() { m_queued = true; }
 	inline bool IsQueued() const { return m_queued; }
-	std::optional<ChunkTaskRunnerData<ChunkTaskType::kLight>> Pop(const ChunkTaskPool &task_pool,
+	std::optional<ChunkTaskRunnerData<ChunkTaskType::kLight>> Pop(const ChunkTaskPoolLocked &task_pool,
 	                                                              const ChunkPos3 &chunk_pos) {
 		return std::nullopt;
 	}
+	inline void OnUnload() {}
 };
 
 template <> class ChunkTaskRunner<ChunkTaskType::kLight> {
