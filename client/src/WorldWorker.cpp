@@ -19,7 +19,7 @@ void WorldWorker::worker_thread_func() {
 	ChunkTaskPoolToken token{&m_world_ptr->m_chunk_task_pool};
 	while (m_running.load(std::memory_order_acquire)) {
 		std::unique_ptr<WorkerBase> worker{};
-		m_world_ptr->m_chunk_task_pool.Run(&token, 10, 128);
+		m_world_ptr->m_chunk_task_pool.Run(&token, 10, 512);
 	}
 }
 

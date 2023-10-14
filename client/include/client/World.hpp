@@ -41,24 +41,22 @@ private:
 	friend class ENetClient;
 
 	friend class WorldWorker;
+	friend class ChunkPool;
+	friend class ChunkTaskPool;
 
 	static_assert(sizeof(ChunkPos3) <= sizeof(uint64_t));
 	std::atomic_uint64_t m_center_chunk_pos;
 	std::atomic<ChunkPos1> m_load_chunk_radius, m_unload_chunk_radius;
 
 	// Chunks
-	// TODO: Use libcuckoo hashmap
-	ChunkPool m_chunk_pool; // TODO: Implement ChunkPool
-	libcuckoo::cuckoohash_map<ChunkPos3, std::shared_ptr<Chunk>> m_chunks;
+	ChunkPool m_chunk_pool;
 	ChunkTaskPool m_chunk_task_pool;
-
-	void update();
 
 public:
 	inline explicit World(ChunkPos1 load_chunk_radius, ChunkPos1 unload_chunk_radius)
 	    : m_chunk_pool{this}, m_chunk_task_pool{this}, m_load_chunk_radius{load_chunk_radius},
 	      m_unload_chunk_radius{unload_chunk_radius} {
-		update();
+		m_chunk_pool.Update();
 	}
 	~World();
 
@@ -74,7 +72,7 @@ public:
 		std::copy_n((const uint8_t *)(&chunk_pos), sizeof(ChunkPos3), (uint8_t *)(&u64));
 		m_center_chunk_pos.store(u64, std::memory_order_release);
 
-		update();
+		m_chunk_pool.Update();
 	}
 	inline ChunkPos3 GetCenterChunkPos() const {
 		uint64_t u64 = m_center_chunk_pos.load(std::memory_order_acquire);
@@ -86,7 +84,7 @@ public:
 			return;
 		m_load_chunk_radius.store(radius, std::memory_order_release);
 
-		update();
+		m_chunk_pool.Update();
 	}
 	inline ChunkPos1 GetLoadChunkRadius() const { return m_load_chunk_radius.load(std::memory_order_acquire); }
 
@@ -95,7 +93,7 @@ public:
 			return;
 		m_unload_chunk_radius.store(radius, std::memory_order_release);
 
-		update();
+		m_chunk_pool.Update();
 	}
 	inline ChunkPos1 GetUnloadChunkRadius() const { return m_unload_chunk_radius.load(std::memory_order_acquire); }
 
@@ -105,10 +103,8 @@ public:
 	inline const std::weak_ptr<ClientBase> &GetClientWeakPtr() const { return m_client_weak_ptr; }
 	inline std::shared_ptr<ClientBase> LockClient() const { return m_client_weak_ptr.lock(); }
 
+	const auto &GetChunkPool() const { return m_chunk_pool; }
 	const auto &GetChunkTaskPool() const { return m_chunk_task_pool; }
-
-	std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const;
-	// void EraseChunk(const ChunkPos3 &position) { m_chunks.erase(position); }
 };
 
 } // namespace hc::client

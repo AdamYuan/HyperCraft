@@ -11,7 +11,8 @@ ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPoolLocked &task_poo
 		return std::nullopt;
 	std::shared_ptr<Chunk> chunk;
 	std::shared_ptr<ClientBase> client;
-	if (!(chunk = task_pool.GetWorld().FindChunk(chunk_pos)) || !(client = task_pool.GetWorld().LockClient()))
+	if (!(chunk = task_pool.GetWorld().GetChunkPool().FindChunk(chunk_pos)) ||
+	    !(client = task_pool.GetWorld().LockClient()))
 		return std::nullopt;
 	m_queued = false;
 	return ChunkTaskRunnerData<ChunkTaskType::kGenerate>{std::move(chunk), std::move(client)};

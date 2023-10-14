@@ -14,6 +14,12 @@ private:
 
 public:
 	inline explicit ChunkPool(World *p_world) : m_world{*p_world} {}
+	void Update();
+	inline std::shared_ptr<Chunk> FindChunk(const ChunkPos3 &position) const {
+		std::shared_ptr<Chunk> ret = nullptr;
+		m_chunks.find_fn(position, [&ret](const auto &data) { ret = data; });
+		return ret;
+	}
 };
 
 } // namespace hc::client

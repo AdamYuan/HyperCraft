@@ -92,11 +92,6 @@ public:
 	inline void SetLight(uint32_t idx, Light l) { m_lights[idx] = l; }
 
 	// Neighbours
-	/* inline void SetNeighbour(uint32_t idx, const std::weak_ptr<Chunk> &neighbour) {
-	    m_neighbour_weak_ptrs[idx] = neighbour;
-	}
-	inline bool NeighbourExpired(uint32_t idx) const { return m_neighbour_weak_ptrs[idx].expired(); }
-	inline std::shared_ptr<Chunk> LockNeighbour(uint32_t idx) const { return m_neighbour_weak_ptrs[idx].lock(); } */
 	template <typename T>
 	inline typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, Block>::type
 	GetBlockFromNeighbour(T x, T y, T z) const {
@@ -137,9 +132,6 @@ private:
 	Light m_lights[kSize * kSize * kSize];
 
 	ChunkPos3 m_position{};
-
-	// std::weak_ptr<Chunk> m_neighbour_weak_ptrs[26];
-	// std::weak_ptr<World> m_world_weak_ptr;
 
 	std::vector<std::unique_ptr<ChunkMeshHandle>> m_mesh_handles;
 };
