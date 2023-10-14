@@ -130,6 +130,16 @@ public:
 		return !(it == m_data_map.end()) &&
 		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).IsQueued() || ...);
 	}
+	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
+		auto it = m_data_map.insert(chunk_pos).first;
+		std::get<static_cast<std::size_t>(TaskType)>(it->second).Push(args...);
+	}
+	template <ChunkTaskType TaskType, typename Iterator, typename... Args>
+	inline void PushBulk(Iterator chunk_pos_begin, Iterator chunk_pos_end, Args &&...args) {
+		for (Iterator it = chunk_pos_begin; it != chunk_pos_end; ++it)
+			Push<TaskType>(*it, args...);
+	}
+
 	inline const auto &GetDataMap() const { return m_data_map; }
 	inline auto &GetDataMap() { return m_data_map; }
 };

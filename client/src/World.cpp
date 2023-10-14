@@ -38,8 +38,11 @@ void World::update() {
 		}
 	}
 
-	for (const auto &pos : generate_chunk_pos_vec)
-		m_chunk_task_pool.Push<ChunkTaskType::kGenerate>(pos);
+	{
+		ChunkTaskPoolLocked locked_task_pool{&m_chunk_task_pool};
+		locked_task_pool.PushBulk<ChunkTaskType::kGenerate>(generate_chunk_pos_vec.begin(),
+		                                                    generate_chunk_pos_vec.end());
+	}
 }
 
 std::shared_ptr<Chunk> World::FindChunk(const ChunkPos3 &position) const {
