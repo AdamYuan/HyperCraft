@@ -1,16 +1,14 @@
 #include <client/World.hpp>
 
-#include <glm/gtx/string_cast.hpp>
-#include <spdlog/spdlog.h>
-
-#include <client/Config.hpp>
+#include <client/WorldRenderer.hpp>
 
 namespace hc::client {
 
-World::~World() {
-	/* auto locked_chunks = m_chunks.lock_table();
-	for (const auto &i : locked_chunks)
-		i.second->SetMeshFinalize(); */
+void World::update() {
+	m_chunk_pool.Update();
+	auto renderer = m_world_renderer_weak_ptr.lock();
+	if (renderer)
+		renderer->EraseUnloadedMeshes();
 }
 
 } // namespace hc::client

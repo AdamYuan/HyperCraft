@@ -67,19 +67,6 @@ void Application::resize(const VkExtent2D &extent) {
 	m_camera->m_aspect_ratio = (float)extent.width / (float)extent.height;
 }
 
-class PostUpdateWorker final : public WorkerBase {
-private:
-	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool;
-	std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> m_post_updates;
-
-public:
-	inline PostUpdateWorker(const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool,
-	                        std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> &&post_updates)
-	    : m_chunk_mesh_pool{chunk_mesh_pool}, m_post_updates{std::move(post_updates)} {}
-	inline void Run() final { m_chunk_mesh_pool->PostUpdate(std::move(m_post_updates)); }
-	inline ~PostUpdateWorker() final = default;
-};
-
 void Application::draw_frame(double delta) {
 	if (!m_frame_manager->NewFrame())
 		return;
@@ -91,19 +78,16 @@ void Application::draw_frame(double delta) {
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
 	{
+		m_world_renderer->SetTransferCapacity(8 * 1024 * 1024, delta);
+
 		auto &world_rg = m_world_render_graphs[current_frame];
-		world_rg->SetTransferCapacity(8 * 1024 * 1024, delta);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 		world_rg->UpdateCamera(m_camera);
 		world_rg->UpdateDepthHierarchy();
-		world_rg->CmdUpdateChunkMesh(command_buffer, &post_updates, 64);
+		world_rg->CmdUpdateChunkMesh(command_buffer, 256u);
 		world_rg->CmdExecute(command_buffer);
 	}
 	command_buffer->End();
-
-	if (!post_updates.empty())
-		m_work_pool->PushWorker(
-		    std::make_unique<PostUpdateWorker>(m_world_renderer->GetChunkMeshPool(), std::move(post_updates)));
 
 	m_frame_manager->Render();
 }
@@ -118,8 +102,6 @@ Application::Application() {
 
 	m_transfer_queue = m_main_queue;
 
-	m_work_pool = WorkPool::Create(1);
-
 	m_world = World::Create(11, 13);
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create();
@@ -127,11 +109,9 @@ Application::Application() {
 	m_world_renderer = WorldRenderer::Create(m_device, m_world);
 	m_world_worker = WorldWorker::Create(m_world, std::thread::hardware_concurrency() * 3 / 4);
 	m_client = LocalClient::Create(m_world, "world.db");
-	// m_client = ENetClient::Create(m_world, "localhost", 60000);
 
-	auto chunk_renderer = m_world_renderer->GetChunkMeshPool();
 	for (auto &world_rg : m_world_render_graphs) {
-		world_rg = rg::WorldRenderGraph::Create(m_main_queue, m_frame_manager, chunk_renderer, m_global_texture);
+		world_rg = rg::WorldRenderGraph::Create(m_main_queue, m_frame_manager, m_world_renderer, m_global_texture);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 	}
 }
@@ -171,8 +151,8 @@ void Application::Run() {
 		draw_frame(delta.count());
 	}
 	m_frame_manager->WaitIdle();
-	m_work_pool->Join();
 	m_world_worker->Join();
+	m_world_renderer->Join();
 }
 
 Application::~Application() {

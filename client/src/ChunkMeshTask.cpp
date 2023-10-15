@@ -154,22 +154,8 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 	}
 
 	auto renderer = p_task_pool->GetWorld().LockRenderer();
-	if (!renderer)
-		return;
-
-	glm::i32vec3 base_position = (glm::i32vec3)chunk->GetPosition() * (int32_t)Chunk::kSize;
-	// erase previous meshes
-	std::vector<std::unique_ptr<ChunkMeshHandle>> mesh_handles(meshes.size());
-	// spdlog::info("Chunk {} (version {}) meshed with {} meshes", glm::to_string(m_chunk_ptr->GetPosition()),
-	// version,meshes.size());
-	for (uint32_t i = 0; i < meshes.size(); ++i) {
-		auto &info = meshes[i];
-		mesh_handles[i] = ChunkMeshHandle::Create(
-		    renderer->GetChunkMeshPool(), info.vertices, info.indices,
-		    {(fAABB)info.aabb / glm::vec3(1u << BlockVertex::kUnitBitOffset) + (glm::vec3)base_position, base_position,
-		     (uint32_t)info.transparent});
-	}
-	chunk->SetMesh(std::move(mesh_handles));
+	if (renderer)
+		renderer->PushChunkMesh(chunk->GetPosition(), std::move(meshes));
 }
 
 } // namespace hc::client

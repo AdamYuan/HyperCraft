@@ -42,6 +42,8 @@ public:
 		inline ~LocalErase() final = default;
 	};
 
+	using LocalUpdateEntry = std::unique_ptr<LocalUpdate>;
+
 private:
 	myvk::Ptr<myvk::Device> m_device_ptr;
 
@@ -60,7 +62,7 @@ private:
 	inline uint64_t gen_cluster_id() { return m_cluster_id_counter.fetch_add(1, std::memory_order_acq_rel); }
 
 	// Local Updates
-	moodycamel::ConcurrentQueue<std::unique_ptr<LocalUpdate>> m_local_update_queue;
+	moodycamel::ConcurrentQueue<LocalUpdateEntry> m_local_update_queue;
 	std::unordered_set<uint64_t> m_erased_meshes;
 
 	inline std::unordered_map<uint64_t, std::shared_ptr<MeshCluster<Vertex, Index, Info>>> make_cluster_map() const {
@@ -100,7 +102,7 @@ public:
 	inline VkDeviceSize GetVertexBlockSize() const { return m_vertex_block_size; }
 	inline VkDeviceSize GetIndexBlockSize() const { return m_index_block_size; }
 
-	inline void PostUpdate(std::vector<std::unique_ptr<LocalUpdate>> &&post_updates) {
+	inline void PostUpdate(std::vector<LocalUpdateEntry> &&post_updates) {
 		if (post_updates.empty())
 			return;
 
@@ -123,8 +125,7 @@ public:
 
 	inline void CmdLocalUpdate(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
 	                           std::vector<std::shared_ptr<MeshCluster<Vertex, Index, Info>>> *p_prepared_clusters,
-	                           std::vector<std::unique_ptr<LocalUpdate>> *p_post_updates,
-	                           VkDeviceSize max_transfer_bytes) {
+	                           std::vector<LocalUpdateEntry> *p_post_updates, VkDeviceSize max_transfer_bytes) {
 		auto cluster_map = make_cluster_map();
 
 		p_prepared_clusters->clear();
@@ -135,7 +136,7 @@ public:
 		std::vector<VkBufferMemoryBarrier2> post_barriers;
 
 		VkDeviceSize transferred_bytes{};
-		std::unique_ptr<LocalUpdate> local_update;
+		LocalUpdateEntry local_update;
 		bool transfer = false;
 		while (transferred_bytes < max_transfer_bytes && m_local_update_queue.try_dequeue(local_update)) {
 			auto cluster_it = cluster_map.find(local_update->cluster_id);

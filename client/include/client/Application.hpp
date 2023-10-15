@@ -13,8 +13,6 @@
 
 #include <client/rg/WorldRenderGraph.hpp>
 
-#include <common/WorkPool.hpp>
-
 namespace hc::client {
 
 class Application {
@@ -42,9 +40,6 @@ private:
 
 	// game client
 	std::shared_ptr<ClientBase> m_client;
-
-	// worker
-	std::shared_ptr<WorkPool> m_work_pool;
 
 	void create_glfw_window();
 	void create_vulkan_base();

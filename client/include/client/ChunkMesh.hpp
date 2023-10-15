@@ -24,9 +24,10 @@ using ChunkMeshInfoBuffer = mesh::MeshInfoBuffer<BlockVertex, uint16_t, ChunkMes
 class ChunkMeshPool : public ChunkMeshPoolBase {
 private:
 	inline static constexpr uint32_t kClusterFaceCount = 4 * 1024 * 1024;
-	inline static constexpr uint32_t kMaxMeshesPerCluster = 4096u, kMaxClusters = 8u;
 
 public:
+	inline static constexpr uint32_t kMaxMeshesPerCluster = 4096u, kMaxClusters = 8u;
+
 	explicit ChunkMeshPool(const myvk::Ptr<myvk::Device> &device)
 	    : ChunkMeshPoolBase(device, kClusterFaceCount * 4 * sizeof(BlockVertex),
 	                        kClusterFaceCount * 6 * sizeof(uint16_t), kMaxClusters, kMaxMeshesPerCluster) {}

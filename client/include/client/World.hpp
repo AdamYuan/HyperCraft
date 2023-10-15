@@ -18,7 +18,6 @@
 #include <client/ChunkTaskPool.hpp>
 
 #include "Config.hpp"
-#include <common/WorkPool.hpp>
 
 namespace hc::client {
 
@@ -52,13 +51,15 @@ private:
 	ChunkPool m_chunk_pool;
 	ChunkTaskPool m_chunk_task_pool;
 
+	void update();
+
 public:
 	inline explicit World(ChunkPos1 load_chunk_radius, ChunkPos1 unload_chunk_radius)
 	    : m_chunk_pool{this}, m_chunk_task_pool{this}, m_load_chunk_radius{load_chunk_radius},
 	      m_unload_chunk_radius{unload_chunk_radius} {
 		m_chunk_pool.Update();
 	}
-	~World();
+	~World() = default;
 
 	inline void SetCenterPos(const glm::vec3 &pos) {
 		SetCenterChunkPos((glm::i32vec3)pos / (int32_t)Chunk::kSize -
@@ -72,7 +73,7 @@ public:
 		std::copy_n((const uint8_t *)(&chunk_pos), sizeof(ChunkPos3), (uint8_t *)(&u64));
 		m_center_chunk_pos.store(u64, std::memory_order_release);
 
-		m_chunk_pool.Update();
+		update();
 	}
 	inline ChunkPos3 GetCenterChunkPos() const {
 		uint64_t u64 = m_center_chunk_pos.load(std::memory_order_acquire);
@@ -84,7 +85,7 @@ public:
 			return;
 		m_load_chunk_radius.store(radius, std::memory_order_release);
 
-		m_chunk_pool.Update();
+		update();
 	}
 	inline ChunkPos1 GetLoadChunkRadius() const { return m_load_chunk_radius.load(std::memory_order_acquire); }
 
@@ -93,7 +94,7 @@ public:
 			return;
 		m_unload_chunk_radius.store(radius, std::memory_order_release);
 
-		m_chunk_pool.Update();
+		update();
 	}
 	inline ChunkPos1 GetUnloadChunkRadius() const { return m_unload_chunk_radius.load(std::memory_order_acquire); }
 

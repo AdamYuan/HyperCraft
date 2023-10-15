@@ -19,32 +19,27 @@ namespace hc::client::rg {
 
 class WorldRenderGraph final : public myvk_rg::RenderGraph<WorldRenderGraph> {
 private:
-	std::shared_ptr<ChunkMeshPool> m_chunk_mesh_pool_ptr;
+	std::shared_ptr<WorldRenderer> m_world_renderer_ptr;
+
 	std::vector<std::shared_ptr<ChunkMeshCluster>> m_prepared_clusters;
 	std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> m_post_updates;
-	VkDeviceSize m_max_transfer_bytes{};
 
 public:
-	inline void SetTransferCapacity(VkDeviceSize max_transfer_bytes_per_sec, double delta) {
-		m_max_transfer_bytes = VkDeviceSize((double)max_transfer_bytes_per_sec * delta);
-	}
 	inline void UpdateCamera(const std::shared_ptr<Camera> &camera_ptr) {
 		camera_ptr->Update((Camera::UniformData *)GetResource<myvk_rg::StaticBuffer<myvk::Buffer>>({"camera"})
 		                       ->GetBuffer()
 		                       ->GetMappedData());
 	}
 	inline void UpdateDepthHierarchy() { GetPass<DepthHierarchyPass>({"depth_hierarchy_pass"})->UpdateLevelCount(); }
+
 	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
-	                               std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> *p_post_updates,
 	                               std::size_t post_update_threshold = 256u) {
 		if (m_post_updates.size() >= post_update_threshold) {
-			*p_post_updates = std::move(m_post_updates);
+			m_world_renderer_ptr->PushPostUpdates(std::move(m_post_updates));
 			m_post_updates.clear();
-		} else
-			p_post_updates->clear();
+		}
 
-		m_chunk_mesh_pool_ptr->CmdLocalUpdate(command_buffer, &m_prepared_clusters, &m_post_updates,
-		                                      m_max_transfer_bytes);
+		m_world_renderer_ptr->CmdUpdateClusters(command_buffer, &m_prepared_clusters, &m_post_updates);
 		GetResource<myvk_rg::StaticBuffer<ChunkMeshInfoBuffer>>({"chunk_mesh_info"})
 		    ->GetBuffer()
 		    ->Update(m_prepared_clusters);
@@ -54,9 +49,9 @@ public:
 	}
 
 	inline void Initialize(const myvk::Ptr<myvk::FrameManager> &frame_manager,
-	                       const std::shared_ptr<ChunkMeshPool> &chunk_mesh_pool_ptr,
+	                       const std::shared_ptr<WorldRenderer> &world_renderer_ptr,
 	                       const std::shared_ptr<GlobalTexture> &global_texture_ptr) {
-		m_chunk_mesh_pool_ptr = chunk_mesh_pool_ptr;
+		m_world_renderer_ptr = world_renderer_ptr;
 
 		// Global Images
 		auto block_texture_image = CreateResource<myvk_rg::StaticImage>(
@@ -72,7 +67,7 @@ public:
 		                                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_AUTO));
 
 		auto chunk_mesh_info_buffer = CreateResource<myvk_rg::StaticBuffer<ChunkMeshInfoBuffer>>(
-		    {"chunk_mesh_info"}, ChunkMeshInfoBuffer::Create(chunk_mesh_pool_ptr, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT));
+		    {"chunk_mesh_info"}, world_renderer_ptr->CreateChunkMeshInfoBuffer(VK_BUFFER_USAGE_STORAGE_BUFFER_BIT));
 
 		auto format = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 
@@ -94,9 +89,8 @@ public:
 
 		auto depth_hierarchy_pass = CreatePass<DepthHierarchyPass>({"depth_hierarchy_pass"}, lf_depth_image);
 
-		auto chunk_cull_pass =
-		    CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_mesh_pool_ptr, chunk_mesh_info_buffer, camera_buffer,
-		                              depth_hierarchy_pass->GetDepthHierarchyOutput());
+		auto chunk_cull_pass = CreatePass<ChunkCullPass>({"chunk_cull_pass"}, chunk_mesh_info_buffer, camera_buffer,
+		                                                 depth_hierarchy_pass->GetDepthHierarchyOutput());
 		auto chunk_opaque_pass = CreatePass<ChunkOpaquePass>({"chunk_opaque_pass"},                //
 		                                                     block_texture_image, light_map_image, //
 		                                                     chunk_mesh_info_buffer,               //

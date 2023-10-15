@@ -13,7 +13,6 @@ endif ()
 
 add_library(HyperCraft_common STATIC
         src/WorldDatabase.cpp
-        src/WorkPool.cpp
         )
 add_library(hc::common ALIAS HyperCraft_common)
 

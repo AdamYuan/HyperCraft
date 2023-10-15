@@ -17,10 +17,8 @@ void WorldWorker::launch_worker_threads(std::size_t concurrency) {
 
 void WorldWorker::worker_thread_func() {
 	ChunkTaskPoolToken token{&m_world_ptr->m_chunk_task_pool};
-	while (m_running.load(std::memory_order_acquire)) {
-		std::unique_ptr<WorkerBase> worker{};
+	while (m_running.load(std::memory_order_acquire))
 		m_world_ptr->m_chunk_task_pool.Run(&token, 10, 512);
-	}
 }
 
 } // namespace hc::client

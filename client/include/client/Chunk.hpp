@@ -118,22 +118,11 @@ public:
 		return ret;
 	}
 
-	// Mesh
-	inline void SetMesh(std::vector<std::unique_ptr<ChunkMeshHandle>> &&mesh_handles) {
-		m_mesh_handles = std::move(mesh_handles);
-	}
-	inline void SetMeshFinalize() const {
-		for (const auto &i : m_mesh_handles)
-			i->SetFinalize();
-	}
-
 private:
 	Block m_blocks[kSize * kSize * kSize];
 	Light m_lights[kSize * kSize * kSize];
 
 	ChunkPos3 m_position{};
-
-	std::vector<std::unique_ptr<ChunkMeshHandle>> m_mesh_handles;
 };
 
 } // namespace hc::client
