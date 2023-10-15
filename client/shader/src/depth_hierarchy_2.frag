@@ -17,8 +17,7 @@ void main() {
 	float cur_depth = max(max(d4.x, d4.y), max(d4.z, d4.w));
 
 	// deal with edge cases
-	bool prev_edge_width = previous_base_pos.x == previous_size.x - 3,
-	     prev_edge_height = previous_base_pos.y == previous_size.y - 3;
+	bool prev_edge_width = (previous_size.x & 1) == 1, prev_edge_height = (previous_size.y & 1) == 1;
 	if (prev_edge_width) {
 		cur_depth = max(cur_depth, max(texelFetch(uPreviousLod, previous_base_pos + ivec2(2, 0), 0).r,
 		                               texelFetch(uPreviousLod, previous_base_pos + ivec2(2, 1), 0).r));

@@ -8,7 +8,7 @@ namespace hc::client::rg {
 class DepthHierarchyPass final : public myvk_rg::PassGroupBase {
 private:
 	myvk_rg::ImageInput m_depth_image{};
-	uint32_t m_level_count = 0u;
+	VkExtent2D m_extent = {kDefaultWidth, kDefaultHeight};
 
 	class DHSubpass final : public myvk_rg::GraphicsPassBase {
 	private:
@@ -162,34 +162,31 @@ public:
 		UpdateLevelCount();
 	}
 
-	inline void UpdateLevelCount() {
-		SetLevelCount(myvk::ImageBase::QueryMipLevel(GetRenderGraphPtr()->GetCanvasSize()));
-	}
-	inline void SetLevelCount(uint32_t level_count) {
-		level_count = std::max(level_count, 2u);
-		if (m_level_count == level_count)
+	inline void UpdateLevelCount() { SetLevelCount(GetRenderGraphPtr()->GetCanvasSize()); }
+	inline void SetLevelCount(VkExtent2D extent) {
+		if (extent.width == m_extent.width && extent.height == m_extent.height)
 			return;
-		m_level_count = level_count;
+		m_extent = extent;
 
 		auto sampler = myvk::Sampler::Create(GetRenderGraphPtr()->GetDevicePtr(), VK_FILTER_NEAREST,
 		                                     VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 		ClearPasses();
-		std::vector<myvk_rg::ImageOutput> outputs(m_level_count - 1);
 
-		auto extent = GetRenderGraphPtr()->GetCanvasSize();
+		auto level_count = myvk::Image::QueryMipLevel(extent);
+		std::vector<myvk_rg::ImageOutput> outputs(level_count - 1);
+
 		for (uint32_t i = 1; i < level_count;) {
 			extent = {std::max(extent.width >> 1u, 1u), std::max(extent.height >> 1u, 1u)};
 			if (i + 1 < level_count && (extent.width & 1u) == 0u && (extent.height & 1u) == 0u) {
-				extent.width >>= 1u, extent.height >>= 1u;
-
-				auto subpass = CreatePass<DHSubpass2>({"subpass", i}, i,                       //
+				auto subpass = CreatePass<DHSubpass2>({"subpass2", i}, i,                      //
 				                                      i == 1 ? m_depth_image : outputs[i - 2], //
 				                                      sampler);
 				outputs[i - 1] = subpass->GetCurLevelOutput();
 				outputs[i] = subpass->GetNextLevelOutput();
 
 				i += 2;
+				extent = {std::max(extent.width >> 1u, 1u), std::max(extent.height >> 1u, 1u)};
 			} else {
 				auto subpass = CreatePass<DHSubpass>({"subpass", i}, i,                       //
 				                                     i == 1 ? m_depth_image : outputs[i - 2], //

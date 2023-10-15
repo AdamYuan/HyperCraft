@@ -15,8 +15,7 @@ void main() {
 	float depth = max(max(d4.x, d4.y), max(d4.z, d4.w));
 
 	// deal with edge cases
-	bool edge_width = previous_base_pos.x == previous_size.x - 3,
-	     edge_height = previous_base_pos.y == previous_size.y - 3;
+	bool edge_width = (previous_size.x & 1) == 1, edge_height = (previous_size.y & 1) == 1;
 	if (edge_width) {
 		depth = max(depth, max(texelFetch(uPreviousLod, previous_base_pos + ivec2(2, 0), 0).r,
 		                       texelFetch(uPreviousLod, previous_base_pos + ivec2(2, 1), 0).r));
