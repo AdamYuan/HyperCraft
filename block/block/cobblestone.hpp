@@ -5,7 +5,8 @@ template <> struct BlockTrait<kCobblestone> : public SingleBlockTrait<kCobblesto
 	constexpr static BlockProperty kProperty = {
 	    "Cobblestone",
 	    BLOCK_TEXTURE_SAME(BlockTextures::kCobblestone),
-	    BlockTransparencies::kOpaque,
+	    BlockTransparency::kOpaque,
+	    (LightLvl)0,
 	    BlockCollisionBits::kSolid,
 	};
 };

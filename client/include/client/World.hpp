@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/hash.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include <blockingconcurrentqueue.h>
 #include <cuckoohash_map.hh>
@@ -16,6 +17,7 @@
 #include <client/Chunk.hpp>
 #include <client/ChunkPool.hpp>
 #include <client/ChunkTaskPool.hpp>
+#include <client/ChunkUpdatePool.hpp>
 
 #include "Config.hpp"
 
@@ -50,21 +52,19 @@ private:
 	// Chunks
 	ChunkPool m_chunk_pool;
 	ChunkTaskPool m_chunk_task_pool;
+	ChunkUpdatePool m_chunk_update_pool;
 
 	void update();
 
 public:
 	inline explicit World(ChunkPos1 load_chunk_radius, ChunkPos1 unload_chunk_radius)
-	    : m_chunk_pool{this}, m_chunk_task_pool{this}, m_load_chunk_radius{load_chunk_radius},
-	      m_unload_chunk_radius{unload_chunk_radius} {
+	    : m_chunk_pool{this}, m_chunk_task_pool{this}, m_chunk_update_pool{this},
+	      m_load_chunk_radius{load_chunk_radius}, m_unload_chunk_radius{unload_chunk_radius} {
 		m_chunk_pool.Update();
 	}
 	~World() = default;
 
-	inline void SetCenterPos(const glm::vec3 &pos) {
-		SetCenterChunkPos((glm::i32vec3)pos / (int32_t)Chunk::kSize -
-		                  (glm::i32vec3)glm::lessThan(pos, {0.0f, 0.0f, 0.0f}));
-	}
+	inline void SetCenterPos(const glm::vec3 &pos) { SetCenterChunkPos(ChunkPosFromBlockPos(BlockPos3(pos))); }
 	inline void SetCenterChunkPos(const ChunkPos3 &chunk_pos) {
 		if (chunk_pos == GetCenterChunkPos())
 			return;
@@ -106,6 +106,13 @@ public:
 
 	const auto &GetChunkPool() const { return m_chunk_pool; }
 	const auto &GetChunkTaskPool() const { return m_chunk_task_pool; }
+
+	inline void SetBlock(const BlockPos3 &pos, block::Block block) {
+		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
+		spdlog::info("SetBlock {} {}:{}", glm::to_string(pos), glm::to_string(chunk_pos), glm::to_string(inner_pos));
+		m_chunk_update_pool.SetBlockUpdate(chunk_pos, inner_pos, block);
+		m_chunk_task_pool.Push<ChunkTaskType::kSetBlock>(chunk_pos, inner_pos, block);
+	}
 };
 
 } // namespace hc::client

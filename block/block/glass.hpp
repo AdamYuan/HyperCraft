@@ -5,7 +5,8 @@ template <> struct BlockTrait<kGlass> : public SingleBlockTrait<kGlass> {
 	constexpr static BlockProperty kProperty = {
 	    "Glass",
 	    BLOCK_TEXTURE_SAME(BlockTextures::kGlass),
-	    BlockTransparencies::kTransparent,
+	    BlockTransparency::kTransparent,
+	    (LightLvl)0,
 	    BlockCollisionBits::kSolid,
 	};
 };

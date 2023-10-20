@@ -5,7 +5,8 @@ template <> struct BlockTrait<kSand> : public SingleBlockTrait<kSand> {
 	constexpr static BlockProperty kProperty = {
 	    "Sand",
 	    BLOCK_TEXTURE_SAME(BlockTextures::kSand),
-	    BlockTransparencies::kOpaque,
+	    BlockTransparency::kOpaque,
+	    (LightLvl)0,
 	    BlockCollisionBits::kSolid,
 	};
 };

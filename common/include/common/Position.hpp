@@ -13,9 +13,59 @@
 
 namespace hc {
 
+using BlockPos1 = int32_t;
+using BlockPos2 = glm::vec<2, BlockPos1>;
+using BlockPos3 = glm::vec<3, BlockPos1>;
+
+using InnerPos1 = int8_t;
+using InnerPos2 = glm::vec<2, InnerPos1>;
+using InnerPos3 = glm::vec<3, InnerPos1>;
+
+struct InnerPosCompare {
+	bool operator()(InnerPos1 l, InnerPos1 r) const { return l < r; }
+	bool operator()(InnerPos2 l, InnerPos2 r) const { return std::tie(l.x, l.y) < std::tie(r.x, r.y); }
+	bool operator()(InnerPos3 l, InnerPos3 r) const { return std::tie(l.x, l.y, l.z) < std::tie(r.x, r.y, r.z); }
+};
+
+static_assert(std::numeric_limits<InnerPos1>::max() >= kChunkSize);
+
 using ChunkPos1 = int16_t;
 using ChunkPos2 = glm::vec<2, ChunkPos1>;
 using ChunkPos3 = glm::vec<3, ChunkPos1>;
+
+static inline constexpr ChunkPos1 ChunkPosFromBlockPos(BlockPos1 p) {
+	BlockPos1 cmp1 = p < 0;
+	return ChunkPos1((p + cmp1) / (BlockPos1)kChunkSize - cmp1);
+}
+static inline constexpr ChunkPos2 ChunkPosFromBlockPos(const BlockPos2 &p) {
+	auto cmp2 = (BlockPos2)glm::lessThan(p, BlockPos2{0, 0});
+	return (p + cmp2) / (BlockPos1)kChunkSize - cmp2;
+}
+static inline constexpr ChunkPos3 ChunkPosFromBlockPos(const BlockPos3 &p) {
+	auto cmp3 = (BlockPos3)glm::lessThan(p, BlockPos3{0, 0, 0});
+	return (p + cmp3) / (BlockPos1)kChunkSize - cmp3;
+}
+static inline constexpr InnerPos1 InnerPosFromBlockPos(BlockPos1 p) {
+	return InnerPos1(p - (BlockPos1)ChunkPosFromBlockPos(p) * (BlockPos1)kChunkSize);
+}
+static inline constexpr InnerPos2 InnerPosFromBlockPos(const BlockPos2 &p) {
+	return p - (BlockPos2)ChunkPosFromBlockPos(p) * (BlockPos1)kChunkSize;
+}
+static inline constexpr InnerPos3 InnerPosFromBlockPos(BlockPos3 p) {
+	return p - (BlockPos3)ChunkPosFromBlockPos(p) * (BlockPos1)kChunkSize;
+}
+static inline constexpr std::pair<ChunkPos1, InnerPos1> ChunkInnerPosFromBlockPos(BlockPos1 p) {
+	auto chunk_pos = ChunkPosFromBlockPos(p);
+	return {chunk_pos, InnerPos1(p - (BlockPos1)chunk_pos * (BlockPos1)kChunkSize)};
+}
+static inline constexpr std::pair<ChunkPos2, InnerPos2> ChunkInnerPosFromBlockPos(BlockPos2 p) {
+	auto chunk_pos = ChunkPosFromBlockPos(p);
+	return {chunk_pos, InnerPos2(p - (BlockPos2)chunk_pos * (BlockPos1)kChunkSize)};
+}
+static inline constexpr std::pair<ChunkPos3, InnerPos3> ChunkInnerPosFromBlockPos(BlockPos3 p) {
+	auto chunk_pos = ChunkPosFromBlockPos(p);
+	return {chunk_pos, InnerPos3(p - (BlockPos3)chunk_pos * (BlockPos1)kChunkSize)};
+}
 
 static inline constexpr uint32_t ChunkPosLength2(ChunkPos1 p) { return p * p; }
 static inline constexpr uint32_t ChunkPosDistance2(ChunkPos1 l, ChunkPos1 r) {

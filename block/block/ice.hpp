@@ -5,7 +5,8 @@ template <> struct BlockTrait<kIce> : public SingleBlockTrait<kIce> {
 	constexpr static BlockProperty kProperty = {
 	    "Ice",
 	    BLOCK_TEXTURE_SAME(BlockTextures::kIce),
-	    BlockTransparencies::kSemiTransparent,
+	    BlockTransparency::kSemiTransparent,
+	    (LightLvl)0,
 	    BlockCollisionBits::kSolid,
 	};
 };

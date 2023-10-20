@@ -168,6 +168,8 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int scancode, i
 	    if (action == GLFW_PRESS && key == GLFW_KEY_X)
 	        app->m_ui_display_flag ^= 1u;
 	}*/
+	if (action == GLFW_PRESS && key == GLFW_KEY_P)
+		app->m_world->SetBlock((BlockPos3)app->m_camera->m_position, block::Blocks::kStone);
 }
 
 void Application::glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height) {

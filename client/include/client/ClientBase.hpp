@@ -6,6 +6,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include <future>
+
 namespace hc::client {
 
 class ClientBase {
@@ -18,6 +20,7 @@ public:
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world_ptr; }
 	inline const std::unique_ptr<TerrainBase> &GetTerrain() const { return m_terrain; }
 	virtual bool IsConnected() = 0;
+	// virtual std::future<void> SetBlock(ChunkPos3 chunk_pos, InnerPos3 inner_pos, block::Block block) = 0;
 };
 
 } // namespace hc::client

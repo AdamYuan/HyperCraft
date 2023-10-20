@@ -5,22 +5,22 @@ template <> struct BlockTrait<kLog> : public MultiBlockTrait<kLog> {
 	inline static constexpr BlockProperty kProperties[] = {
 	    {"Oak Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kOakLogTop, BlockTextures::kOakLog, BlockTextures::kOakLogTop),
-	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid},
+	     BlockTransparency::kOpaque, (LightLvl)0, BlockCollisionBits::kSolid},
 	    {"Acacia Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kAcaciaLogTop, BlockTextures::kAcaciaLog,
 	                                BlockTextures::kAcaciaLogTop),
-	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid},
+	     BlockTransparency::kOpaque, (LightLvl)0, BlockCollisionBits::kSolid},
 	    {"Jungle Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kJungleLogTop, BlockTextures::kJungleLog,
 	                                BlockTextures::kJungleLogTop),
-	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid},
+	     BlockTransparency::kOpaque, (LightLvl)0, BlockCollisionBits::kSolid},
 	    {"Spruce Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kSpruceLogTop, BlockTextures::kSpruceLog,
 	                                BlockTextures::kSpruceLogTop),
-	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid},
+	     BlockTransparency::kOpaque, (LightLvl)0, BlockCollisionBits::kSolid},
 	    {"Birch Log",
 	     BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kBirchLogTop, BlockTextures::kBirchLog, BlockTextures::kBirchLogTop),
-	     BlockTransparencies::kOpaque, BlockCollisionBits::kSolid},
+	     BlockTransparency::kOpaque, (LightLvl)0, BlockCollisionBits::kSolid},
 	};
 
 	inline static constexpr uint8_t kTransforms = 3;

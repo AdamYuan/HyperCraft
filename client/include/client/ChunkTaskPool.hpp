@@ -20,7 +20,7 @@ class Chunk;
 class ChunkTaskPool;
 class ChunkTaskPoolLocked;
 
-enum class ChunkTaskType { kGenerate, kMesh, kLight, COUNT };
+enum class ChunkTaskType { kGenerate, kMesh, kSetBlock, kLight, COUNT };
 
 template <ChunkTaskType> class ChunkTaskData;
 template <ChunkTaskType> class ChunkTaskRunnerData;
@@ -31,6 +31,7 @@ template <ChunkTaskType> class ChunkTaskRunner;
 #include "ChunkGenerateTask.inl"
 #include "ChunkLightTask.inl"
 #include "ChunkMeshTask.inl"
+#include "ChunkSetBlockTask.inl"
 
 namespace hc::client {
 

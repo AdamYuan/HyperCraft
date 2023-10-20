@@ -64,8 +64,9 @@ public:
 	inline texture::BlockTexture GetTexture(BlockFace face) const { return get_property()->textures[face]; }
 	// Vertical Sunlight
 	inline BlockTransparency GetTransparency() const { return get_property()->transparency; }
-	inline bool GetVerticalLightPass() const { return GetTransparency() == BlockTransparencies::kTransparent; }
-	inline bool GetIndirectLightPass() const { return GetTransparency() != BlockTransparencies::kOpaque; }
+	inline bool GetVerticalLightPass() const { return GetTransparency() == BlockTransparency::kTransparent; }
+	inline bool GetIndirectLightPass() const { return GetTransparency() != BlockTransparency::kOpaque; }
+	inline LightLvl GetLightLevel() const { return get_property()->light_level; }
 
 	inline BlockCollisionMask GetCollisionMask() const { return get_property()->collision_mask; }
 

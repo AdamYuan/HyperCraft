@@ -49,7 +49,7 @@ ChunkTaskData<ChunkTaskType::kMesh>::Pop(const ChunkTaskPoolLocked &task_pool, c
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk_pos;
 
-		if (task_pool.AnyQueued<ChunkTaskType::kGenerate, ChunkTaskType::kLight>(nei_pos))
+		if (task_pool.AnyQueued<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock, ChunkTaskType::kLight>(nei_pos))
 			return std::nullopt;
 
 		std::shared_ptr<Chunk> nei_chunk = task_pool.GetWorld().GetChunkPool().FindChunk(nei_pos);

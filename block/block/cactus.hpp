@@ -51,7 +51,8 @@ template <> struct BlockTrait<kCactus> : public SingleBlockTrait<kCactus> {
 	constexpr static BlockProperty kProperty = {
 	    "Cactus",
 	    BLOCK_TEXTURE_BOT_SIDE_TOP(BlockTextures::kCactusBottom, 0, BlockTextures::kCactusTop),
-	    BlockTransparencies::kSemiTransparent,
+	    BlockTransparency::kSemiTransparent,
+	    (LightLvl)0,
 	    BlockCollisionBits::kSolid,
 	    &kCactusSides,
 	};
