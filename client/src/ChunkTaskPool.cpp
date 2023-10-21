@@ -85,10 +85,9 @@ ChunkTaskPool::RunnerDataVariant ChunkTaskPool::produce_runner_data(std::size_t 
 	return std::monostate{};
 }
 
-void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token, uint32_t timeout_milliseconds, std::size_t producer_max_tasks) {
+void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token,  std::size_t producer_max_tasks) {
 	RunnerDataVariant runner_data = std::monostate{};
-	if (!m_runner_data_queue.wait_dequeue_timed(p_token->m_consumer_token, runner_data,
-	                                            std::chrono::milliseconds(timeout_milliseconds))) {
+	if (!m_runner_data_queue.try_dequeue(p_token->m_consumer_token, runner_data)) {
 		std::scoped_lock lock{m_producer_mutex};
 		if (!m_runner_data_queue.try_dequeue(p_token->m_consumer_token, runner_data))
 			runner_data = produce_runner_data(producer_max_tasks);

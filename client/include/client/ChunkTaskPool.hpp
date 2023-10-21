@@ -3,7 +3,7 @@
 #define HC_CLIENT_CHUNK_TASK_POOL_HPP
 
 #include <atomic>
-#include <blockingconcurrentqueue.h>
+#include <concurrentqueue.h>
 #include <condition_variable>
 #include <cuckoohash_map.hh>
 #include <glm/gtx/hash.hpp>
@@ -75,7 +75,7 @@ private:
 
 	World &m_world;
 	libcuckoo::cuckoohash_map<ChunkPos3, DataTuple> m_data_map;
-	moodycamel::BlockingConcurrentQueue<RunnerDataVariant> m_runner_data_queue;
+	moodycamel::ConcurrentQueue<RunnerDataVariant> m_runner_data_queue;
 	std::atomic_size_t m_remaining_tasks;
 	std::atomic_bool m_all_tasks_done;
 	std::mutex m_producer_mutex;
@@ -104,7 +104,7 @@ public:
 
 	inline auto GetPendingTaskCount() const { return m_data_map.size(); }
 	inline auto GetRunningTaskCountApprox() const { return m_runner_data_queue.size_approx(); }
-	void Run(ChunkTaskPoolToken *p_token, uint32_t timeout_milliseconds, std::size_t producer_max_tasks);
+	void Run(ChunkTaskPoolToken *p_token, std::size_t producer_max_tasks);
 };
 
 class ChunkTaskPoolLocked {
