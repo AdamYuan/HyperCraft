@@ -122,7 +122,7 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t l
 		}
 	}
 	// cave
-	if (chunk_ptr->GetPosition().y * (int)kChunkSize <= xz_info->max_height) {
+	if ((BlockPos1)chunk_ptr->GetPosition().y * (BlockPos1)kChunkSize <= xz_info->max_height) {
 		// Generate a 16 x 16 x 16 area of noise
 		thread_local static float cave_noise_output[kChunkSize * kChunkSize * kChunkSize];
 		m_cave_noise->GenUniformGrid3D(cave_noise_output, chunk_ptr->GetPosition().x * (int)kChunkSize,
@@ -499,7 +499,7 @@ void DefaultTerrain::DecorationInfo::PopToChunk(const std::shared_ptr<Chunk> &ch
 		return;
 	for (const auto &i : m_blocks) {
 		int32_t y = i.first.y - base_y;
-		if (y < 0 || y >= kChunkSize)
+		if (y < 0 || y >= (int32_t)kChunkSize)
 			continue;
 		uint32_t idx = Chunk::XYZ2Index(i.first.x, y, i.first.z);
 		// TODO: better override condition
