@@ -13,19 +13,18 @@ struct ChunkTaskSortEntry {
 	inline bool operator<(const ChunkTaskSortEntry &r) const { return dist2 < r.dist2; }
 };
 
-ChunkTaskPool::RunnerDataVariant ChunkTaskPool::produce_runner_data(std::size_t max_tasks) {
+void ChunkTaskPool::produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t max_tasks) {
 	auto center_pos = m_world.GetCenterChunkPos();
 	auto load_radius = m_world.GetLoadChunkRadius(), unload_radius = m_world.GetUnloadChunkRadius();
 
-	std::vector<RunnerDataVariant> new_runner_data_vec;
+	std::vector<RunnerDataVariant> hp_runner_data_vec, lp_runner_data_vec;
 	{
 		std::vector<ChunkTaskSortEntry> sort_entries;
 
 		ChunkTaskPoolLocked locked_pool{this};
 		auto &locked_data_map = locked_pool.GetDataMap();
 		// Unload and Erase empty data
-		for (auto it = locked_data_map.begin();
-		     it != locked_data_map.end() && new_runner_data_vec.size() < max_tasks;) {
+		for (auto it = locked_data_map.begin(); it != locked_data_map.end();) {
 			bool erase = false;
 			const auto &chunk_pos = it->first;
 			uint32_t dist2 = ChunkPosDistance2(chunk_pos, center_pos);
@@ -54,42 +53,53 @@ ChunkTaskPool::RunnerDataVariant ChunkTaskPool::produce_runner_data(std::size_t 
 		// Push Entries
 		for (const auto &e : sort_entries) {
 			std::apply(
-			    [&e, &new_runner_data_vec, &locked_pool](auto &&...data) {
+			    [&e, &hp_runner_data_vec, &lp_runner_data_vec, &locked_pool](auto &&...data) {
 				    (
 				        [&] {
 					        if (data.m_running)
 						        return;
 					        auto runner_data_opt = data.Pop(locked_pool, e.pos);
 					        if (runner_data_opt.has_value()) {
+						        (data.m_priority == ChunkTaskPriority::kHigh ? hp_runner_data_vec : lp_runner_data_vec)
+						            .emplace_back(std::move(runner_data_opt.value()));
+
 						        data.m_running = true;
-						        new_runner_data_vec.emplace_back(std::move(runner_data_opt.value()));
+						        data.m_priority = ChunkTaskPriority::kLow;
 					        }
 				        }(),
 				        ...);
 			    },
 			    locked_data_map.find(e.pos)->second);
-			if (new_runner_data_vec.size() > max_tasks)
+			if (lp_runner_data_vec.size() > max_tasks)
 				break;
 		}
 	}
-	if (!new_runner_data_vec.empty()) {
-		auto ret = std::move(new_runner_data_vec.back());
-		new_runner_data_vec.pop_back();
-
-		if (!new_runner_data_vec.empty())
-			m_runner_data_queue.enqueue_bulk(std::make_move_iterator(new_runner_data_vec.begin()),
-			                                 new_runner_data_vec.size());
-		return ret;
-	}
-	return std::monostate{};
+	if (!lp_runner_data_vec.empty())
+		m_low_priority_runner_data_queue.enqueue_bulk(p_token->m_low_priority_producer_token,
+		                                              std::make_move_iterator(lp_runner_data_vec.begin()),
+		                                              lp_runner_data_vec.size());
+	if (!hp_runner_data_vec.empty())
+		m_high_priority_runner_data_queue.enqueue_bulk(p_token->m_high_priority_producer_token,
+		                                               std::make_move_iterator(hp_runner_data_vec.begin()),
+		                                               hp_runner_data_vec.size());
 }
 
 void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token, std::size_t producer_max_tasks) {
 	RunnerDataVariant runner_data = std::monostate{};
-	if (!m_runner_data_queue.try_dequeue(p_token->m_consumer_token, runner_data)) {
+	if (m_high_priority_producer_flag.exchange(false, std::memory_order_acq_rel)) {
 		std::scoped_lock lock{m_producer_mutex};
-		if (!m_runner_data_queue.try_dequeue(p_token->m_consumer_token, runner_data))
-			runner_data = produce_runner_data(producer_max_tasks);
+		if (!m_high_priority_runner_data_queue.try_dequeue(p_token->m_high_priority_consumer_token, runner_data)) {
+			produce_runner_data(p_token, producer_max_tasks);
+			return;
+		}
+	} else if (!m_high_priority_runner_data_queue.try_dequeue(p_token->m_high_priority_consumer_token, runner_data) &&
+	           !m_low_priority_runner_data_queue.try_dequeue(p_token->m_low_priority_consumer_token, runner_data)) {
+		std::scoped_lock lock{m_producer_mutex};
+		if (!m_high_priority_runner_data_queue.try_dequeue(p_token->m_high_priority_consumer_token, runner_data) &&
+		    !m_low_priority_runner_data_queue.try_dequeue(p_token->m_low_priority_consumer_token, runner_data)) {
+			produce_runner_data(p_token, producer_max_tasks);
+			return;
+		}
 	}
 
 	std::visit(

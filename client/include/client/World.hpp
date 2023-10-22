@@ -111,7 +111,7 @@ public:
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
 		spdlog::info("SetBlock {} {}:{}", glm::to_string(pos), glm::to_string(chunk_pos), glm::to_string(inner_pos));
 		m_chunk_update_pool.SetBlockUpdate(chunk_pos, inner_pos, block);
-		m_chunk_task_pool.Push<ChunkTaskType::kSetBlock>(chunk_pos, inner_pos, block);
+		m_chunk_task_pool.Push<ChunkTaskType::kSetBlock, ChunkTaskPriority::kHigh>(chunk_pos, inner_pos, block);
 	}
 };
 

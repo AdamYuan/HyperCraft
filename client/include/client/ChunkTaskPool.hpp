@@ -21,6 +21,7 @@ class ChunkTaskPool;
 class ChunkTaskPoolLocked;
 
 enum class ChunkTaskType { kGenerate, kMesh, kSetBlock, kLight, COUNT };
+enum class ChunkTaskPriority { kHigh, kLow };
 
 template <ChunkTaskType> class ChunkTaskData;
 template <ChunkTaskType> class ChunkTaskRunnerData;
@@ -29,6 +30,7 @@ template <ChunkTaskType> class ChunkTaskRunner;
 template <ChunkTaskType Type> class ChunkTaskDataBase {
 private:
 	bool m_running{false};
+	ChunkTaskPriority m_priority{ChunkTaskPriority::kLow};
 
 	friend class ChunkTaskPool;
 	friend class ChunkTaskPoolLocked;
@@ -86,22 +88,30 @@ private:
 
 	World &m_world;
 	libcuckoo::cuckoohash_map<ChunkPos3, DataTuple> m_data_map;
-	moodycamel::ConcurrentQueue<RunnerDataVariant> m_runner_data_queue;
+	moodycamel::ConcurrentQueue<RunnerDataVariant> m_high_priority_runner_data_queue, m_low_priority_runner_data_queue;
+	std::atomic_bool m_high_priority_producer_flag;
 	std::mutex m_producer_mutex;
 
-	RunnerDataVariant produce_runner_data(std::size_t max_tasks);
+	void produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t max_tasks);
 
 	friend class ChunkTaskPoolToken;
 	friend class ChunkTaskPoolLocked;
 
 public:
-	inline explicit ChunkTaskPool(World *p_world) : m_world{*p_world} {}
-	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
+	inline explicit ChunkTaskPool(World *p_world) : m_world{*p_world}, m_high_priority_producer_flag{false} {}
+
+	template <ChunkTaskType TaskType, ChunkTaskPriority TaskPriority = ChunkTaskPriority::kLow, typename... Args>
+	inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
 		m_data_map.uprase_fn(chunk_pos,
-		                     [... args = std::forward<Args>(args)](DataTuple &data, libcuckoo::UpsertContext) {
-			                     std::get<static_cast<std::size_t>(TaskType)>(data).Push(args...);
+		                     [... args = std::forward<Args>(args)](DataTuple &data_tuple, libcuckoo::UpsertContext) {
+			                     auto &data = std::get<static_cast<std::size_t>(TaskType)>(data_tuple);
+			                     data.Push(args...);
+			                     if constexpr (TaskPriority == ChunkTaskPriority::kHigh)
+				                     data.m_priority = ChunkTaskPriority::kHigh;
 			                     return false;
 		                     });
+		if constexpr (TaskPriority == ChunkTaskPriority::kHigh)
+			m_high_priority_producer_flag.store(true, std::memory_order_release);
 	}
 	inline void Clear() {
 		m_data_map.clear();
@@ -112,7 +122,9 @@ public:
 	inline World &GetWorld() { return m_world; }
 
 	inline auto GetPendingTaskCount() const { return m_data_map.size(); }
-	inline auto GetRunningTaskCountApprox() const { return m_runner_data_queue.size_approx(); }
+	inline auto GetRunningTaskCountApprox() const {
+		return m_low_priority_runner_data_queue.size_approx() + m_high_priority_runner_data_queue.size_approx();
+	}
 	void Run(ChunkTaskPoolToken *p_token, std::size_t producer_max_tasks);
 };
 
@@ -142,7 +154,8 @@ public:
 	}
 	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
 		auto it = m_data_map.insert(chunk_pos).first;
-		std::get<static_cast<std::size_t>(TaskType)>(it->second).Push(args...);
+		auto &data = std::get<static_cast<std::size_t>(TaskType)>(it->second);
+		data.Push(args...);
 	}
 	template <ChunkTaskType TaskType, typename Iterator, typename... Args>
 	inline void PushBulk(Iterator chunk_pos_begin, Iterator chunk_pos_end, Args &&...args) {
@@ -158,15 +171,18 @@ class ChunkTaskPoolToken {
 private:
 	using RunnerTuple = typename ChunkTaskRunnerTuple<>::Type;
 
-	moodycamel::ProducerToken m_producer_token;
-	moodycamel::ConsumerToken m_consumer_token;
+	moodycamel::ProducerToken m_high_priority_producer_token, m_low_priority_producer_token;
+	moodycamel::ConsumerToken m_high_priority_consumer_token, m_low_priority_consumer_token;
 	RunnerTuple m_runners;
 
 	friend class ChunkTaskPool;
 
 public:
 	inline explicit ChunkTaskPoolToken(ChunkTaskPool *p_pool)
-	    : m_producer_token{p_pool->m_runner_data_queue}, m_consumer_token{p_pool->m_runner_data_queue} {}
+	    : m_high_priority_producer_token{p_pool->m_high_priority_runner_data_queue},
+	      m_high_priority_consumer_token{p_pool->m_high_priority_runner_data_queue},
+	      m_low_priority_producer_token{p_pool->m_low_priority_runner_data_queue},
+	      m_low_priority_consumer_token{p_pool->m_low_priority_runner_data_queue} {}
 };
 
 } // namespace hc::client
