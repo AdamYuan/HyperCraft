@@ -26,6 +26,17 @@ template <ChunkTaskType> class ChunkTaskData;
 template <ChunkTaskType> class ChunkTaskRunnerData;
 template <ChunkTaskType> class ChunkTaskRunner;
 
+template <ChunkTaskType Type> class ChunkTaskDataBase {
+private:
+	bool m_running{false};
+
+	friend class ChunkTaskPool;
+	friend class ChunkTaskPoolLocked;
+
+public:
+	inline bool NotIdle() const { return static_cast<const ChunkTaskData<Type> *>(this)->IsQueued() || m_running; }
+};
+
 } // namespace hc::client
 
 #include "ChunkGenerateTask.inl"
@@ -76,8 +87,6 @@ private:
 	World &m_world;
 	libcuckoo::cuckoohash_map<ChunkPos3, DataTuple> m_data_map;
 	moodycamel::ConcurrentQueue<RunnerDataVariant> m_runner_data_queue;
-	std::atomic_size_t m_remaining_tasks;
-	std::atomic_bool m_all_tasks_done;
 	std::mutex m_producer_mutex;
 
 	RunnerDataVariant produce_runner_data(std::size_t max_tasks);
@@ -86,7 +95,7 @@ private:
 	friend class ChunkTaskPoolLocked;
 
 public:
-	inline explicit ChunkTaskPool(World *p_world) : m_world{*p_world}, m_remaining_tasks{0}, m_all_tasks_done{true} {}
+	inline explicit ChunkTaskPool(World *p_world) : m_world{*p_world} {}
 	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
 		m_data_map.uprase_fn(chunk_pos,
 		                     [... args = std::forward<Args>(args)](DataTuple &data, libcuckoo::UpsertContext) {
@@ -121,15 +130,15 @@ public:
 	inline const World &GetWorld() const { return m_world; }
 	inline World &GetWorld() { return m_world; }
 
-	template <ChunkTaskType... TaskTypes> inline bool AllQueued(const ChunkPos3 &chunk_pos) const {
+	template <ChunkTaskType... TaskTypes> inline bool AllNotIdle(const ChunkPos3 &chunk_pos) const {
 		auto it = m_data_map.find(chunk_pos);
 		return !(it == m_data_map.end()) &&
-		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).IsQueued() && ...);
+		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() && ...);
 	}
-	template <ChunkTaskType... TaskTypes> inline bool AnyQueued(const ChunkPos3 &chunk_pos) const {
+	template <ChunkTaskType... TaskTypes> inline bool AnyNotIdle(const ChunkPos3 &chunk_pos) const {
 		auto it = m_data_map.find(chunk_pos);
 		return !(it == m_data_map.end()) &&
-		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).IsQueued() || ...);
+		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() || ...);
 	}
 	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
 		auto it = m_data_map.insert(chunk_pos).first;

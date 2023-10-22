@@ -14,7 +14,7 @@ public:
 	inline const std::shared_ptr<Chunk> &GetChunkPtr() const { return m_chunk_ptr; }
 };
 
-template <> class ChunkTaskData<ChunkTaskType::kLight> {
+template <> class ChunkTaskData<ChunkTaskType::kLight> final : public ChunkTaskDataBase<ChunkTaskType::kLight> {
 private:
 	bool m_queued{false};
 

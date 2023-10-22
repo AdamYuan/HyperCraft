@@ -7,18 +7,15 @@ class ClientBase;
 template <> class ChunkTaskRunnerData<ChunkTaskType::kGenerate> {
 private:
 	std::shared_ptr<Chunk> m_chunk_ptr;
-	std::shared_ptr<ClientBase> m_client_ptr;
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kGenerate;
-	inline ChunkTaskRunnerData(std::shared_ptr<Chunk> chunk_ptr, std::shared_ptr<ClientBase> client_ptr)
-	    : m_chunk_ptr{std::move(chunk_ptr)}, m_client_ptr{std::move(client_ptr)} {}
+	inline ChunkTaskRunnerData(std::shared_ptr<Chunk> chunk_ptr) : m_chunk_ptr{std::move(chunk_ptr)} {}
 	inline const ChunkPos3 &GetChunkPos() const { return m_chunk_ptr->GetPosition(); }
 	inline const std::shared_ptr<Chunk> &GetChunkPtr() const { return m_chunk_ptr; }
-	inline const std::shared_ptr<ClientBase> &GetClientPtr() const { return m_client_ptr; }
 };
 
-template <> class ChunkTaskData<ChunkTaskType::kGenerate> {
+template <> class ChunkTaskData<ChunkTaskType::kGenerate> final : public ChunkTaskDataBase<ChunkTaskType::kGenerate> {
 private:
 	bool m_queued{false};
 

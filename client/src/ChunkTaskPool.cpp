@@ -35,7 +35,7 @@ ChunkTaskPool::RunnerDataVariant ChunkTaskPool::produce_runner_data(std::size_t 
 			    [&erase, unload](auto &&...data) {
 				    if (unload)
 					    ([&] { data.OnUnload(); }(), ...);
-				    erase = !(data.IsQueued() || ...);
+				    erase = !(data.NotIdle() || ...);
 			    },
 			    it->second);
 
@@ -57,9 +57,13 @@ ChunkTaskPool::RunnerDataVariant ChunkTaskPool::produce_runner_data(std::size_t 
 			    [&e, &new_runner_data_vec, &locked_pool](auto &&...data) {
 				    (
 				        [&] {
+					        if (data.m_running)
+						        return;
 					        auto runner_data_opt = data.Pop(locked_pool, e.pos);
-					        if (runner_data_opt.has_value())
+					        if (runner_data_opt.has_value()) {
+						        data.m_running = true;
 						        new_runner_data_vec.emplace_back(std::move(runner_data_opt.value()));
+					        }
 				        }(),
 				        ...);
 			    },
@@ -72,20 +76,15 @@ ChunkTaskPool::RunnerDataVariant ChunkTaskPool::produce_runner_data(std::size_t 
 		auto ret = std::move(new_runner_data_vec.back());
 		new_runner_data_vec.pop_back();
 
-		if (!new_runner_data_vec.empty()) {
-			m_all_tasks_done.wait(false, std::memory_order_acquire); // Wait all works to be done
-
-			m_all_tasks_done.store(false, std::memory_order_release);
-			m_remaining_tasks.store(new_runner_data_vec.size(), std::memory_order_release);
+		if (!new_runner_data_vec.empty())
 			m_runner_data_queue.enqueue_bulk(std::make_move_iterator(new_runner_data_vec.begin()),
 			                                 new_runner_data_vec.size());
-		}
 		return ret;
 	}
 	return std::monostate{};
 }
 
-void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token,  std::size_t producer_max_tasks) {
+void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token, std::size_t producer_max_tasks) {
 	RunnerDataVariant runner_data = std::monostate{};
 	if (!m_runner_data_queue.try_dequeue(p_token->m_consumer_token, runner_data)) {
 		std::scoped_lock lock{m_producer_mutex};
@@ -98,11 +97,9 @@ void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token,  std::size_t producer_max_t
 		    using T = std::decay_t<decltype(runner_data)>;
 		    if constexpr (!std::is_same_v<T, std::monostate>) {
 			    std::get<ChunkTaskRunner<T::kType>>(p_token->m_runners).Run(this, std::forward<T>(runner_data));
-			    auto remaining_tasks = m_remaining_tasks.fetch_sub(1, std::memory_order_acq_rel) - 1;
-			    if (remaining_tasks == 0) {
-				    m_all_tasks_done.store(true, std::memory_order_release);
-				    m_all_tasks_done.notify_one();
-			    }
+			    m_data_map.find_fn(runner_data.GetChunkPos(), [](auto &data) {
+				    std::get<static_cast<std::size_t>(T::kType)>(data).m_running = false;
+			    });
 		    }
 	    },
 	    runner_data);

@@ -11,7 +11,7 @@ ChunkTaskData<ChunkTaskType::kSetBlock>::Pop(const ChunkTaskPoolLocked &task_poo
 	if (m_set_blocks.empty())
 		return std::nullopt;
 
-	if (task_pool.AnyQueued<ChunkTaskType::kGenerate>(chunk_pos))
+	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate>(chunk_pos))
 		return std::nullopt;
 	std::shared_ptr<Chunk> chunk;
 	if (!(chunk = task_pool.GetWorld().GetChunkPool().FindChunk(chunk_pos)))

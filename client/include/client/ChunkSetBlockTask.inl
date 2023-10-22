@@ -4,7 +4,7 @@ namespace hc::client {
 
 class ClientBase;
 
-template <> class ChunkTaskData<ChunkTaskType::kSetBlock> {
+template <> class ChunkTaskData<ChunkTaskType::kSetBlock> final : public ChunkTaskDataBase<ChunkTaskType::kSetBlock> {
 private:
 	std::vector<std::pair<InnerPos3, block::Block>> m_set_blocks;
 

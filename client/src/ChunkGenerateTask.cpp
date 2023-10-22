@@ -9,24 +9,22 @@ std::optional<ChunkTaskRunnerData<ChunkTaskType::kGenerate>>
 ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPoolLocked &task_pool, const ChunkPos3 &chunk_pos) {
 	if (!m_queued)
 		return std::nullopt;
-	std::shared_ptr<Chunk> chunk;
-	std::shared_ptr<ClientBase> client;
-	if (!(chunk = task_pool.GetWorld().GetChunkPool().FindChunk(chunk_pos)) ||
-	    !(client = task_pool.GetWorld().LockClient()))
+	std::shared_ptr<Chunk> chunk = task_pool.GetWorld().GetChunkPool().FindChunk(chunk_pos);
+	if (!chunk)
 		return std::nullopt;
 	m_queued = false;
-	return ChunkTaskRunnerData<ChunkTaskType::kGenerate>{std::move(chunk), std::move(client)};
+	return ChunkTaskRunnerData<ChunkTaskType::kGenerate>{std::move(chunk)};
 }
 
 void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
                                                     ChunkTaskRunnerData<ChunkTaskType::kGenerate> &&data) {
-	// If client not connected, return
-	if (!data.GetClientPtr()->IsConnected())
+	std::shared_ptr<ClientBase> client = p_task_pool->GetWorld().LockClient();
+	if (!client || !client->IsConnected())
 		return;
 
 	const auto &chunk_ptr = data.GetChunkPtr();
 
-	data.GetClientPtr()->GetTerrain()->Generate(chunk_ptr, m_light_map);
+	client->GetTerrain()->Generate(chunk_ptr, m_light_map);
 	// set initial sunlight from light_map
 	for (uint32_t y = 0; y < Chunk::kSize; ++y) {
 		int32_t cur_height = data.GetChunkPos().y * (int)Chunk::kSize + (int)y;

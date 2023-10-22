@@ -20,7 +20,7 @@ public:
 	inline const auto &GetChunkPtrArray() const { return m_chunk_ptr_array; }
 };
 
-template <> class ChunkTaskData<ChunkTaskType::kMesh> {
+template <> class ChunkTaskData<ChunkTaskType::kMesh> final : public ChunkTaskDataBase<ChunkTaskType::kMesh> {
 private:
 	bool m_queued{false}, m_init_light{false};
 
