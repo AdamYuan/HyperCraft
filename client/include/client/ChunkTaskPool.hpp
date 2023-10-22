@@ -92,6 +92,7 @@ private:
 	std::atomic_bool m_high_priority_producer_flag;
 	std::mutex m_producer_mutex;
 
+	template <ChunkTaskPriority TaskPriority>
 	void produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t max_tasks);
 
 	friend class ChunkTaskPoolToken;
