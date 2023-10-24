@@ -5,6 +5,8 @@
 
 namespace hc::block {
 
+enum class LightType { kSunlight, kTorchlight };
+
 using LightLvl = uint8_t;
 
 class Light {
@@ -27,6 +29,6 @@ public:
 	bool operator!=(Light r) const { return m_data != r.m_data; }
 };
 
-} // namespace hc
+} // namespace hc::block
 
 #endif

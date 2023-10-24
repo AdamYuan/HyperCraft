@@ -14,6 +14,8 @@ layout(location = 6) in vec2 vTexcoord;
 layout(location = 0) out vec4 oAccum;
 layout(location = 1) out float oReveal;
 
+layout(push_constant) uniform uuPushConstant { layout(offset = 4) float uDayNight; };
+
 const vec3 kFaceNormal[6] = {vec3(1, 0, 0),  vec3(-1, 0, 0), vec3(0, 1, 0),
                              vec3(0, -1, 0), vec3(0, 0, 1),  vec3(0, 0, -1)};
 
@@ -26,7 +28,7 @@ void main() {
 	if (tex.a == 0.0)
 		discard;
 	vec3 color = tex.rgb;
-	color *= vAO * texture(uLightmapTexture, vec3(vTorchlight, vSunlight, 0.0)).xyz;
+	color *= vAO * texture(uLightmapTexture, vec3(vTorchlight, vSunlight, uDayNight)).xyz;
 	color *= max(dot(kFaceNormal[vFace], normalize(vec3(10, 5, 3))), 0) * 0.5 + 0.5;
 
 	float z = linearize_depth(gl_FragCoord.z);

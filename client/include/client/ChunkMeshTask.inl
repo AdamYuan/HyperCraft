@@ -1,5 +1,7 @@
 #include <client/Chunk.hpp>
 
+#include <client/BlockLightAlgo.hpp>
+
 namespace hc::client {
 
 class WorldRenderer;
@@ -12,7 +14,7 @@ private:
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kMesh;
 
-	inline ChunkTaskRunnerData(std::array<std::shared_ptr<Chunk>, 27> chunk_ptr_array, bool init_light)
+	inline ChunkTaskRunnerData(std::array<std::shared_ptr<Chunk>, 27> &&chunk_ptr_array, bool init_light)
 	    : m_chunk_ptr_array{std::move(chunk_ptr_array)}, m_init_light{init_light} {}
 	inline const ChunkPos3 &GetChunkPos() const { return m_chunk_ptr_array[26]->GetPosition(); }
 	inline const std::shared_ptr<Chunk> &GetChunkPtr() const { return m_chunk_ptr_array[26]; }
@@ -39,6 +41,11 @@ public:
 
 template <> class ChunkTaskRunner<ChunkTaskType::kMesh> {
 private:
+	using LightAlgo = BlockLightAlgo<
+	    BlockAlgoConfig<int32_t, BlockAlgoBound<int32_t>{-1, -1, -1, (int32_t)kChunkSize + 1, (int32_t)kChunkSize + 1,
+	                                                     (int32_t)kChunkSize + 1}>,
+	    14>;
+	LightAlgo::Queue m_sunlight_entries, m_torchlight_entries;
 	block::Light m_extend_light_buffer[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30) -
 	                                   kChunkSize * kChunkSize * kChunkSize]{};
 

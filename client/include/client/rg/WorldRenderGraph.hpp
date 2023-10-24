@@ -31,7 +31,10 @@ public:
 		                       ->GetMappedData());
 	}
 	inline void UpdateDepthHierarchy() { GetPass<DepthHierarchyPass>({"depth_hierarchy_pass"})->UpdateLevelCount(); }
-
+	inline void SetDayNight(float day_night) {
+		GetPass<ChunkOpaquePass>({"chunk_opaque_pass"})->SetDayNight(day_night);
+		GetPass<ChunkTransparentPass>({"chunk_transparent_pass"})->SetDayNight(day_night);
+	}
 	inline void CmdUpdateChunkMesh(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
 	                               std::size_t post_update_threshold = 256u) {
 		if (m_post_updates.size() >= post_update_threshold) {

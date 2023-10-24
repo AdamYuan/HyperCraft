@@ -67,6 +67,8 @@ void Application::resize(const VkExtent2D &extent) {
 	m_camera->m_aspect_ratio = (float)extent.width / (float)extent.height;
 }
 
+float day_night = 0.0;
+
 void Application::draw_frame(double delta) {
 	if (!m_frame_manager->NewFrame())
 		return;
@@ -82,6 +84,7 @@ void Application::draw_frame(double delta) {
 
 		auto &world_rg = m_world_render_graphs[current_frame];
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
+		world_rg->SetDayNight(day_night);
 		world_rg->UpdateCamera(m_camera);
 		world_rg->UpdateDepthHierarchy();
 		world_rg->CmdUpdateChunkMesh(command_buffer, 256u);
@@ -128,7 +131,6 @@ void Application::Run() {
 		std::chrono::duration<double, std::ratio<1, 1>> delta = cur_time - prev_time;
 		prev_time = cur_time;
 		m_camera->Control(m_window, delta.count());
-
 		m_world->SetCenterPos(m_camera->m_position);
 
 		myvk::ImGuiNewFrame();
@@ -140,6 +142,7 @@ void Application::Run() {
 		ImGui::Text("pending tasks: %zu", m_world->GetChunkTaskPool().GetPendingTaskCount());
 		ImGui::Text("running tasks (approx): %zu", m_world->GetChunkTaskPool().GetRunningTaskCountApprox());
 		ImGui::Text("delta: %f", delta.count());
+		ImGui::DragFloat("day night", &day_night, 0.01f, 0.0f, 1.0f);
 
 		if (ImGui::DragInt("concurrency", &concurrency, 1, 1, (int)std::thread::hardware_concurrency()))
 			m_world_worker->Relaunch(std::clamp<std::size_t>(concurrency, 1, std::thread::hardware_concurrency()));

@@ -13,6 +13,8 @@ private:
 
 	myvk::Ptr<myvk::GraphicsPipeline> m_pipeline;
 
+	float m_day_night = 0.0;
+
 public:
 	inline void Initialize(myvk_rg::ImageInput block_texture_image, myvk_rg::ImageInput light_map_image,
 	                       myvk_rg::BufferInput mesh_info_buffer, myvk_rg::BufferInput camera_buffer,
@@ -36,6 +38,7 @@ public:
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_cmd"}, draw_cmd_buffer);
 		AddInput<myvk_rg::Usage::kDrawIndirectBuffer>({"draw_count"}, draw_count_buffer);
 	}
+	inline void SetDayNight(float day_night) { m_day_night = day_night; }
 	inline void Update(const std::vector<std::shared_ptr<ChunkMeshCluster>> &prepared_clusters) {
 		m_p_prepared_clusters = &prepared_clusters;
 	}
@@ -43,7 +46,8 @@ public:
 	inline void CreatePipeline() final {
 		auto pipeline_layout =
 		    myvk::PipelineLayout::Create(GetRenderGraphPtr()->GetDevicePtr(), {GetVkDescriptorSetLayout()},
-		                                 {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t)}});
+		                                 {{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t)},
+		                                  {VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(uint32_t), sizeof(float)}});
 
 		const auto &device = GetRenderGraphPtr()->GetDevicePtr();
 
@@ -91,12 +95,14 @@ public:
 		for (const auto &cluster : *m_p_prepared_clusters) {
 			command_buffer->CmdBindVertexBuffer(cluster->GetVertexBuffer(), 0);
 			command_buffer->CmdBindIndexBuffer(cluster->GetIndexBuffer(), 0, cluster->kIndexType);
-			uint32_t pc_data[] = {cluster->GetClusterOffset() * cluster->GetMaxMeshes()};
+			uint32_t vert_pc_data[] = {cluster->GetClusterOffset() * cluster->GetMaxMeshes()};
 			command_buffer->CmdPushConstants(m_pipeline->GetPipelineLayoutPtr(), VK_SHADER_STAGE_VERTEX_BIT, 0,
-			                                 sizeof(uint32_t), pc_data);
+			                                 sizeof(uint32_t), vert_pc_data);
+			command_buffer->CmdPushConstants(m_pipeline->GetPipelineLayoutPtr(), VK_SHADER_STAGE_FRAGMENT_BIT,
+			                                 sizeof(uint32_t), sizeof(float), &m_day_night);
 			command_buffer->CmdDrawIndexedIndirectCount(
-			    draw_cmd_buffer, pc_data[0] * sizeof(VkDrawIndexedIndirectCommand), //
-			    draw_count_buffer, cluster->GetClusterOffset() * sizeof(uint32_t),  //
+			    draw_cmd_buffer, vert_pc_data[0] * sizeof(VkDrawIndexedIndirectCommand), //
+			    draw_count_buffer, cluster->GetClusterOffset() * sizeof(uint32_t),       //
 			    std::min(cluster->GetLocalMeshCount(), cluster->GetMaxMeshes()));
 		}
 	}
