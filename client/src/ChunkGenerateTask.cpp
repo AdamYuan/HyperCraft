@@ -36,7 +36,7 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 
 	// printf("Generate %s\n", glm::to_string(data.GetChunkPos()).c_str());
 
-	p_task_pool->Push<ChunkTaskType::kMesh>(data.GetChunkPos(), true);
+	p_task_pool->Push<ChunkTaskType::kMesh>(data.GetChunkPos());
 }
 
 } // namespace hc::client

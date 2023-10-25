@@ -4,8 +4,8 @@
 
 namespace hc::client {
 
-std::optional<ChunkTaskRunnerData<ChunkTaskType::kLight>>
-ChunkTaskData<ChunkTaskType::kLight>::Pop(const ChunkTaskPoolLocked &task_pool, const ChunkPos3 &chunk_pos) {
+std::optional<ChunkTaskRunnerData<ChunkTaskType::kSunlight>>
+ChunkTaskData<ChunkTaskType::kSunlight>::Pop(const ChunkTaskPoolLocked &task_pool, const ChunkPos3 &chunk_pos) {
 	if (m_light_updates.empty())
 		return std::nullopt;
 
@@ -27,11 +27,11 @@ ChunkTaskData<ChunkTaskType::kLight>::Pop(const ChunkTaskPoolLocked &task_pool, 
 	auto light_updates = std::move(m_light_updates);
 	m_light_updates.clear();
 
-	return ChunkTaskRunnerData<ChunkTaskType::kLight>{std::move(chunks), std::move(light_updates)};
+	return ChunkTaskRunnerData<ChunkTaskType::kSunlight>{std::move(chunks), std::move(light_updates)};
 }
 
-void ChunkTaskRunner<ChunkTaskType::kLight>::Run(ChunkTaskPool *p_task_pool,
-                                                 ChunkTaskRunnerData<ChunkTaskType::kLight> &&data) {
+void ChunkTaskRunner<ChunkTaskType::kSunlight>::Run(ChunkTaskPool *p_task_pool,
+                                                 ChunkTaskRunnerData<ChunkTaskType::kSunlight> &&data) {
 	const auto &neighbour_chunks = data.GetChunkPtrArray();
 	const auto &chunk = neighbour_chunks.back();
 

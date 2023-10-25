@@ -38,13 +38,13 @@ public:
 	}
 };
 
-template <> class ChunkTaskRunnerData<ChunkTaskType::kLight> {
+template <> class ChunkTaskRunnerData<ChunkTaskType::kSunlight> {
 private:
 	std::array<std::shared_ptr<Chunk>, 27> m_chunk_ptr_array;
 	std::vector<ChunkLightTaskEntry> m_light_updates;
 
 public:
-	inline static constexpr ChunkTaskType kType = ChunkTaskType::kLight;
+	inline static constexpr ChunkTaskType kType = ChunkTaskType::kSunlight;
 
 	inline ChunkTaskRunnerData(std::array<std::shared_ptr<Chunk>, 27> &&chunk_ptr_array,
 	                           std::vector<ChunkLightTaskEntry> &&light_updates)
@@ -55,29 +55,29 @@ public:
 	inline const auto &GetLightUpdates() const { return m_light_updates; }
 };
 
-template <> class ChunkTaskData<ChunkTaskType::kLight> final : public ChunkTaskDataBase<ChunkTaskType::kLight> {
+template <> class ChunkTaskData<ChunkTaskType::kSunlight> final : public ChunkTaskDataBase<ChunkTaskType::kSunlight> {
 private:
 	std::vector<ChunkLightTaskEntry> m_light_updates;
 
 public:
-	inline static constexpr ChunkTaskType kType = ChunkTaskType::kLight;
+	inline static constexpr ChunkTaskType kType = ChunkTaskType::kSunlight;
 
 	inline void Push(const ChunkLightTaskEntry &entry) { m_light_updates.push_back(entry); }
 	inline void Push(std::vector<ChunkLightTaskEntry> &&entries) {
 		m_light_updates.insert(m_light_updates.end(), entries.begin(), entries.end());
 	}
 	inline bool IsQueued() const { return !m_light_updates.empty(); }
-	std::optional<ChunkTaskRunnerData<ChunkTaskType::kLight>> Pop(const ChunkTaskPoolLocked &task_pool,
-	                                                              const ChunkPos3 &chunk_pos);
+	std::optional<ChunkTaskRunnerData<ChunkTaskType::kSunlight>> Pop(const ChunkTaskPoolLocked &task_pool,
+	                                                                 const ChunkPos3 &chunk_pos);
 	inline void OnUnload() {}
 };
 
-template <> class ChunkTaskRunner<ChunkTaskType::kLight> {
+template <> class ChunkTaskRunner<ChunkTaskType::kSunlight> {
 private:
 public:
-	inline static constexpr ChunkTaskType kType = ChunkTaskType::kLight;
+	inline static constexpr ChunkTaskType kType = ChunkTaskType::kSunlight;
 
-	void Run(ChunkTaskPool *p_task_pool, ChunkTaskRunnerData<ChunkTaskType::kLight> &&data);
+	void Run(ChunkTaskPool *p_task_pool, ChunkTaskRunnerData<ChunkTaskType::kSunlight> &&data);
 };
 
 } // namespace hc::client
