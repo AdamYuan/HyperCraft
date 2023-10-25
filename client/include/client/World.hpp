@@ -106,6 +106,7 @@ public:
 
 	const auto &GetChunkPool() const { return m_chunk_pool; }
 	const auto &GetChunkTaskPool() const { return m_chunk_task_pool; }
+	const auto &GetChunkUpdatePool() const { return m_chunk_update_pool; }
 
 	inline void SetBlock(const BlockPos3 &pos, block::Block block) {
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
