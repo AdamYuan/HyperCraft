@@ -22,8 +22,6 @@ public:
 	using Queue = std::queue<Entry>;
 
 private:
-	Queue m_queue;
-
 	static inline constexpr bool in_bound_bordered(T x, T y, T z) {
 		constexpr BlockAlgoBound<T> kBound = Config::kBound;
 		return kBound.min_x - (T)Border <= x && x < kBound.max_x + (T)Border && kBound.min_y - (T)Border <= y &&
@@ -44,13 +42,12 @@ public:
 	}
 
 	template <typename GetBlockFunc, typename GetLightFunc, typename SetLightFunc>
-	inline void PropagateLight(Queue &&entries, GetBlockFunc get_block_func, GetLightFunc get_light_func,
+	inline void PropagateLight(Queue *p_entries, GetBlockFunc get_block_func, GetLightFunc get_light_func,
 	                           SetLightFunc set_light_func) {
 
-		m_queue = std::move(entries);
-		while (!m_queue.empty()) {
-			Entry e = m_queue.front();
-			m_queue.pop();
+		while (!p_entries->empty()) {
+			Entry e = p_entries->front();
+			p_entries->pop();
 			if (e.lvl <= 1u)
 				continue;
 			--e.lvl;
@@ -69,7 +66,7 @@ public:
 				    get_block_func(nei.pos.x, nei.pos.y, nei.pos.z).GetIndirectLightPass()) {
 					set_light_func(nei.pos.x, nei.pos.y, nei.pos.z, nei.lvl);
 					if (nei.lvl > 1)
-						m_queue.push(nei);
+						p_entries->push(nei);
 				}
 			}
 		}

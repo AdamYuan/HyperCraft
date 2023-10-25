@@ -66,11 +66,9 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 	std::vector<BlockMesh> meshes;
 
 	// Always recalculate lighting
-	m_torchlight_entries = {};
-	m_sunlight_entries = {};
-	for (int32_t y = -15; y < (int32_t)kChunkSize + 15; ++y)
-		for (int32_t z = -15; z < (int32_t)kChunkSize + 15; ++z)
-			for (int32_t x = -15; x < (int32_t)kChunkSize + 15; ++x) {
+	for (InnerPos1 y = -15; y < (InnerPos1)kChunkSize + 15; ++y)
+		for (InnerPos1 z = -15; z < (InnerPos1)kChunkSize + 15; ++z)
+			for (InnerPos1 x = -15; x < (InnerPos1)kChunkSize + 15; ++x) {
 				block::Light light = {};
 				if (Chunk::IsValidPosition(x, y, z)) {
 					light.SetTorchlight(chunk->GetBlock(x, y, z).GetLightLevel());
@@ -91,7 +89,7 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 
 	LightAlgo algo{};
 	algo.PropagateLight(
-	    std::move(m_sunlight_entries),
+	    &m_sunlight_entries,
 	    [&neighbour_chunks](auto x, auto y, auto z) -> block::Block {
 		    return neighbour_chunks[Chunk::GetBlockNeighbourIndex(x, y, z)]->GetBlockFromNeighbour(x, y, z);
 	    },
@@ -106,7 +104,7 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 		        : m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].SetSunlight(lvl);
 	    });
 	algo.PropagateLight(
-	    std::move(m_torchlight_entries),
+	    &m_torchlight_entries,
 	    [&neighbour_chunks](auto x, auto y, auto z) -> block::Block {
 		    return neighbour_chunks[Chunk::GetBlockNeighbourIndex(x, y, z)]->GetBlockFromNeighbour(x, y, z);
 	    },

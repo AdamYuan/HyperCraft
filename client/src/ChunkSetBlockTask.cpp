@@ -34,24 +34,25 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 	neighbour_remesh_set[26] = true;
 
 	for (const auto &block_change : block_changes) {
-		auto pos = block_change.first;
-		auto idx = Chunk::XYZ2Index(pos.x, pos.y, pos.z);
-		auto new_block = block_change.second, old_block = chunk->GetBlock(idx);
+		auto block_pos = block_change.first;
+		auto block_idx = Chunk::XYZ2Index(block_pos.x, block_pos.y, block_pos.z);
+		auto new_block = block_change.second, old_block = chunk->GetBlock(block_idx);
 		if (new_block == old_block)
 			continue;
-		if (new_block.GetVerticalLightPass() != old_block.GetVerticalLightPass()) {
-			// Push Light Update
+		chunk->SetBlock(block_idx, new_block);
+
+		for (uint32_t i = 0; i < 26; ++i) {
+			if (neighbour_remesh_set[i])
+				continue;
+			ChunkPos3 nei_chunk_pos;
+			Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_chunk_pos));
+			neighbour_remesh_set[i] = ChunkShouldRemesh(block_pos - InnerPos3(nei_chunk_pos) * InnerPos1(kChunkSize));
 		}
-		chunk->SetBlock(idx, new_block);
-		neighbour_remesh_set[CmpXYZ2NeighbourIndex(pos.x == 0 ? -1 : (pos.x == kChunkSize - 1 ? 1 : 0),
-		                                           pos.y == 0 ? -1 : (pos.y == kChunkSize - 1 ? 1 : 0),
-		                                           pos.z == 0 ? -1 : (pos.z == kChunkSize - 1 ? 1 : 0))] = true;
 	}
 
-	for (uint32_t i = 0; i < 27; ++i) {
+	for (uint32_t i = 26; ~i; --i) {
 		if (!neighbour_remesh_set[i])
 			continue;
-
 		ChunkPos3 nei_pos;
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk->GetPosition();

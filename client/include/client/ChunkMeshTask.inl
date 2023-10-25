@@ -6,6 +6,14 @@ namespace hc::client {
 
 class WorldRenderer;
 
+inline constexpr bool ChunkShouldRemesh(InnerPos3 relative_block_pos) {
+	using LightAlgo = BlockLightAlgo<
+	    BlockAlgoConfig<InnerPos1, BlockAlgoBound<InnerPos1>{-1, -1, -1, (InnerPos1)kChunkSize + 1,
+	                                                         (InnerPos1)kChunkSize + 1, (InnerPos1)kChunkSize + 1}>,
+	    14>;
+	return LightAlgo::IsBorderLightInterfere(relative_block_pos.x, relative_block_pos.y, relative_block_pos.z, 15);
+}
+
 template <> class ChunkTaskRunnerData<ChunkTaskType::kMesh> {
 private:
 	std::array<std::shared_ptr<Chunk>, 27> m_chunk_ptr_array;
@@ -37,8 +45,8 @@ public:
 template <> class ChunkTaskRunner<ChunkTaskType::kMesh> {
 private:
 	using LightAlgo = BlockLightAlgo<
-	    BlockAlgoConfig<int32_t, BlockAlgoBound<int32_t>{-1, -1, -1, (int32_t)kChunkSize + 1, (int32_t)kChunkSize + 1,
-	                                                     (int32_t)kChunkSize + 1}>,
+	    BlockAlgoConfig<InnerPos1, BlockAlgoBound<InnerPos1>{-1, -1, -1, (InnerPos1)kChunkSize + 1,
+	                                                         (InnerPos1)kChunkSize + 1, (InnerPos1)kChunkSize + 1}>,
 	    14>;
 	LightAlgo::Queue m_sunlight_entries, m_torchlight_entries;
 	block::Light m_extend_light_buffer[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30) -

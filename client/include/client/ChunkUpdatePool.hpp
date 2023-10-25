@@ -13,7 +13,7 @@ class ChunkUpdatePool {
 private:
 	World &m_world;
 	libcuckoo::cuckoohash_map<ChunkPos3, std::map<InnerPos3, block::Block, InnerPosCompare>> m_block_updates;
-	libcuckoo::cuckoohash_map<ChunkPos2, std::map<InnerPos2, BlockPos1, InnerPosCompare>> m_height_updates;
+	// libcuckoo::cuckoohash_map<ChunkPos3, std::map<InnerPos2, ChunkSunlightEntry>> m_sunlight_updates;
 
 public:
 	inline explicit ChunkUpdatePool(World *p_world) : m_world{*p_world} {}
@@ -35,7 +35,7 @@ public:
 		});
 		return ret;
 	}
-	inline void SetHeightUpdate(ChunkPos2 chunk_pos, InnerPos2 inner_pos, BlockPos1 height) {
+	/* inline void SetHeightUpdate(ChunkPos2 chunk_pos, InnerPos2 inner_pos, BlockPos1 height) {
 		m_height_updates.uprase_fn(
 		    chunk_pos,
 		    [inner_pos, height](auto &data, libcuckoo::UpsertContext) {
@@ -52,7 +52,7 @@ public:
 				ret = it->second;
 		});
 		return ret;
-	}
+	} */
 };
 
 } // namespace hc::client

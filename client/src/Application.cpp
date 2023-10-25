@@ -58,7 +58,7 @@ void Application::create_vulkan_base() {
 }
 
 void Application::create_frame_object() {
-	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, false, kFrameCount,
+	m_frame_manager = myvk::FrameManager::Create(m_main_queue, m_present_queue, true, kFrameCount,
 	                                             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 	m_frame_manager->SetResizeFunc([this](const VkExtent2D &extent) { resize(extent); });
 }
@@ -172,7 +172,7 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int scancode, i
 	        app->m_ui_display_flag ^= 1u;
 	}*/
 	if (action == GLFW_PRESS && key == GLFW_KEY_P)
-		app->m_world->SetBlock((BlockPos3)app->m_camera->m_position, block::Blocks::kStone);
+		app->m_world->SetBlock((BlockPos3)app->m_camera->m_position, block::Blocks::kGlowstone);
 }
 
 void Application::glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
