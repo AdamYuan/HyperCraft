@@ -27,9 +27,10 @@ add_executable(HyperCraft_client
         src/WorldWorker.cpp
         src/ChunkPool.cpp
         src/ChunkTaskPool.cpp
+        src/ChunkUpdatePool.cpp
         src/ChunkGenerateTask.cpp
         src/ChunkMeshTask.cpp
-        src/ChunkSunlightTask.cpp
+        src/ChunkSetSunlightTask.cpp
         src/ChunkSetBlockTask.cpp
 )
 

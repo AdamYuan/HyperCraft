@@ -50,7 +50,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		}
 	}
 
-	for (uint32_t i = 26; ~i; --i) {
+	for (uint32_t i = 0; i < 27; ++i) {
 		if (!neighbour_remesh_set[i])
 			continue;
 		ChunkPos3 nei_pos;

@@ -25,8 +25,9 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 	const auto &chunk_ptr = data.GetChunkPtr();
 
 	client->GetTerrain()->Generate(chunk_ptr, m_y_peak_map);
-	auto updates = p_task_pool->GetWorld().GetChunkUpdatePool().GetBlockUpdate(chunk_ptr->GetPosition());
-	for (const auto &u : updates)
+	// apply block updates
+	auto block_updates = p_task_pool->GetWorld().GetChunkUpdatePool().GetBlockUpdate(chunk_ptr->GetPosition());
+	for (const auto &u : block_updates)
 		chunk_ptr->SetBlock(u.first.x, u.first.y, u.first.z, u.second);
 
 	// set initial sunlight from light_map
@@ -34,8 +35,10 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 	for (uint32_t idx = 0; idx < kChunkSize * kChunkSize; ++idx)
 		chunk_ptr->SetSunlightHeight(
 		    idx, (InnerPos1)(std::clamp(m_y_peak_map[idx] - base_height + 1, 0, (BlockPos1)kChunkSize)));
-
-	// printf("Generate %s\n", glm::to_string(data.GetChunkPos()).c_str());
+	// apply sunlight updates
+	auto sunlight_updates = p_task_pool->GetWorld().GetChunkUpdatePool().GetSunlightUpdate(chunk_ptr->GetPosition());
+	for (const auto &u : sunlight_updates)
+		chunk_ptr->SetSunlightHeight(u.first.x, u.first.y, u.second);
 
 	p_task_pool->Push<ChunkTaskType::kMesh>(data.GetChunkPos());
 }

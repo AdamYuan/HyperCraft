@@ -109,8 +109,10 @@ Application::Application() {
 	m_global_texture = GlobalTexture::Create(m_main_command_pool);
 	m_camera = Camera::Create();
 	m_camera->m_speed = 32.0f;
+
 	m_world_renderer = WorldRenderer::Create(m_device, m_world);
 	m_client = LocalClient::Create(m_world, "world.db"); // Should be placed before worker creation
+
 	m_world_worker = WorldWorker::Create(m_world, std::thread::hardware_concurrency() * 3 / 4);
 
 	for (auto &world_rg : m_world_render_graphs) {

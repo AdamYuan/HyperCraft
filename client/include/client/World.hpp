@@ -44,6 +44,7 @@ private:
 	friend class WorldWorker;
 	friend class ChunkPool;
 	friend class ChunkTaskPool;
+	friend class ChunkUpdatePool;
 
 	static_assert(sizeof(ChunkPos3) <= sizeof(uint64_t));
 	std::atomic_uint64_t m_center_chunk_pos;
@@ -111,7 +112,6 @@ public:
 	inline void SetBlock(const BlockPos3 &pos, block::Block block) {
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
 		m_chunk_update_pool.SetBlockUpdate(chunk_pos, inner_pos, block);
-		m_chunk_task_pool.Push<ChunkTaskType::kSetBlock, ChunkTaskPriority::kHigh>(chunk_pos, inner_pos, block);
 	}
 };
 
