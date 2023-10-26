@@ -4,6 +4,7 @@
 #include <cuckoohash_map.hh>
 #include <glm/gtx/hash.hpp>
 #include <map>
+#include <span>
 
 namespace hc::client {
 
