@@ -41,6 +41,13 @@ private:
 	// game client
 	std::shared_ptr<ClientBase> m_client;
 
+	// Temporal game data TODO: remove
+	float m_day_night = 0.0;
+	bool m_mouse_captured = false;
+	std::optional<ChunkPos3> m_selected_block, m_outer_selected_block;
+	void select_block();
+	void modify_block();
+
 	void create_glfw_window();
 	void create_vulkan_base();
 	void create_frame_object();

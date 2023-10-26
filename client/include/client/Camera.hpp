@@ -31,12 +31,17 @@ private:
 	glm::dvec2 m_last_mouse_pos{0.0, 0.0};
 
 	void move_forward(float dist, float dir);
-	glm::mat4 fetch_matrix() const;
+	[[nodiscard]] glm::mat4 fetch_matrix() const;
 
 public:
 	inline static std::shared_ptr<Camera> Create() { return std::make_shared<Camera>(); }
+	[[nodiscard]] inline glm::vec3 GetViewDirection() const {
+		float xz_len = glm::cos(m_pitch);
+		return glm::vec3{-xz_len * glm::sin(m_yaw), glm::sin(m_pitch), -xz_len * glm::cos(m_yaw)};
+	}
 
-	void Control(GLFWwindow *window, double delta);
+	void DragControl(GLFWwindow *window, double delta);
+	void MoveControl(GLFWwindow *window, double delta);
 	void Update(UniformData *p_data);
 };
 
