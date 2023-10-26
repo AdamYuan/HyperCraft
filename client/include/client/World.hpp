@@ -45,6 +45,7 @@ private:
 	friend class ChunkPool;
 	friend class ChunkTaskPool;
 	friend class ChunkUpdatePool;
+	template <ChunkTaskType> friend class ChunkTaskRunner;
 
 	static_assert(sizeof(ChunkPos3) <= sizeof(uint64_t));
 	std::atomic_uint64_t m_center_chunk_pos;

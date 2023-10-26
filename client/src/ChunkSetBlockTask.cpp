@@ -33,12 +33,16 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 	std::bitset<27> neighbour_remesh_set{};
 	neighbour_remesh_set[26] = true;
 
+	std::unordered_set<InnerPos2> flood_sunlights;
+
 	for (const auto &block_change : block_changes) {
 		auto block_pos = block_change.first;
 		auto block_idx = ChunkXYZ2Index(block_pos.x, block_pos.y, block_pos.z);
 		auto new_block = block_change.second, old_block = chunk->GetBlock(block_idx);
 		if (new_block == old_block)
 			continue;
+
+		flood_sunlights.emplace(block_pos.x, block_pos.z);
 		chunk->SetBlock(block_idx, new_block);
 
 		for (uint32_t i = 0; i < 26; ++i) {
@@ -58,6 +62,10 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		nei_pos += chunk->GetPosition();
 		p_task_pool->Push<ChunkTaskType::kMesh, ChunkTaskPriority::kHigh>(nei_pos);
 	}
+
+	auto flood_sunlight_vec = std::vector<InnerPos2>{flood_sunlights.begin(), flood_sunlights.end()};
+	p_task_pool->Push<ChunkTaskType::kFloodSunlight, ChunkTaskPriority::kHigh>(chunk->GetPosition(),
+	                                                                           std::span{flood_sunlight_vec});
 }
 
 } // namespace hc::client

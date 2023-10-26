@@ -31,6 +31,7 @@ add_executable(HyperCraft_client
         src/ChunkGenerateTask.cpp
         src/ChunkMeshTask.cpp
         src/ChunkSetSunlightTask.cpp
+        src/ChunkFloodSunlightTask.cpp
         src/ChunkSetBlockTask.cpp
 )
 
