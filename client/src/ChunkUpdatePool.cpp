@@ -16,7 +16,7 @@ void ChunkUpdatePool::SetBlockUpdate(ChunkPos3 chunk_pos, InnerPos3 inner_pos, b
 	    InnerPosCompare{});
 }
 
-void ChunkUpdatePool::SetBlockUpdate(ChunkPos3 chunk_pos, std::span<std::pair<InnerPos3, block::Block>> blocks) {
+void ChunkUpdatePool::SetBlockUpdateBulk(ChunkPos3 chunk_pos, std::span<const std::pair<InnerPos3, block::Block>> blocks) {
 	m_block_updates.uprase_fn(
 	    chunk_pos,
 	    [this, &chunk_pos, blocks](auto &data, libcuckoo::UpsertContext) {
@@ -39,7 +39,8 @@ void ChunkUpdatePool::SetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos
 	    },
 	    InnerPosCompare{});
 }
-void ChunkUpdatePool::SetSunlightUpdate(ChunkPos3 chunk_pos, std::span<std::pair<InnerPos2, InnerPos1>> sunlights) {
+void ChunkUpdatePool::SetSunlightUpdateBulk(ChunkPos3 chunk_pos,
+                                         std::span<const std::pair<InnerPos2, InnerPos1>> sunlights) {
 	m_sunlight_updates.uprase_fn(
 	    chunk_pos,
 	    [this, &chunk_pos, sunlights](auto &data, libcuckoo::UpsertContext) {

@@ -13,7 +13,7 @@ public:
 	inline void Push(InnerPos2 inner_pos, InnerPos1 sunlight_height) {
 		m_set_sunlights.emplace_back(inner_pos, sunlight_height);
 	}
-	inline void Push(std::span<std::pair<InnerPos2, InnerPos1>> set_sunlights) {
+	inline void Push(std::span<const std::pair<InnerPos2, InnerPos1>> set_sunlights) {
 		m_set_sunlights.insert(m_set_sunlights.end(), set_sunlights.begin(), set_sunlights.end());
 	}
 	inline bool IsQueued() const { return !m_set_sunlights.empty(); }

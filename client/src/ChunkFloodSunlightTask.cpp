@@ -62,12 +62,11 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 				xz_next_updates.push_back(xz);
 		}
 	}
-	p_task_pool->GetWorld().m_chunk_update_pool.SetSunlightUpdate(chunk->GetPosition(), set_sunlights);
+	p_task_pool->GetWorld().m_chunk_update_pool.SetSunlightUpdateBulk(chunk->GetPosition(), set_sunlights);
 
 	auto down_chunk_pos = chunk->GetPosition();
 	--down_chunk_pos.y;
-	p_task_pool->Push<ChunkTaskType::kFloodSunlight, ChunkTaskPriority::kHigh>(down_chunk_pos,
-	                                                                           std::span{xz_next_updates});
+	p_task_pool->Push<ChunkTaskType::kFloodSunlight, ChunkTaskPriority::kHigh>(down_chunk_pos, xz_next_updates);
 }
 
 } // namespace hc::client

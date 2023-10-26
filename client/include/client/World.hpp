@@ -114,6 +114,17 @@ public:
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
 		m_chunk_update_pool.SetBlockUpdate(chunk_pos, inner_pos, block);
 	}
+	inline void SetBlockBulk(std::span<const std::pair<BlockPos3, block::Block>> blocks) {
+		std::unordered_map<ChunkPos3, std::vector<std::pair<InnerPos3, block::Block>>> chunk_set_blocks;
+
+		for (const auto &b : blocks) {
+			auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(b.first);
+			chunk_set_blocks[chunk_pos].push_back({inner_pos, b.second});
+		}
+
+		for (const auto &c : chunk_set_blocks)
+			m_chunk_update_pool.SetBlockUpdateBulk(c.first, std::span{c.second});
+	}
 };
 
 } // namespace hc::client

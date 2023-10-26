@@ -11,7 +11,7 @@ public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kFloodSunlight;
 
 	inline void Push(InnerPos2 xz_update) { m_xz_updates.push_back(xz_update); }
-	inline void Push(std::span<InnerPos2> xz_updates) {
+	inline void Push(std::span<const InnerPos2> xz_updates) {
 		m_xz_updates.insert(m_xz_updates.end(), xz_updates.begin(), xz_updates.end());
 	}
 	inline bool IsQueued() const { return !m_xz_updates.empty(); }

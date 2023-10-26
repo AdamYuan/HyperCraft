@@ -20,7 +20,7 @@ private:
 public:
 	inline explicit ChunkUpdatePool(World *p_world) : m_world{*p_world} {}
 	void SetBlockUpdate(ChunkPos3 chunk_pos, InnerPos3 inner_pos, block::Block block);
-	void SetBlockUpdate(ChunkPos3 chunk_pos, std::span<std::pair<InnerPos3, block::Block>> blocks);
+	void SetBlockUpdateBulk(ChunkPos3 chunk_pos, std::span<const std::pair<InnerPos3, block::Block>> blocks);
 	inline std::optional<block::Block> GetBlockUpdate(ChunkPos3 chunk_pos, InnerPos3 inner_pos) const {
 		std::optional<block::Block> ret = std::nullopt;
 		m_block_updates.find_fn(chunk_pos, [inner_pos, &ret](auto &data) {
@@ -30,13 +30,13 @@ public:
 		});
 		return ret;
 	}
-	inline std::map<InnerPos3, block::Block, InnerPosCompare> GetBlockUpdate(ChunkPos3 chunk_pos) const {
+	inline std::map<InnerPos3, block::Block, InnerPosCompare> GetBlockUpdateBulk(ChunkPos3 chunk_pos) const {
 		std::map<InnerPos3, block::Block, InnerPosCompare> ret{InnerPosCompare{}};
 		m_block_updates.find_fn(chunk_pos, [&ret](auto &data) { ret = data; });
 		return ret;
 	}
 	void SetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos, InnerPos1 sunlight_height);
-	void SetSunlightUpdate(ChunkPos3 chunk_pos, std::span<std::pair<InnerPos2, InnerPos1>> sunlights);
+	void SetSunlightUpdateBulk(ChunkPos3 chunk_pos, std::span<const std::pair<InnerPos2, InnerPos1>> sunlights);
 
 	inline std::optional<InnerPos1> GetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos) const {
 		std::optional<InnerPos1> ret = std::nullopt;
@@ -47,7 +47,7 @@ public:
 		});
 		return ret;
 	}
-	inline std::map<InnerPos2, InnerPos1, InnerPosCompare> GetSunlightUpdate(ChunkPos3 chunk_pos) const {
+	inline std::map<InnerPos2, InnerPos1, InnerPosCompare> GetSunlightUpdateBulk(ChunkPos3 chunk_pos) const {
 		std::map<InnerPos2, InnerPos1, InnerPosCompare> ret{InnerPosCompare{}};
 		m_sunlight_updates.find_fn(chunk_pos, [&ret](auto &data) { ret = data; });
 		return ret;
