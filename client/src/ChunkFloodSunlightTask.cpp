@@ -66,7 +66,7 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 
 	auto down_chunk_pos = chunk->GetPosition();
 	--down_chunk_pos.y;
-	p_task_pool->Push<ChunkTaskType::kFloodSunlight, ChunkTaskPriority::kHigh>(down_chunk_pos, xz_next_updates);
+	p_task_pool->Push<ChunkTaskType::kFloodSunlight, ChunkTaskPriority::kLow>(down_chunk_pos, xz_next_updates);
 }
 
 } // namespace hc::client
