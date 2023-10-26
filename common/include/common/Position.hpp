@@ -84,46 +84,59 @@ static inline constexpr uint32_t ChunkPosDistance2(const ChunkPos3 &l, const Chu
 	return ChunkPosLength2(l - r);
 }
 
-template <typename T>
-static inline constexpr typename std::enable_if<std::is_integral<T>::value, void>::type ChunkIndex2XYZ(uint32_t idx,
-                                                                                                       T *xyz) {
+template <std::integral T> static inline constexpr void ChunkIndex2XYZ(uint32_t idx, T *xyz) {
 	xyz[0] = idx % kChunkSize;
 	idx /= kChunkSize;
 	xyz[2] = idx % kChunkSize;
 	xyz[1] = idx / kChunkSize;
 }
-template <typename T>
-static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type ChunkXYZ2Index(T x, T y,
-                                                                                                           T z) {
+template <std::integral T = InnerPos1> static inline constexpr glm::vec<3, T> ChunkIndex2XYZ(uint32_t idx) {
+	glm::vec<3, T> xyz;
+	xyz[0] = idx % kChunkSize;
+	idx /= kChunkSize;
+	xyz[2] = idx % kChunkSize;
+	xyz[1] = idx / kChunkSize;
+	return xyz;
+}
+template <std::integral T> static inline constexpr uint32_t ChunkXYZ2Index(T x, T y, T z) {
 	return x + (y * kChunkSize + z) * kChunkSize;
 }
-template <typename T>
-static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, bool>::type
-IsValidChunkPosition(T x, T y, T z) {
+
+template <std::integral T> static inline constexpr void ChunkIndex2XZ(uint32_t idx, T *xz) {
+	xz[0] = idx % kChunkSize;
+	xz[1] = idx / kChunkSize;
+}
+template <std::integral T = InnerPos1> static inline constexpr glm::vec<2, T> ChunkIndex2XZ(uint32_t idx) {
+	glm::vec<2, T> xz;
+	xz[0] = idx % kChunkSize;
+	xz[1] = idx / kChunkSize;
+	return xz;
+}
+template <std::integral T> static inline constexpr uint32_t ChunkXZ2Index(T x, T z) { return x + z * kChunkSize; }
+
+template <std::signed_integral T> static inline constexpr bool IsValidChunkPosition(T x, T y, T z) {
 	return x >= 0 && x < (T)kChunkSize && y >= 0 && y < (T)kChunkSize && z >= 0 && z < (T)kChunkSize;
 }
-template <typename T>
-static inline constexpr typename std::enable_if<std::is_unsigned<T>::value, bool>::type IsValidChunkPosition(T x, T y,
-                                                                                                             T z) {
+template <std::unsigned_integral T> static inline constexpr bool IsValidChunkPosition(T x, T y, T z) {
 	return x <= kChunkSize && y <= kChunkSize && z <= kChunkSize;
+}
+template <std::signed_integral T> static inline constexpr bool IsValidChunkPosition(T x, T z) {
+	return x >= 0 && x < (T)kChunkSize && z >= 0 && z < (T)kChunkSize;
+}
+template <std::unsigned_integral T> static inline constexpr bool IsValidChunkPosition(T x, T z) {
+	return x <= kChunkSize && z <= kChunkSize;
 }
 
 // cmp_{x, y, z} = -1, 0, 1, indicating the neighbour's relative position
-template <typename T>
-static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
-CmpXYZ2NeighbourIndex(T cmp_x, T cmp_y, T cmp_z) {
+template <std::integral T> static inline constexpr uint32_t CmpXYZ2NeighbourIndex(T cmp_x, T cmp_y, T cmp_z) {
 	constexpr uint32_t kLookUp[3] = {1, 2, 0};
 	return kLookUp[cmp_x + 1] * 9u + kLookUp[cmp_y + 1] * 3u + kLookUp[cmp_z + 1];
 }
-template <typename T>
-static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
-GetBlockChunkNeighbourIndex(T x, T y, T z) {
+template <std::integral T> static inline constexpr uint32_t GetBlockChunkNeighbourIndex(T x, T y, T z) {
 	return CmpXYZ2NeighbourIndex(x < 0 ? -1 : (x >= (T)kChunkSize ? 1 : 0), y < 0 ? -1 : (y >= (T)kChunkSize ? 1 : 0),
 	                             z < 0 ? -1 : (z >= (T)kChunkSize ? 1 : 0));
 }
-template <typename T>
-static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, void>::type
-NeighbourIndex2CmpXYZ(uint32_t idx, T *cmp_xyz) {
+template <std::signed_integral T> static inline constexpr void NeighbourIndex2CmpXYZ(uint32_t idx, T *cmp_xyz) {
 	constexpr T kRevLookUp[3] = {1, -1, 0};
 	cmp_xyz[2] = kRevLookUp[idx % 3u];
 	idx /= 3u;

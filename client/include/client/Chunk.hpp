@@ -26,30 +26,11 @@ private:
 public:
 	static constexpr uint32_t kSize = kChunkSize;
 
-	template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
-	static inline constexpr void Index2XYZ(uint32_t idx, T *xyz) {
-		return ChunkIndex2XYZ(idx, xyz);
-	}
-	template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
-	static inline constexpr uint32_t XYZ2Index(T x, T y, T z) {
-		return ChunkXYZ2Index(x, y, z);
-	}
-	template <typename T>
-	static inline constexpr typename std::enable_if<std::is_signed<T>::value && std::is_integral<T>::value, bool>::type
-	IsValidPosition(T x, T y, T z) {
-		return IsValidChunkPosition(x, y, z);
-	}
-	template <typename T>
-	static inline constexpr typename std::enable_if<std::is_unsigned<T>::value, bool>::type IsValidPosition(T x, T y,
-	                                                                                                        T z) {
-		return IsValidChunkPosition(x, y, z);
-	}
-
 	// cmp_{x, y, z} = -1, 0, 1, indicating the neighbour's relative position
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
 	CmpXYZ2NeighbourIndex(T cmp_x, T cmp_y, T cmp_z) {
-		return hc::CmpXYZ2NeighbourIndex(cmp_x, cmp_y, cmp_z);
+		return CmpXYZ2NeighbourIndex(cmp_x, cmp_y, cmp_z);
 	}
 	template <typename T>
 	static inline constexpr typename std::enable_if<std::is_integral<T>::value, uint32_t>::type
@@ -66,49 +47,39 @@ public:
 
 	// Block Getter and Setter
 	inline const Block *GetBlockData() const { return m_blocks; }
-	template <typename T> inline Block GetBlock(T x, T y, T z) const { return m_blocks[XYZ2Index(x, y, z)]; }
-	template <typename T> inline Block &GetBlockRef(T x, T y, T z) { return m_blocks[XYZ2Index(x, y, z)]; }
+	template <typename T> inline Block GetBlock(T x, T y, T z) const { return m_blocks[ChunkXYZ2Index(x, y, z)]; }
+	template <typename T> inline Block &GetBlockRef(T x, T y, T z) { return m_blocks[ChunkXYZ2Index(x, y, z)]; }
 	inline Block GetBlock(uint32_t idx) const { return m_blocks[idx]; }
 	inline Block &GetBlockRef(uint32_t idx) { return m_blocks[idx]; }
-	template <typename T> inline void SetBlock(T x, T y, T z, Block b) { m_blocks[XYZ2Index(x, y, z)] = b; }
+	template <typename T> inline void SetBlock(T x, T y, T z, Block b) { m_blocks[ChunkXYZ2Index(x, y, z)] = b; }
 	inline void SetBlock(uint32_t idx, Block b) { m_blocks[idx] = b; }
 
-	// Light Getter and Setter
-	inline const Light *GetLightData() const { return m_lights; }
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, Light>::type GetLight(T x, T y, T z) const {
-		return m_lights[XYZ2Index(x, y, z)];
+	// Sunlight Getter and Setter
+	inline InnerPos1 GetSunlightHeight(uint32_t idx) const { return m_sunlight_heights[idx]; }
+	template <typename T> inline InnerPos1 GetSunlightHeight(T x, T z) const {
+		return m_sunlight_heights[ChunkXZ2Index(x, z)];
 	}
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, Light &>::type GetLightRef(T x, T y, T z) {
-		return m_lights[XYZ2Index(x, y, z)];
+	inline void SetSunlightHeight(uint32_t idx, InnerPos1 h) { m_sunlight_heights[idx] = h; }
+	template <typename T> inline void SetSunlightHeight(T x, T z, InnerPos1 h) {
+		m_sunlight_heights[ChunkXZ2Index(x, z)] = h;
 	}
-	inline Light GetLight(uint32_t idx) const { return m_lights[idx]; }
-	inline Light &GetLightRef(uint32_t idx) { return m_lights[idx]; }
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value, void>::type SetLight(T x, T y, T z, Light l) {
-		m_lights[XYZ2Index(x, y, z)] = l;
+	template <std::integral T> inline bool GetSunlight(uint32_t idx, T y) const { return y >= m_sunlight_heights[idx]; }
+	template <typename T> inline bool GetSunlight(T x, T y, T z) const {
+		return y >= m_sunlight_heights[ChunkXZ2Index(x, z)];
 	}
-	inline void SetLight(uint32_t idx, Light l) { m_lights[idx] = l; }
 
 	// Neighbours
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, Block>::type
-	GetBlockFromNeighbour(T x, T y, T z) const {
-		return m_blocks[XYZ2Index((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
+	template <std::signed_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
+		return m_blocks[ChunkXYZ2Index((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
 	}
-	template <typename T, typename = std::enable_if_t<std::is_unsigned_v<T>>>
-	inline Block GetBlockFromNeighbour(T x, T y, T z) const {
-		return m_blocks[XYZ2Index(x % kSize, y % kSize, z % kSize)];
+	template <std::unsigned_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
+		return m_blocks[ChunkXYZ2Index(x % kSize, y % kSize, z % kSize)];
 	}
-	template <typename T>
-	inline typename std::enable_if<std::is_integral<T>::value && std::is_signed<T>::value, Light>::type
-	GetLightFromNeighbour(T x, T y, T z) const {
-		return m_lights[XYZ2Index((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
+	template <std::signed_integral T> inline bool GetSunlightFromNeighbour(T x, T y, T z) const {
+		return GetSunlight((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize);
 	}
-	template <typename T>
-	inline typename std::enable_if<std::is_unsigned<T>::value, Light>::type GetLightFromNeighbour(T x, T y, T z) const {
-		return m_lights[XYZ2Index(x % kSize, y % kSize, z % kSize)];
+	template <std::unsigned_integral T> inline Block GetSunlightFromNeighbour(T x, T y, T z) const {
+		return GetSunlight(x % kSize, y % kSize, z % kSize);
 	}
 
 	// Creation
@@ -120,7 +91,7 @@ public:
 
 private:
 	Block m_blocks[kSize * kSize * kSize];
-	Light m_lights[kSize * kSize * kSize];
+	InnerPos1 m_sunlight_heights[kSize * kSize]{};
 
 	ChunkPos3 m_position{};
 };

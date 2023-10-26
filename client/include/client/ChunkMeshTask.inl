@@ -49,8 +49,7 @@ private:
 	                                                         (InnerPos1)kChunkSize + 1, (InnerPos1)kChunkSize + 1}>,
 	    14>;
 	LightAlgo::Queue m_sunlight_entries, m_torchlight_entries;
-	block::Light m_extend_light_buffer[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30) -
-	                                   kChunkSize * kChunkSize * kChunkSize]{};
+	block::Light m_extend_light_buffer[(kChunkSize + 30) * (kChunkSize + 30) * (kChunkSize + 30)]{};
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kMesh;

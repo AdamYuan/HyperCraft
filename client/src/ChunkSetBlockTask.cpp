@@ -35,7 +35,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 
 	for (const auto &block_change : block_changes) {
 		auto block_pos = block_change.first;
-		auto block_idx = Chunk::XYZ2Index(block_pos.x, block_pos.y, block_pos.z);
+		auto block_idx = ChunkXYZ2Index(block_pos.x, block_pos.y, block_pos.z);
 		auto new_block = block_change.second, old_block = chunk->GetBlock(block_idx);
 		if (new_block == old_block)
 			continue;

@@ -501,7 +501,7 @@ void DefaultTerrain::DecorationInfo::PopToChunk(const std::shared_ptr<Chunk> &ch
 		int32_t y = i.first.y - base_y;
 		if (y < 0 || y >= (int32_t)kChunkSize)
 			continue;
-		uint32_t idx = Chunk::XYZ2Index(i.first.x, y, i.first.z);
+		uint32_t idx = ChunkXYZ2Index(i.first.x, y, i.first.z);
 		// TODO: better override condition
 		if (!i.second.GetIndirectLightPass() || chunk_ptr->GetBlock(idx) == Blocks::kAir ||
 		    chunk_ptr->GetBlock(idx) == Blocks::kWater || i.second.GetID() == Blocks::kAir ||

@@ -28,14 +28,12 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 	auto updates = p_task_pool->GetWorld().GetChunkUpdatePool().GetBlockUpdate(chunk_ptr->GetPosition());
 	for (const auto &u : updates)
 		chunk_ptr->SetBlock(u.first.x, u.first.y, u.first.z, u.second);
+
 	// set initial sunlight from light_map
-	for (uint32_t y = 0; y < Chunk::kSize; ++y) {
-		int32_t cur_height = data.GetChunkPos().y * (int)Chunk::kSize + (int)y;
-		for (uint32_t idx = 0; idx < kChunkSize * kChunkSize; ++idx) {
-			if (cur_height > m_light_map[idx])
-				chunk_ptr->SetLight(y * kChunkSize * kChunkSize + idx, {15, 0});
-		}
-	}
+	BlockPos1 base_height = data.GetChunkPos().y * (BlockPos1)kChunkSize;
+	for (uint32_t idx = 0; idx < kChunkSize * kChunkSize; ++idx)
+		chunk_ptr->SetSunlightHeight(
+		    idx, (InnerPos1)(std::clamp(m_light_map[idx] - base_height + 1, 0, (BlockPos1)kChunkSize)));
 
 	// printf("Generate %s\n", glm::to_string(data.GetChunkPos()).c_str());
 
