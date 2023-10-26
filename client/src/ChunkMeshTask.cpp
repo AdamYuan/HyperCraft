@@ -8,35 +8,7 @@
 namespace hc::client {
 
 template <std::signed_integral T> static inline constexpr uint32_t chunk_xyz_extended15_to_index(T x, T y, T z) {
-	bool x_inside = 0 <= x && x < kChunkSize, y_inside = 0 <= y && y < kChunkSize, z_inside = 0 <= z && z < kChunkSize;
-	uint32_t bits = x_inside | (y_inside << 1u) | (z_inside << 2u);
-	if (bits == 7u)
-		return ChunkXYZ2Index(x, y, z);
-	constexpr uint32_t kOffsets[8] = {
-	    kChunkSize * kChunkSize * kChunkSize,
-	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30,
-	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30,
-	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 2,
-	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 2 + kChunkSize * kChunkSize * 30,
-	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 3 + kChunkSize * kChunkSize * 30,
-	    kChunkSize * kChunkSize * kChunkSize + 30 * 30 * 30 + 30 * kChunkSize * 30 * 3 +
-	        kChunkSize * kChunkSize * 30 * 2,
-	    0};
-	constexpr uint32_t kMultipliers[8][3] = {{30, 30, 30},
-	                                         {kChunkSize, 30, 30},
-	                                         {30, kChunkSize, 30},
-	                                         {kChunkSize, kChunkSize, 30},
-	                                         {30, 30, kChunkSize},
-	                                         {kChunkSize, 30, kChunkSize},
-	                                         {30, kChunkSize, kChunkSize},
-	                                         {kChunkSize, kChunkSize, kChunkSize}};
-	if (!x_inside)
-		x = x < 0 ? x + 15 : x - (int32_t)kChunkSize + 15;
-	if (!y_inside)
-		y = y < 0 ? y + 15 : y - (int32_t)kChunkSize + 15;
-	if (!z_inside)
-		z = z < 0 ? z + 15 : z - (int32_t)kChunkSize + 15;
-	return kOffsets[bits] + kMultipliers[bits][0] * (kMultipliers[bits][2] * y + z) + x;
+	return x + 15 + ((z + 15) + (y + 15) * (kChunkSize + 30)) * (kChunkSize + 30);
 }
 
 std::optional<ChunkTaskRunnerData<ChunkTaskType::kMesh>>
@@ -76,19 +48,36 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 		for (InnerPos1 z = -15; z < (InnerPos1)kChunkSize + 15; ++z)
 			for (InnerPos1 x = -15; x < (InnerPos1)kChunkSize + 15; ++x) {
 				block::Light light = {};
-				if (IsValidChunkPosition(x, y, z)) {
-					light.SetTorchlight(chunk->GetBlock(x, y, z).GetLightLevel());
-					light.SetSunlight(chunk->GetSunlight(x, y, z) ? 15 : 0);
-				} else {
-					uint32_t nei_idx = Chunk::GetBlockNeighbourIndex(x, y, z);
-					light.SetTorchlight(neighbour_chunks[nei_idx]->GetBlockFromNeighbour(x, y, z).GetLightLevel());
-					light.SetSunlight(neighbour_chunks[nei_idx]->GetSunlightFromNeighbour(x, y, z) ? 15 : 0);
-				}
+				uint32_t nei_idx = Chunk::GetBlockNeighbourIndex(x, y, z);
+				light.SetTorchlight(neighbour_chunks[nei_idx]->GetBlockFromNeighbour(x, y, z).GetLightLevel());
+				light.SetSunlight(neighbour_chunks[nei_idx]->GetSunlightFromNeighbour(x, y, z) ? 15 : 0);
 				m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)] = light;
-				if (LightAlgo::IsBorderLightInterfere(x, y, z, light.GetSunlight()))
-					m_sunlight_entries.push({{x, y, z}, light.GetSunlight()});
 				if (LightAlgo::IsBorderLightInterfere(x, y, z, light.GetTorchlight()))
 					m_torchlight_entries.push({{x, y, z}, light.GetTorchlight()});
+			}
+
+	for (InnerPos1 y = -15; y < (InnerPos1)kChunkSize + 15; ++y)
+		for (InnerPos1 z = -15; z < (InnerPos1)kChunkSize + 15; ++z)
+			for (InnerPos1 x = -15; x < (InnerPos1)kChunkSize + 15; ++x) {
+				auto sunlight = m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].GetSunlight();
+				if (LightAlgo::IsBorderLightInterfere(x, y, z, sunlight)) {
+					if (x >= -14 && x < (InnerPos1)kChunkSize + 14 && y >= -14 && y < (InnerPos1)kChunkSize + 14 &&
+					    z >= -14 && z < (InnerPos1)kChunkSize + 14 &&
+					    m_extend_light_buffer[chunk_xyz_extended15_to_index(InnerPos1(x - 1), y, z)].GetSunlight() ==
+					        15 &&
+					    m_extend_light_buffer[chunk_xyz_extended15_to_index(InnerPos1(x + 1), y, z)].GetSunlight() ==
+					        15 &&
+					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, InnerPos1(z - 1))].GetSunlight() ==
+					        15 &&
+					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, InnerPos1(z + 1))].GetSunlight() ==
+					        15 &&
+					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, InnerPos1(y - 1), z)].GetSunlight() ==
+					        15 &&
+					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, InnerPos1(y + 1), z)].GetSunlight() ==
+					        15)
+						continue;
+					m_sunlight_entries.push({{x, y, z}, sunlight});
+				}
 			}
 
 	LightAlgo algo{};
@@ -114,6 +103,8 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 	    [this](auto x, auto y, auto z, block::LightLvl lvl) {
 		    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].SetTorchlight(lvl);
 	    });
+
+	spdlog::info("Mesh done");
 
 	meshes =
 	    BlockMeshAlgo<BlockAlgoConfig<uint32_t, BlockAlgoBound<uint32_t>{0, 0, 0, kChunkSize, kChunkSize, kChunkSize},
