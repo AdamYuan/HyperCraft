@@ -16,8 +16,8 @@ ChunkTaskData<ChunkTaskType::kFloodSunlight>::Pop(const ChunkTaskPoolLocked &tas
 	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock, ChunkTaskType::kSetSunlight>(
 	        chunk_pos))
 		return std::nullopt;
-	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock, ChunkTaskType::kSetSunlight,
-	                         ChunkTaskType::kFloodSunlight>(up_chunk_pos))
+	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock, ChunkTaskType::kSetSunlight>(
+	        up_chunk_pos))
 		return std::nullopt;
 	std::shared_ptr<Chunk> chunk, up_chunk;
 	if (!(chunk = task_pool.GetWorld().GetChunkPool().FindChunk(chunk_pos)))

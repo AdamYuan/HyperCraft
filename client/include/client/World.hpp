@@ -114,6 +114,14 @@ public:
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
 		m_chunk_update_pool.SetBlockUpdate(chunk_pos, inner_pos, block);
 	}
+	inline std::optional<block::Block> GetBlock(const BlockPos3 &pos) const {
+		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
+		auto opt_update = m_chunk_update_pool.GetBlockUpdate(chunk_pos, inner_pos);
+		if (opt_update)
+			return opt_update.value();
+		auto chunk = m_chunk_pool.FindChunk(chunk_pos);
+		return chunk ? std::optional(chunk->GetBlock(inner_pos.x, inner_pos.y, inner_pos.z)) : std::nullopt;
+	}
 	inline void SetBlockBulk(std::span<const std::pair<BlockPos3, block::Block>> blocks) {
 		std::unordered_map<ChunkPos3, std::vector<std::pair<InnerPos3, block::Block>>> chunk_set_blocks;
 
