@@ -61,20 +61,24 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 			for (InnerPos1 x = -15; x < (InnerPos1)kChunkSize + 15; ++x) {
 				auto sunlight = m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, z)].GetSunlight();
 				if (LightAlgo::IsBorderLightInterfere(x, y, z, sunlight)) {
-					if (x >= -14 && x < (InnerPos1)kChunkSize + 14 && y >= -14 && y < (InnerPos1)kChunkSize + 14 &&
-					    z >= -14 && z < (InnerPos1)kChunkSize + 14 &&
-					    m_extend_light_buffer[chunk_xyz_extended15_to_index(InnerPos1(x - 1), y, z)].GetSunlight() ==
-					        15 &&
-					    m_extend_light_buffer[chunk_xyz_extended15_to_index(InnerPos1(x + 1), y, z)].GetSunlight() ==
-					        15 &&
-					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, InnerPos1(z - 1))].GetSunlight() ==
-					        15 &&
-					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, InnerPos1(z + 1))].GetSunlight() ==
-					        15 &&
-					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, InnerPos1(y - 1), z)].GetSunlight() ==
-					        15 &&
-					    m_extend_light_buffer[chunk_xyz_extended15_to_index(x, InnerPos1(y + 1), z)].GetSunlight() ==
-					        15)
+					if ((x == -15 ||
+					     m_extend_light_buffer[chunk_xyz_extended15_to_index(InnerPos1(x - 1), y, z)].GetSunlight() ==
+					         15) &&
+					    (x == (InnerPos1)kChunkSize + 14 ||
+					     m_extend_light_buffer[chunk_xyz_extended15_to_index(InnerPos1(x + 1), y, z)].GetSunlight() ==
+					         15) &&
+					    (z == -15 ||
+					     m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, InnerPos1(z - 1))].GetSunlight() ==
+					         15) &&
+					    (z == (InnerPos1)kChunkSize + 14 ||
+					     m_extend_light_buffer[chunk_xyz_extended15_to_index(x, y, InnerPos1(z + 1))].GetSunlight() ==
+					         15) &&
+					    (y == -15 ||
+					     m_extend_light_buffer[chunk_xyz_extended15_to_index(x, InnerPos1(y - 1), z)].GetSunlight() ==
+					         15) &&
+					    (y == (InnerPos1)kChunkSize + 14 ||
+					     m_extend_light_buffer[chunk_xyz_extended15_to_index(x, InnerPos1(y + 1), z)].GetSunlight() ==
+					         15))
 						continue;
 					m_sunlight_entries.push({{x, y, z}, sunlight});
 				}

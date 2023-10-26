@@ -24,7 +24,7 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 
 	const auto &chunk_ptr = data.GetChunkPtr();
 
-	client->GetTerrain()->Generate(chunk_ptr, m_light_map);
+	client->GetTerrain()->Generate(chunk_ptr, m_y_peak_map);
 	auto updates = p_task_pool->GetWorld().GetChunkUpdatePool().GetBlockUpdate(chunk_ptr->GetPosition());
 	for (const auto &u : updates)
 		chunk_ptr->SetBlock(u.first.x, u.first.y, u.first.z, u.second);
@@ -33,7 +33,7 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 	BlockPos1 base_height = data.GetChunkPos().y * (BlockPos1)kChunkSize;
 	for (uint32_t idx = 0; idx < kChunkSize * kChunkSize; ++idx)
 		chunk_ptr->SetSunlightHeight(
-		    idx, (InnerPos1)(std::clamp(m_light_map[idx] - base_height + 1, 0, (BlockPos1)kChunkSize)));
+		    idx, (InnerPos1)(std::clamp(m_y_peak_map[idx] - base_height + 1, 0, (BlockPos1)kChunkSize)));
 
 	// printf("Generate %s\n", glm::to_string(data.GetChunkPos()).c_str());
 
