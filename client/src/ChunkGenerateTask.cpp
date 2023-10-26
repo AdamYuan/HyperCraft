@@ -9,7 +9,7 @@ std::optional<ChunkTaskRunnerData<ChunkTaskType::kGenerate>>
 ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPoolLocked &task_pool, const ChunkPos3 &chunk_pos) {
 	if (!m_queued)
 		return std::nullopt;
-	std::shared_ptr<Chunk> chunk = task_pool.GetWorld().GetChunkPool().FindChunk(chunk_pos);
+	std::shared_ptr<Chunk> chunk = task_pool.GetWorld().GetChunkPool().FindRawChunk(chunk_pos);
 	if (!chunk)
 		return std::nullopt;
 	m_queued = false;
@@ -40,6 +40,8 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 	    p_task_pool->GetWorld().GetChunkUpdatePool().GetSunlightUpdateBulk(chunk_ptr->GetPosition());
 	for (const auto &u : sunlight_updates)
 		chunk_ptr->SetSunlightHeight(u.first.x, u.first.y, u.second);
+
+	chunk_ptr->SetGeneratedFlag();
 
 	p_task_pool->Push<ChunkTaskType::kMesh>(data.GetChunkPos());
 }

@@ -26,7 +26,6 @@ void ChunkPool::Update() {
 			}
 		}
 	}
-	// TODO: chunk might be meshed before neighbour chunks are generated because their kGenerate tasks are not spawned
 	{
 		ChunkTaskPoolLocked locked_task_pool{&m_world.m_chunk_task_pool};
 		locked_task_pool.PushBulk<ChunkTaskType::kGenerate>(generate_chunk_pos_vec.begin(),

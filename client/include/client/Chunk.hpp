@@ -10,7 +10,7 @@
 #include "client/mesh/MeshHandle.hpp"
 #include <client/ChunkMesh.hpp>
 
-#include <chrono>
+#include <atomic>
 #include <memory>
 #include <vector>
 
@@ -89,11 +89,15 @@ public:
 		return ret;
 	}
 
+	// Generated Flag
+	inline void SetGeneratedFlag() { m_generated_flag.store(true, std::memory_order_release); }
+	inline bool IsGenerated() const { return m_generated_flag.load(std::memory_order_acquire); }
+
 private:
 	Block m_blocks[kSize * kSize * kSize];
 	InnerPos1 m_sunlight_heights[kSize * kSize]{};
-
 	ChunkPos3 m_position{};
+	std::atomic_bool m_generated_flag{false};
 };
 
 } // namespace hc::client
