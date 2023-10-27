@@ -12,10 +12,11 @@ class BlockSelectPass final : public myvk_rg::GraphicsPassBase {
 private:
 	myvk::Ptr<myvk::GraphicsPipeline> m_pipeline;
 
+	uint32_t m_aabb_count = 0;
 	// Push Constants
 	struct PCData {
-		glm::i32vec4 m_position_aabb_cnt;
-		glm::u32vec2 m_aabbs[block::kBlockMeshMaxAABBCount];
+		glm::i32vec3 m_position_aabb_cnt;
+		uint32_t m_aabbs[block::kBlockMeshMaxAABBCount];
 		static_assert(block::kBlockMeshMaxAABBCount == 4);
 	} m_pc_data = {};
 
@@ -30,19 +31,20 @@ public:
 	}
 
 	inline void SetBlockSelection(const BlockPos3 &pos, block::Block block) {
+		m_aabb_count = block.GetAABBCount();
+
 		m_pc_data.m_position_aabb_cnt.x = pos.x;
 		m_pc_data.m_position_aabb_cnt.y = pos.y;
 		m_pc_data.m_position_aabb_cnt.z = pos.z;
-		m_pc_data.m_position_aabb_cnt.w = (int32_t)block.GetAABBCount();
 		for (uint32_t i = 0; i < block.GetAABBCount(); ++i) {
 			const auto &aabb = block.GetAABBs()[i];
 			const auto &aabb_min = aabb.GetMin();
 			const auto &aabb_max = aabb.GetMax();
-			m_pc_data.m_aabbs[i].x = aabb_min.x | (aabb_min.y << 8u) | (aabb_min.z << 16u);
-			m_pc_data.m_aabbs[i].y = aabb_max.x | (aabb_max.y << 8u) | (aabb_max.z << 16u);
+			m_pc_data.m_aabbs[i] = aabb_min.x | (aabb_min.y << 5u) | (aabb_min.z << 10u) |
+			                       ((aabb_max.x | (aabb_max.y << 5u) | (aabb_max.z << 10u)) << 16u);
 		}
 	}
-	inline void UnsetBlockSelection() { m_pc_data.m_position_aabb_cnt.w = 0; }
+	inline void UnsetBlockSelection() { m_aabb_count = 0; }
 
 	inline void CreatePipeline() final {
 		auto pipeline_layout =
@@ -92,7 +94,7 @@ public:
 		command_buffer->CmdBindDescriptorSets({GetVkDescriptorSet()}, m_pipeline);
 		command_buffer->CmdPushConstants(m_pipeline->GetPipelineLayoutPtr(), VK_SHADER_STAGE_VERTEX_BIT, 0,
 		                                 sizeof(PCData), &m_pc_data);
-		command_buffer->CmdDraw(m_pc_data.m_position_aabb_cnt.w, 1, 0, 0);
+		command_buffer->CmdDraw(m_aabb_count, 1, 0, 0);
 	}
 
 	inline auto GetColorOutput() { return MakeImageOutput({"color"}); }

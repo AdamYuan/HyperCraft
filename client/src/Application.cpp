@@ -220,7 +220,7 @@ void Application::modify_block() {
 	} else if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
 		left_first_click = true;
 		if (m_outer_selected_pos && (right_first_click || glfwGetTime() - last_click_time >= kClickInterval)) {
-			m_world->SetBlock(m_outer_selected_pos.value(), block::Blocks::kStone);
+			m_world->SetBlock(m_outer_selected_pos.value(), block::Blocks::kGlowstone);
 			last_click_time = glfwGetTime();
 			right_first_click = false;
 		}
@@ -319,11 +319,10 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int scancode, i
 		std::vector<std::pair<BlockPos3, block::Block>> blocks;
 		for (BlockPos1 x = -20; x <= 20; ++x)
 			for (BlockPos1 z = -20; z <= 20; ++z)
-				blocks.emplace_back(BlockPos3{center.x + x, center.y, center.z + z}, block::Blocks::kGlowstone);
+				blocks.emplace_back(BlockPos3{center.x + x, center.y, center.z + z}, block::Blocks::kStone);
 		app->m_world->SetBlockBulk(blocks);
 	} else if (key == GLFW_KEY_ESCAPE) {
 		app->m_mouse_captured ^= 1;
-		spdlog::info("switch {}", app->m_mouse_captured);
 		glfwSetInputMode(window, GLFW_CURSOR, app->m_mouse_captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 	}
 }

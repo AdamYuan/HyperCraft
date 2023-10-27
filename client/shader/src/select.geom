@@ -12,8 +12,7 @@ layout(set = 0, binding = 0) uniform uuCamera {
 
 void main() {
 	vec3 aabb_min = gl_in[0].gl_Position.xyz - 0.005;
-	vec3 extent =
-	    vec3(uvec3(vExtent[0].x & 0xffu, (vExtent[0].x >> 8u) & 0xffu, (vExtent[0].x >> 16u) & 0xffu)) * 0.0625 + 0.01;
+	vec3 extent = vec3(uvec3(vExtent[0].x & 0x1fu, (vExtent[0].x >> 5u) & 0x1fu, vExtent[0].x >> 10u)) * 0.0625 + 0.01;
 
 	vec4 px = uViewProjection[0] * extent.x;
 	vec4 py = uViewProjection[1] * extent.y;
