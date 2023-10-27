@@ -81,6 +81,7 @@ public:
 		pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_POINT_LIST);
 		pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		                                                VK_CULL_MODE_FRONT_BIT);
+		pipeline_state.m_rasterization_state.m_create_info.lineWidth = 1.5f;
 		pipeline_state.m_depth_stencil_state.Enable(VK_TRUE, VK_FALSE);
 		pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_1_BIT);
 		pipeline_state.m_color_blend_state.Enable(1, VK_FALSE);
