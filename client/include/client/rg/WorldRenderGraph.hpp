@@ -1,6 +1,7 @@
 #ifndef HYPERCRAFT_WORLDRENDERGRAPH_HPP
 #define HYPERCRAFT_WORLDRENDERGRAPH_HPP
 
+#include "BlockSelectPass.hpp"
 #include "ChunkCullPass.hpp"
 #include "ChunkOpaquePass.hpp"
 #include "ChunkTransparentPass.hpp"
@@ -50,6 +51,11 @@ public:
 		GetPass<ChunkOpaquePass>({"chunk_opaque_pass"})->Update(m_prepared_clusters);
 		GetPass<ChunkTransparentPass>({"chunk_transparent_pass"})->Update(m_prepared_clusters);
 	}
+
+	inline void SetBlockSelection(const BlockPos3 &pos, block::Block block) {
+		GetPass<BlockSelectPass>({"block_select_pass"})->SetBlockSelection(pos, block);
+	}
+	inline void UnsetBlockSelection() { GetPass<BlockSelectPass>({"block_select_pass"})->UnsetBlockSelection(); }
 
 	inline void Initialize(const myvk::Ptr<myvk::FrameManager> &frame_manager,
 	                       const std::shared_ptr<WorldRenderer> &world_renderer_ptr,
@@ -114,16 +120,17 @@ public:
 		                                               chunk_transparent_pass->GetAccumOutput(),
 		                                               chunk_transparent_pass->GetRevealOutput());
 
+		auto block_select_pass =
+		    CreatePass<BlockSelectPass>({"block_select_pass"}, camera_buffer, oit_blend_pass->GetColorOutput(),
+		                                chunk_opaque_pass->GetDepthOutput());
+		block_select_pass->SetBlockSelection({}, block::Blocks::kStone);
+
 		auto swapchain_image = CreateResource<myvk_rg::SwapchainImage>({"swapchain_image"}, frame_manager);
 		swapchain_image->SetLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE);
 
 		auto fix_t_junction_pass =
-		    CreatePass<FixTJunctionPass>({"fix_t_junction_pass"}, oit_blend_pass->GetColorOutput(),
+		    CreatePass<FixTJunctionPass>({"fix_t_junction_pass"}, block_select_pass->GetColorOutput(),
 		                                 chunk_opaque_pass->GetDepthOutput(), swapchain_image, fixed_depth_image);
-
-		// auto blit_pass = CreatePass<myvk_rg::ImageBlitPass>({"blit_pass"},
-		// fix_t_junction_pass->GetFixedDepthOutput(),
-		//                                                     swapchain_image, VK_FILTER_NEAREST);
 
 		auto imgui_pass = CreatePass<myvk_rg::ImGuiPass>({"imgui_pass"}, fix_t_junction_pass->GetFixedColorOutput());
 

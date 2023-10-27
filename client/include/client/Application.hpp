@@ -44,7 +44,8 @@ private:
 	// Temporal game data TODO: remove
 	float m_day_night = 0.0;
 	bool m_mouse_captured = false;
-	std::optional<ChunkPos3> m_selected_block, m_outer_selected_block;
+	std::optional<ChunkPos3> m_selected_pos, m_outer_selected_pos;
+	std::optional<block::Block> m_selected_block;
 	void select_block();
 	void modify_block();
 

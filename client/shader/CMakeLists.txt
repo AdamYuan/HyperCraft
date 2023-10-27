@@ -11,6 +11,9 @@ set(SHADER_SRC
         quad.vert
         oit_compositor.frag
         post_process.frag
+        select.vert
+        select.geom
+        select.frag
         )
 
 find_program(GLSLC "glslc")

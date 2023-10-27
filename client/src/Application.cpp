@@ -82,6 +82,9 @@ void Application::draw_frame(double delta) {
 
 		auto &world_rg = m_world_render_graphs[current_frame];
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
+		(m_selected_pos && m_selected_block)
+		    ? world_rg->SetBlockSelection(m_selected_pos.value(), m_selected_block.value())
+		    : world_rg->UnsetBlockSelection();
 		world_rg->SetDayNight(m_day_night);
 		world_rg->UpdateCamera(m_camera);
 		world_rg->UpdateDepthHierarchy();
@@ -146,8 +149,9 @@ void Application::select_block() {
 		// world.
 		auto opt_block = m_world->GetBlock(xyz);
 		if (opt_block && opt_block.value() != block::Blocks::kAir) {
-			m_selected_block = xyz;
-			m_outer_selected_block = xyz + face;
+			m_selected_pos = xyz;
+			m_outer_selected_pos = xyz + face;
+			m_selected_block = opt_block;
 			return;
 		}
 
@@ -198,7 +202,8 @@ void Application::select_block() {
 			}
 		}
 	}
-	m_selected_block = m_outer_selected_block = std::nullopt;
+	m_selected_pos = m_outer_selected_pos = std::nullopt;
+	m_selected_block = std::nullopt;
 }
 
 void Application::modify_block() {
@@ -207,15 +212,15 @@ void Application::modify_block() {
 	static bool left_first_click = true, right_first_click = true;
 	if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
 		right_first_click = true;
-		if (m_selected_block && (left_first_click || glfwGetTime() - last_click_time >= kClickInterval)) {
-			m_world->SetBlock(m_selected_block.value(), block::Blocks::kAir);
+		if (m_selected_pos && (left_first_click || glfwGetTime() - last_click_time >= kClickInterval)) {
+			m_world->SetBlock(m_selected_pos.value(), block::Blocks::kAir);
 			last_click_time = glfwGetTime();
 			left_first_click = false;
 		}
 	} else if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
 		left_first_click = true;
-		if (m_outer_selected_block && (right_first_click || glfwGetTime() - last_click_time >= kClickInterval)) {
-			m_world->SetBlock(m_outer_selected_block.value(), block::Blocks::kStone);
+		if (m_outer_selected_pos && (right_first_click || glfwGetTime() - last_click_time >= kClickInterval)) {
+			m_world->SetBlock(m_outer_selected_pos.value(), block::Blocks::kStone);
 			last_click_time = glfwGetTime();
 			right_first_click = false;
 		}
@@ -266,7 +271,7 @@ void Application::Run() {
 			select_block();
 			modify_block();
 		} else {
-			m_selected_block = m_outer_selected_block = std::nullopt;
+			m_selected_pos = m_outer_selected_pos = std::nullopt;
 		}
 
 		myvk::ImGuiNewFrame();
