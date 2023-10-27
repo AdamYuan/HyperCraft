@@ -7,6 +7,6 @@ template <> struct BlockTrait<kStone> : public SingleBlockTrait<kStone> {
 	    BLOCK_TEXTURE_SAME(BlockTextures::kStone),
 	    BlockTransparency::kOpaque,
 	    (LightLvl)0,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

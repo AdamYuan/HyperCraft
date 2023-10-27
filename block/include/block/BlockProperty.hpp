@@ -11,18 +11,14 @@ namespace hc::block {
 using BlockID = uint8_t;
 using BlockMeta = uint8_t;
 
-enum class BlockTransparency : uint8_t { kOpaque = 0, kSemiTransparent, kTransparent };
-
-using BlockCollisionMask = uint8_t;
-namespace BlockCollisionBits {
-enum : uint8_t { kNone = 1 << 0, kSolid = 1 << 1, kLiquid = 1 << 2 };
-}
+enum class BlockTransparency : uint8_t { kOpaque, kSemiTransparent, kTransparent };
+enum class BlockCollision : uint8_t { kNone, kSolid, kWater };
 struct BlockProperty {
 	const char *name{"Unnamed"};
 	texture::BlockTexture textures[6]{};
 	BlockTransparency transparency{BlockTransparency::kOpaque};
 	LightLvl light_level{0};
-	BlockCollisionMask collision_mask{BlockCollisionBits::kSolid};
+	BlockCollision collision{BlockCollision::kSolid};
 	const BlockMesh *p_custom_mesh{nullptr};
 
 	inline constexpr BlockProperty RotateCW(uint8_t axis) const {
@@ -38,7 +34,7 @@ struct BlockProperty {
 			        },
 			        transparency,
 			        light_level,
-			        collision_mask,
+			        collision,
 			        p_custom_mesh};
 		} else if (axis == 1) {
 			return {name,
@@ -52,7 +48,7 @@ struct BlockProperty {
 			        },
 			        transparency,
 			        light_level,
-			        collision_mask,
+			        collision,
 			        p_custom_mesh};
 		} else {
 			return {name,
@@ -66,7 +62,7 @@ struct BlockProperty {
 			        },
 			        transparency,
 			        light_level,
-			        collision_mask,
+			        collision,
 			        p_custom_mesh};
 		}
 	}

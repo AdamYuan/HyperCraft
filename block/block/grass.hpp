@@ -9,7 +9,7 @@ template <> struct BlockTrait<kGrass> : public MultiBlockTrait<kGrass> {
 	        BLOCK_TEXTURE_NONE,
 	        BlockTransparency::kTransparent,
 	        (LightLvl)0,
-	        BlockCollisionBits::kNone,
+	        BlockCollision::kNone,
 	        &kCrossMesh<BlockTextures::kGrassPlain, 8, 0, 16>,
 	    },
 	    {
@@ -17,7 +17,7 @@ template <> struct BlockTrait<kGrass> : public MultiBlockTrait<kGrass> {
 	        BLOCK_TEXTURE_NONE,
 	        BlockTransparency::kTransparent,
 	        (LightLvl)0,
-	        BlockCollisionBits::kNone,
+	        BlockCollision::kNone,
 	        &kCrossMesh<BlockTextures::kGrassSavanna, 8, 0, 16>,
 	    },
 	    {
@@ -25,7 +25,7 @@ template <> struct BlockTrait<kGrass> : public MultiBlockTrait<kGrass> {
 	        BLOCK_TEXTURE_NONE,
 	        BlockTransparency::kTransparent,
 	        (LightLvl)0,
-	        BlockCollisionBits::kNone,
+	        BlockCollision::kNone,
 	        &kCrossMesh<BlockTextures::kGrassTropical, 8, 0, 16>,
 	    },
 	    {
@@ -33,7 +33,7 @@ template <> struct BlockTrait<kGrass> : public MultiBlockTrait<kGrass> {
 	        BLOCK_TEXTURE_NONE,
 	        BlockTransparency::kTransparent,
 	        (LightLvl)0,
-	        BlockCollisionBits::kNone,
+	        BlockCollision::kNone,
 	        &kCrossMesh<BlockTextures::kGrassBoreal, 8, 0, 16>,
 	    },
 	};

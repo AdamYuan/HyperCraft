@@ -7,6 +7,6 @@ template <> struct BlockTrait<kIce> : public SingleBlockTrait<kIce> {
 	    BLOCK_TEXTURE_SAME(BlockTextures::kIce),
 	    BlockTransparency::kSemiTransparent,
 	    (LightLvl)0,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

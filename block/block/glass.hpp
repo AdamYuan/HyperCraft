@@ -7,6 +7,6 @@ template <> struct BlockTrait<kGlass> : public SingleBlockTrait<kGlass> {
 	    BLOCK_TEXTURE_SAME(BlockTextures::kGlass),
 	    BlockTransparency::kTransparent,
 	    (LightLvl)0,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

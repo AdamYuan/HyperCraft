@@ -29,7 +29,7 @@ template <BlockID> struct BlockTrait {
 	inline static constexpr uint8_t kTransformBits = 0;
 
 	template <BlockMeta Variant, BlockMeta Transform> inline static constexpr BlockProperty GetProperty() {
-		return {"None", BLOCK_TEXTURE_NONE, BlockTransparency::kTransparent, BlockCollisionBits::kNone};
+		return {"None", BLOCK_TEXTURE_NONE, BlockTransparency::kTransparent, (LightLvl)0, BlockCollision::kNone};
 	}
 };
 

@@ -7,6 +7,6 @@ template <> struct BlockTrait<kCobblestone> : public SingleBlockTrait<kCobblesto
 	    BLOCK_TEXTURE_SAME(BlockTextures::kCobblestone),
 	    BlockTransparency::kOpaque,
 	    (LightLvl)0,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

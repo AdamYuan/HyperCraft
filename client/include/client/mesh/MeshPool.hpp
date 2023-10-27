@@ -16,33 +16,29 @@ namespace hc::client::mesh {
 
 template <typename Vertex, typename Index, typename Info> class MeshPool : public myvk::DeviceObjectBase {
 public:
-	struct LocalUpdate {
-		enum class Type { kInsert, kErase };
-		Type type;
+	struct LocalInsert {
 		uint64_t cluster_id, mesh_id;
-		inline explicit LocalUpdate(Type type, uint64_t cluster_id, uint64_t mesh_id)
-		    : type{type}, cluster_id{cluster_id}, mesh_id{mesh_id} {}
-		inline virtual ~LocalUpdate() = default;
-	};
-	struct LocalInsert final : public LocalUpdate {
 		myvk::Ptr<myvk::Buffer> vertex_staging, index_staging;
 		MeshInfo<Info> mesh_info;
 		inline LocalInsert(uint64_t cluster_id, uint64_t mesh_id, myvk::Ptr<myvk::Buffer> &&vertex_staging,
 		                   myvk::Ptr<myvk::Buffer> &&index_staging, const MeshInfo<Info> &mesh_info)
-		    : LocalUpdate(LocalUpdate::Type::kInsert, cluster_id, mesh_id), vertex_staging{std::move(vertex_staging)},
+		    : cluster_id{cluster_id}, mesh_id{mesh_id}, vertex_staging{std::move(vertex_staging)},
 		      index_staging{std::move(index_staging)}, mesh_info{mesh_info} {}
-		inline ~LocalInsert() final = default;
 	};
-	struct LocalErase final : public LocalUpdate {
+	struct LocalErase {
+		uint64_t cluster_id, mesh_id;
 		VmaVirtualAllocation vertex_alloc, index_alloc;
-		inline explicit LocalErase(uint64_t cluster_id, uint64_t mesh_id, VmaVirtualAllocation vertex_alloc,
-		                           VmaVirtualAllocation index_alloc)
-		    : LocalUpdate(LocalUpdate::Type::kErase, cluster_id, mesh_id), vertex_alloc{vertex_alloc},
-		      index_alloc{index_alloc} {}
-		inline ~LocalErase() final = default;
+		inline LocalErase(uint64_t cluster_id, uint64_t mesh_id, VmaVirtualAllocation vertex_alloc,
+		                  VmaVirtualAllocation index_alloc)
+		    : cluster_id{cluster_id}, mesh_id{mesh_id}, vertex_alloc{vertex_alloc}, index_alloc{index_alloc} {}
+	};
+	struct LocalTransaction {
+		std::vector<LocalInsert> inserts;
+		std::vector<LocalErase> erases;
 	};
 
-	using LocalUpdateEntry = std::unique_ptr<LocalUpdate>;
+	using LocalUpdateEntry = LocalTransaction;
+	using PostUpdateEntry = std::variant<LocalInsert, LocalErase>;
 
 private:
 	myvk::Ptr<myvk::Device> m_device_ptr;
@@ -81,6 +77,7 @@ private:
 	}
 
 	template <typename, typename, typename> friend class MeshHandle;
+	template <typename, typename, typename> friend class MeshHandleTransaction;
 	template <typename, typename, typename> friend class MeshCluster;
 
 public:
@@ -102,30 +99,30 @@ public:
 	inline VkDeviceSize GetVertexBlockSize() const { return m_vertex_block_size; }
 	inline VkDeviceSize GetIndexBlockSize() const { return m_index_block_size; }
 
-	inline void PostUpdate(std::vector<LocalUpdateEntry> &&post_updates) {
+	inline void PostUpdate(std::vector<PostUpdateEntry> &&post_updates) {
 		if (post_updates.empty())
 			return;
 
 		auto cluster_map = make_cluster_map();
 
 		for (auto &post_update : post_updates) {
-			auto cluster_it = cluster_map.find(post_update->cluster_id);
-			if (cluster_it == cluster_map.end())
-				continue;
-
-			const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster = cluster_it->second;
-
-			if (post_update->type == LocalUpdate::Type::kErase) {
-				auto *p_erase = static_cast<LocalErase *>(post_update.get());
-				cluster->free_alloc(p_erase->vertex_alloc, p_erase->index_alloc);
-			}
-			post_update = nullptr;
+			std::visit(
+			    [&cluster_map](const auto &post_erase) {
+				    if constexpr (std::is_same_v<std::decay_t<decltype(post_erase)>, LocalErase>) {
+					    auto cluster_it = cluster_map.find(post_erase.cluster_id);
+					    if (cluster_it == cluster_map.end())
+						    return;
+					    const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster = cluster_it->second;
+					    cluster->free_alloc(post_erase.vertex_alloc, post_erase.index_alloc);
+				    }
+			    },
+			    post_update);
 		}
 	}
 
 	inline void CmdLocalUpdate(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
 	                           std::vector<std::shared_ptr<MeshCluster<Vertex, Index, Info>>> *p_prepared_clusters,
-	                           std::vector<LocalUpdateEntry> *p_post_updates, VkDeviceSize max_transfer_bytes) {
+	                           std::vector<PostUpdateEntry> *p_post_updates, VkDeviceSize max_transfer_bytes) {
 		auto cluster_map = make_cluster_map();
 
 		p_prepared_clusters->clear();
@@ -139,32 +136,34 @@ public:
 		LocalUpdateEntry local_update;
 		bool transfer = false;
 		while (transferred_bytes < max_transfer_bytes && m_local_update_queue.try_dequeue(local_update)) {
-			auto cluster_it = cluster_map.find(local_update->cluster_id);
-			if (cluster_it == cluster_map.end())
-				continue;
-
-			const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster = cluster_it->second;
-
-			if (local_update->type == LocalUpdate::Type::kInsert) {
-				transfer = true;
-
-				auto *p_insert = static_cast<LocalInsert *>(local_update.get());
-
-				auto erased_it = m_erased_meshes.find(p_insert->mesh_id);
-				// If the mesh is already erased, just ignore it
-				if (erased_it == m_erased_meshes.end()) {
-					cluster->local_insert_mesh(p_insert->mesh_id, p_insert->mesh_info, p_insert->vertex_staging,
-					                           p_insert->index_staging, &copies, &copy_regions, &post_barriers);
-					transferred_bytes += p_insert->vertex_staging->GetSize() + p_insert->index_staging->GetSize();
-				} else
-					m_erased_meshes.erase(erased_it);
-			} else { // Erase
-				auto *p_erase = static_cast<LocalErase *>(local_update.get());
-				if (cluster->try_local_erase_mesh(p_erase->mesh_id) == false)
-					m_erased_meshes.insert(p_erase->mesh_id);
+			for (auto &erase : local_update.erases) {
+				auto cluster_it = cluster_map.find(erase.cluster_id);
+				if (cluster_it != cluster_map.end()) {
+					const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster = cluster_it->second;
+					if (cluster->try_local_erase_mesh(erase.mesh_id) == false)
+						m_erased_meshes.insert(erase.mesh_id); // if not erased, mark it as erased
+					++cluster->m_cluster_local_version;
+				}
+				p_post_updates->push_back(std::move(erase));
 			}
-			++cluster->m_cluster_local_version;
-			p_post_updates->push_back(std::move(local_update));
+			for (auto &insert : local_update.inserts) {
+				auto cluster_it = cluster_map.find(insert.cluster_id);
+				if (cluster_it != cluster_map.end()) {
+					const std::shared_ptr<MeshCluster<Vertex, Index, Info>> &cluster = cluster_it->second;
+					transfer = true;
+
+					auto erased_it = m_erased_meshes.find(insert.mesh_id);
+					// If the mesh is marked as erased, just ignore it
+					if (erased_it == m_erased_meshes.end()) {
+						cluster->local_insert_mesh(insert.mesh_id, insert.mesh_info, insert.vertex_staging,
+						                           insert.index_staging, &copies, &copy_regions, &post_barriers);
+						transferred_bytes += insert.vertex_staging->GetSize() + insert.index_staging->GetSize();
+					} else
+						m_erased_meshes.erase(erased_it);
+					++cluster->m_cluster_local_version;
+				}
+				p_post_updates->push_back(std::move(insert));
+			}
 		}
 
 		// Copy

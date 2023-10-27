@@ -7,6 +7,6 @@ template <> struct BlockTrait<kDirt> : public SingleBlockTrait<kDirt> {
 	    BLOCK_TEXTURE_SAME(BlockTextures::kDirt),
 	    BlockTransparency::kOpaque,
 	    (LightLvl)0,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

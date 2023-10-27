@@ -29,7 +29,6 @@ void ChunkTaskRunner<ChunkTaskType::kSetSunlight>::Run(ChunkTaskPool *p_task_poo
 	const auto &chunk = data.GetChunkPtr();
 
 	std::bitset<27> neighbour_remesh_set{};
-	neighbour_remesh_set[26] = true;
 
 	for (const auto &sunlight_change : sunlight_changes) {
 		auto xz_pos = sunlight_change.first;
@@ -37,6 +36,8 @@ void ChunkTaskRunner<ChunkTaskType::kSetSunlight>::Run(ChunkTaskPool *p_task_poo
 		auto new_sunlight = sunlight_change.second, old_sunlight = chunk->GetSunlightHeight(xz_idx);
 		if (new_sunlight == old_sunlight)
 			continue;
+
+		neighbour_remesh_set[26] = true;
 		chunk->SetSunlightHeight(xz_idx, new_sunlight);
 
 		for (uint32_t i = 0; i < 26; ++i) {

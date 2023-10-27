@@ -7,6 +7,6 @@ template <> struct BlockTrait<kGravel> : public SingleBlockTrait<kGravel> {
 	    BLOCK_TEXTURE_SAME(BlockTextures::kGravel),
 	    BlockTransparency::kOpaque,
 	    (LightLvl)0,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

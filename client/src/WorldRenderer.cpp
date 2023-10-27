@@ -5,9 +5,9 @@ namespace hc::client {
 void WorldRenderer::thread_func() {
 	moodycamel::ConsumerToken consumer_token{m_post_update_queue};
 	while (m_thread_running.load(std::memory_order_acquire)) {
-		std::vector<ChunkMeshPool::LocalUpdateEntry> post_updates;
+		std::vector<ChunkMeshPool::PostUpdateEntry> post_updates;
 
-		if (m_post_update_queue.wait_dequeue_timed(consumer_token, post_updates, std::chrono::milliseconds(10))) {
+		if (m_post_update_queue.try_dequeue(consumer_token, post_updates)) {
 			if (post_updates.empty()) {
 				// purge unloaded chunk meshes
 				auto center_pos = m_world_ptr->GetCenterChunkPos();

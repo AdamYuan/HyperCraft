@@ -2,6 +2,7 @@
 #define HYPERCRAFT_CLIENT_MESH_HPP
 
 #include <memory>
+#include <optional>
 #include <vk_mem_alloc.h>
 
 #include "MeshCluster.hpp"
@@ -19,13 +20,13 @@ private:
 	uint64_t m_mesh_id{};
 	bool m_finalize{};
 
-public:
-	inline const auto &GetPoolPtr() const { return m_pool_ptr; }
-	inline uint64_t GetMeshID() const { return m_mesh_id; }
+	using LocalInsert = typename MeshPool<Vertex, Index, Info>::LocalInsert;
+	using LocalErase = typename MeshPool<Vertex, Index, Info>::LocalErase;
 
-	inline MeshHandle(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr,
-	                  const std::vector<Vertex> &vertices, const std::vector<Index> &indices, const Info &info)
-	    : m_pool_ptr{pool_ptr} {
+	inline std::optional<LocalInsert> construct(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr,
+	                                            const std::vector<Vertex> &vertices, const std::vector<Index> &indices,
+	                                            const Info &info) {
+		m_pool_ptr = pool_ptr;
 		VkDeviceSize vertex_offset, index_offset;
 		{
 			std::shared_lock read_lock{pool_ptr->m_clusters_mutex};
@@ -68,7 +69,7 @@ public:
 		}
 
 		if (!m_cluster_ptr)
-			return;
+			return std::nullopt;
 
 		// Enqueue local mesh insert
 		std::shared_ptr<myvk::Buffer> vertex_staging =
@@ -82,32 +83,71 @@ public:
 		    uint32_t(vertex_offset / sizeof(Vertex)),
 		    info,
 		};
-		using LocalInsert = typename MeshPool<Vertex, Index, Info>::LocalInsert;
-		pool_ptr->m_local_update_queue.enqueue(std::make_unique<LocalInsert>(
-		    m_cluster_ptr->GetClusterID(), m_mesh_id, std::move(vertex_staging), std::move(index_staging), mesh_info));
+		return LocalInsert(m_cluster_ptr->GetClusterID(), m_mesh_id, std::move(vertex_staging),
+		                   std::move(index_staging), mesh_info);
 	}
+	inline std::optional<LocalErase> destruct() {
+		if (m_finalize)
+			return std::nullopt;
+		m_finalize = true;
+		return LocalErase(m_cluster_ptr->GetClusterID(), m_mesh_id, m_vertex_alloc, m_index_alloc);
+	}
+
+	template <typename, typename, typename> friend class MeshHandleTransaction;
+
+public:
+	inline const auto &GetPoolPtr() const { return m_pool_ptr; }
+	inline uint64_t GetMeshID() const { return m_mesh_id; }
 
 	inline static std::unique_ptr<MeshHandle> Create(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr,
 	                                                 const std::vector<Vertex> &vertices,
 	                                                 const std::vector<Index> &indices, const Info &info) {
-		auto ret = std::make_unique<MeshHandle>(pool_ptr, vertices, indices, info);
-		if (ret->m_cluster_ptr)
-			return std::move(ret);
+		auto ret = std::make_unique<MeshHandle>();
+		auto opt_local_insert = ret->construct(pool_ptr, vertices, indices, info);
+		if (opt_local_insert) {
+			pool_ptr->m_local_update_queue.enqueue({{std::move(opt_local_insert.value())}, {}});
+			return ret;
+		}
 		return nullptr;
 	}
 
 	inline void SetFinalize() { m_finalize = true; }
 
 	inline ~MeshHandle() {
-		if (m_finalize)
-			return;
-		// Enqueue local mesh erase
-		using LocalErase = typename MeshPool<Vertex, Index, Info>::LocalErase;
-		m_pool_ptr->m_local_update_queue.enqueue(
-		    std::make_unique<LocalErase>(m_cluster_ptr->GetClusterID(), m_mesh_id, m_vertex_alloc, m_index_alloc));
+		auto opt_local_erase = destruct();
+		if (opt_local_erase)
+			m_pool_ptr->m_local_update_queue.enqueue({{}, {std::move(opt_local_erase.value())}});
 	}
 };
 
-} // namespace hc::client
+template <typename Vertex, typename Index, typename Info> class MeshHandleTransaction {
+private:
+	using LocalTransaction = typename MeshPool<Vertex, Index, Info>::LocalTransaction;
+	LocalTransaction m_local_transaction;
+
+public:
+	inline std::unique_ptr<MeshHandle<Vertex, Index, Info>>
+	Create(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr, const std::vector<Vertex> &vertices,
+	       const std::vector<Index> &indices, const Info &info) {
+		auto ret = std::make_unique<MeshHandle<Vertex, Index, Info>>();
+		auto opt_local_insert = ret->construct(pool_ptr, vertices, indices, info);
+		if (opt_local_insert) {
+			m_local_transaction.inserts.push_back(std::move(opt_local_insert.value()));
+			return ret;
+		}
+		return nullptr;
+	}
+	inline void Destroy(std::unique_ptr<MeshHandle<Vertex, Index, Info>> &&handler) {
+		auto opt_local_erase = handler->destruct();
+		if (opt_local_erase)
+			m_local_transaction.erases.push_back(std::move(opt_local_erase.value()));
+	}
+	inline void Submit(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr) {
+		pool_ptr->m_local_update_queue.enqueue(std::move(m_local_transaction));
+		m_local_transaction = {};
+	}
+};
+
+} // namespace hc::client::mesh
 
 #endif

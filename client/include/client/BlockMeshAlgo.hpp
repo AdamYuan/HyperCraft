@@ -114,14 +114,12 @@ private:
 				block::Block blk = get_block_func(x + kLookup3v[face][v][b][0], y + kLookup3v[face][v][b][1],
 				                                  z + kLookup3v[face][v][b][2]);
 				indirect_pass[b] = blk.GetIndirectLightPass();
-				direct_pass[b] =
-				    blk.GetVerticalLightPass() || blk.GetCollisionMask() != block::BlockCollisionBits::kSolid;
+				direct_pass[b] = blk.GetVerticalLightPass() || blk.GetCollision() != block::BlockCollision::kSolid;
 			}
 			{
 				block::Block blk =
 				    get_block_func(x + kLookup1v[face][0], y + kLookup1v[face][1], z + kLookup1v[face][2]);
-				direct_pass[3] =
-				    blk.GetVerticalLightPass() || blk.GetCollisionMask() != block::BlockCollisionBits::kSolid;
+				direct_pass[3] = blk.GetVerticalLightPass() || blk.GetCollision() != block::BlockCollision::kSolid;
 			}
 
 			uint32_t ao =

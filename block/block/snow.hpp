@@ -7,6 +7,6 @@ template <> struct BlockTrait<kSnow> : public SingleBlockTrait<kSnow> {
 	    BLOCK_TEXTURE_SAME(BlockTextures::kSnow),
 	    BlockTransparency::kOpaque,
 	    (LightLvl)0,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

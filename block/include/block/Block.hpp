@@ -68,7 +68,7 @@ public:
 	inline bool GetIndirectLightPass() const { return GetTransparency() != BlockTransparency::kOpaque; }
 	inline LightLvl GetLightLevel() const { return get_property()->light_level; }
 
-	inline BlockCollisionMask GetCollisionMask() const { return get_property()->collision_mask; }
+	inline BlockCollision GetCollision() const { return get_property()->collision; }
 
 	inline bool ShowFace(BlockFace face, Block neighbour) const {
 		auto tex = GetTexture(face), nei_tex = neighbour.GetTexture(BlockFaceOpposite(face));

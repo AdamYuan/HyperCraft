@@ -4,7 +4,7 @@
 
 template <> struct BlockTrait<kVine> : public SingleBlockTrait<kVine> {
 	constexpr static BlockProperty kProperty = {
-	    "Vine", BLOCK_TEXTURE_NONE, BlockTransparency::kTransparent, (LightLvl)0, BlockCollisionBits::kNone,
+	    "Vine", BLOCK_TEXTURE_NONE, BlockTransparency::kTransparent, (LightLvl)0, BlockCollision::kNone,
 	};
 
 	inline constexpr static uint8_t kTransforms = 6;

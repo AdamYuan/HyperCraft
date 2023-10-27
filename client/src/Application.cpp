@@ -73,8 +73,6 @@ void Application::draw_frame(double delta) {
 
 	uint32_t current_frame = m_frame_manager->GetCurrentFrame();
 
-	std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> post_updates;
-
 	const std::shared_ptr<myvk::CommandBuffer> &command_buffer = m_frame_manager->GetCurrentCommandBuffer();
 	command_buffer->Begin();
 	{
@@ -97,7 +95,7 @@ void Application::draw_frame(double delta) {
 }
 
 void Application::select_block() {
-	float radius = 10.0f;
+	float radius = 20.0f;
 
 	glm::vec3 origin = m_camera->m_position;
 	// From "A Fast Voxel Traversal Algorithm for Ray Tracing"

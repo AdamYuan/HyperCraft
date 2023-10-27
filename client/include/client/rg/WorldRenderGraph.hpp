@@ -23,7 +23,8 @@ private:
 	std::shared_ptr<WorldRenderer> m_world_renderer_ptr;
 
 	std::vector<std::shared_ptr<ChunkMeshCluster>> m_prepared_clusters;
-	std::vector<std::unique_ptr<ChunkMeshPool::LocalUpdate>> m_post_updates;
+	std::vector<ChunkMeshPool::PostUpdateEntry> m_post_updates;
+	bool m_enable_occlusion_culling = true; // TODO: add switches to disable occlusion culling
 
 public:
 	inline void UpdateCamera(const std::shared_ptr<Camera> &camera_ptr) {

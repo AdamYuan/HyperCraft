@@ -7,6 +7,6 @@ template <> struct BlockTrait<kGlowstone> : public SingleBlockTrait<kGlowstone> 
 	    BLOCK_TEXTURE_SAME(BlockTextures::kGlowstone),
 	    BlockTransparency::kOpaque,
 	    (LightLvl)15,
-	    BlockCollisionBits::kSolid,
+	    BlockCollision::kSolid,
 	};
 };

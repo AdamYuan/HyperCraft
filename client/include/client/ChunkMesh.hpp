@@ -17,6 +17,7 @@ struct ChunkMeshInfo {
 static_assert(sizeof(ChunkMeshInfo) == 40);
 
 using ChunkMeshHandle = mesh::MeshHandle<BlockVertex, uint16_t, ChunkMeshInfo>;
+using ChunkMeshHandleTransaction = mesh::MeshHandleTransaction<BlockVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshCluster = mesh::MeshCluster<BlockVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshPoolBase = mesh::MeshPool<BlockVertex, uint16_t, ChunkMeshInfo>;
 using ChunkMeshInfoBuffer = mesh::MeshInfoBuffer<BlockVertex, uint16_t, ChunkMeshInfo>;

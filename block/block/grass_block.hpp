@@ -9,7 +9,7 @@ template <> struct BlockTrait<kGrassBlock> : public MultiBlockTrait<kGrassBlock>
 	                                   BlockTextures::kGrassPlainTop),
 	        BlockTransparency::kOpaque,
 	        (LightLvl)0,
-	        BlockCollisionBits::kSolid,
+	        BlockCollision::kSolid,
 	    },
 	    {
 	        "Grass Block",
@@ -17,7 +17,7 @@ template <> struct BlockTrait<kGrassBlock> : public MultiBlockTrait<kGrassBlock>
 	                                   BlockTextures::kGrassSavannaTop),
 	        BlockTransparency::kOpaque,
 	        (LightLvl)0,
-	        BlockCollisionBits::kSolid,
+	        BlockCollision::kSolid,
 	    },
 	    {
 	        "Grass Block",
@@ -25,7 +25,7 @@ template <> struct BlockTrait<kGrassBlock> : public MultiBlockTrait<kGrassBlock>
 	                                   BlockTextures::kGrassTropicalTop),
 	        BlockTransparency::kOpaque,
 	        (LightLvl)0,
-	        BlockCollisionBits::kSolid,
+	        BlockCollision::kSolid,
 	    },
 	    {
 	        "Grass Block",
@@ -33,7 +33,7 @@ template <> struct BlockTrait<kGrassBlock> : public MultiBlockTrait<kGrassBlock>
 	                                   BlockTextures::kGrassBorealTop),
 	        BlockTransparency::kOpaque,
 	        (LightLvl)0,
-	        BlockCollisionBits::kSolid,
+	        BlockCollision::kSolid,
 	    },
 	};
 };

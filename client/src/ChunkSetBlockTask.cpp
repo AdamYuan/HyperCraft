@@ -31,7 +31,6 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 	const auto &chunk = data.GetChunkPtr();
 
 	std::bitset<27> neighbour_remesh_set{};
-	neighbour_remesh_set[26] = true;
 
 	std::unordered_set<InnerPos2> flood_sunlights;
 
@@ -42,6 +41,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		if (new_block == old_block)
 			continue;
 
+		neighbour_remesh_set[26] = true;
 		flood_sunlights.emplace(block_pos.x, block_pos.z);
 		chunk->SetBlock(block_idx, new_block);
 

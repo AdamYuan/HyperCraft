@@ -14,7 +14,7 @@ TEST_CASE("BlockID = 0 is Air") {
 
 			CHECK(Block(0, variant, transform).GetName() == std::string{"Air"}); // Name must be "Air"
 			CHECK(Block(0, variant, transform).GetCollisionMask() ==
-			      BlockCollisionBits::kNone);                                    // Must not have collision
+			      BlockCollision::kNone);                                    // Must not have collision
 			CHECK(Block(0, variant, transform).GetIndirectLightPass() ==
 			      true); // Indirect light must be able to pass through
 			CHECK(Block(0, variant, transform).GetVerticalLightPass() ==

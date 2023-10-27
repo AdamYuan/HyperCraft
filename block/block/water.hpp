@@ -7,6 +7,6 @@ template <> struct BlockTrait<kWater> : public SingleBlockTrait<kWater> {
 	    BLOCK_TEXTURE_SAME(BlockTextures::kWater),
 	    BlockTransparency::kSemiTransparent,
 	    (LightLvl)0,
-	    BlockCollisionBits::kLiquid,
+	    BlockCollision::kWater,
 	};
 };

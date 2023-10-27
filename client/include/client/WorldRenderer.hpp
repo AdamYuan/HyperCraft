@@ -12,7 +12,7 @@
 #include <myvk/DescriptorSet.hpp>
 #include <myvk/GraphicsPipeline.hpp>
 
-#include <blockingconcurrentqueue.h>
+#include <concurrentqueue.h>
 #include <cuckoohash_map.hh>
 #include <queue>
 #include <unordered_map>
@@ -32,7 +32,7 @@ private:
 	// Background thread
 	std::thread m_thread;
 	std::atomic_bool m_thread_running;
-	moodycamel::BlockingConcurrentQueue<std::vector<ChunkMeshPool::LocalUpdateEntry>> m_post_update_queue;
+	moodycamel::ConcurrentQueue<std::vector<ChunkMeshPool::PostUpdateEntry>> m_post_update_queue;
 
 	void thread_func();
 
@@ -67,19 +67,25 @@ public:
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world_ptr; }
 
 	inline void PushChunkMesh(const ChunkPos3 &chunk_pos, std::vector<BlockMesh> &&meshes) {
+		ChunkMeshHandleTransaction transaction;
+
 		glm::i32vec3 base_position = (glm::i32vec3)chunk_pos * (int32_t)Chunk::kSize;
 		std::vector<std::unique_ptr<ChunkMeshHandle>> mesh_handles(meshes.size());
 		for (uint32_t i = 0; i < meshes.size(); ++i) {
 			auto &info = meshes[i];
-			mesh_handles[i] = ChunkMeshHandle::Create(
+			mesh_handles[i] = transaction.Create(
 			    m_chunk_mesh_pool, info.vertices, info.indices,
 			    {(fAABB)info.aabb / glm::vec3(1u << BlockVertex::kUnitBitOffset) + (glm::vec3)base_position,
 			     base_position, (uint32_t)info.transparent});
 		}
-		m_chunk_mesh_map.uprase_fn(chunk_pos, [&mesh_handles](auto &data, libcuckoo::UpsertContext) {
+		m_chunk_mesh_map.uprase_fn(chunk_pos, [&mesh_handles, &transaction](auto &data, libcuckoo::UpsertContext) {
+			for (auto &handle : data)
+				transaction.Destroy(std::move(handle));
 			data = std::move(mesh_handles);
 			return false;
 		});
+
+		transaction.Submit(m_chunk_mesh_pool);
 	}
 
 	inline void SetTransferCapacity(VkDeviceSize max_transfer_bytes_per_sec, double delta) {
@@ -88,11 +94,11 @@ public:
 
 	inline void CmdUpdateClusters(const myvk::Ptr<myvk::CommandBuffer> &command_buffer,
 	                              std::vector<std::shared_ptr<ChunkMeshCluster>> *p_prepared_clusters,
-	                              std::vector<ChunkMeshPool::LocalUpdateEntry> *p_post_updates) {
+	                              std::vector<ChunkMeshPool::PostUpdateEntry> *p_post_updates) {
 		m_chunk_mesh_pool->CmdLocalUpdate(command_buffer, p_prepared_clusters, p_post_updates, m_max_transfer_bytes);
 	}
 
-	inline void PushPostUpdates(std::vector<ChunkMeshPool::LocalUpdateEntry> &&post_updates) {
+	inline void PushPostUpdates(std::vector<ChunkMeshPool::PostUpdateEntry> &&post_updates) {
 		if (post_updates.empty())
 			return;
 		m_post_update_queue.enqueue(std::move(post_updates));
