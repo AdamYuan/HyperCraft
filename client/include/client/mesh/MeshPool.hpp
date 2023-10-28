@@ -7,6 +7,7 @@
 #include <atomic>
 #include <shared_mutex>
 #include <unordered_set>
+#include <variant>
 
 #include <concurrentqueue.h>
 
