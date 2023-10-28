@@ -10,11 +10,10 @@ using namespace hc::block;
 TEST_CASE("BlockID = 0 is Air") {
 	for (BlockMeta variant = 0; variant < std::numeric_limits<BlockMeta>::max(); ++variant)
 		for (BlockMeta transform = 0; transform < std::numeric_limits<BlockMeta>::max(); ++transform) {
-			CHECK(Block(0, variant, transform).GetName() != nullptr);            // Must have a name
+			CHECK(Block(0, variant, transform).GetName() != nullptr); // Must have a name
 
-			CHECK(Block(0, variant, transform).GetName() == std::string{"Air"}); // Name must be "Air"
-			CHECK(Block(0, variant, transform).GetCollisionMask() ==
-			      BlockCollision::kNone);                                    // Must not have collision
+			CHECK(Block(0, variant, transform).GetName() == std::string{"Air"});         // Name must be "Air"
+			CHECK(Block(0, variant, transform).GetCollision() == BlockCollision::kNone); // Must not have collision
 			CHECK(Block(0, variant, transform).GetIndirectLightPass() ==
 			      true); // Indirect light must be able to pass through
 			CHECK(Block(0, variant, transform).GetVerticalLightPass() ==
@@ -29,11 +28,11 @@ TEST_CASE("Block Custom Meshes") {
 			for (BlockMeta transform = 0; transform < std::numeric_limits<BlockMeta>::max(); ++transform) {
 				Block block{id, variant, transform};
 				if (block.HaveCustomMesh()) {
-					CHECK(block.GetCustomMesh() != nullptr);       // Must have custom mesh
+					CHECK(block.GetCustomMesh() != nullptr); // Must have custom mesh
 
 					CHECK(block.GetCustomMesh()->face_count != 0); // The custom mesh must not be empty
 					CHECK(block.GetCustomMesh()->face_count <=
-					      kBlockMeshMaxFaceCount);                 // Face count should not exceed the limit
+					      kBlockMeshMaxFaceCount); // Face count should not exceed the limit
 
 					CHECK(block.GetCustomMesh()->aabb_count <=
 					      kBlockMeshMaxAABBCount); // AABB count should not exceed the limit
@@ -80,15 +79,15 @@ TEST_CASE("BlockFaceOpposite()") {
 
 TEST_CASE("BlockFaceProceed()") {
 	CHECK(BlockFaceProceed(glm::i32vec3{0, 0, 0}, BlockFaces::kRight) ==
-	      glm::i32vec3{1, 0, 0});            // Check proceed to the right
+	      glm::i32vec3{1, 0, 0}); // Check proceed to the right
 	CHECK(BlockFaceProceed(glm::i32vec3{123120312, 77, 23}, BlockFaces::kLeft) ==
-	      glm::i32vec3{123120311, 77, 23});  // Check proceed to the left
+	      glm::i32vec3{123120311, 77, 23}); // Check proceed to the left
 	CHECK(BlockFaceProceed(glm::i32vec3{-1231, -77, 23}, BlockFaces::kTop) ==
-	      glm::i32vec3{-1231, -76, 23});     // Check proceed to the top
+	      glm::i32vec3{-1231, -76, 23}); // Check proceed to the top
 	CHECK(BlockFaceProceed(glm::i32vec3{-123, -7, 2}, BlockFaces::kBottom) ==
-	      glm::i32vec3{-123, -8, 2});        // Check proceed to the bottom
+	      glm::i32vec3{-123, -8, 2}); // Check proceed to the bottom
 	CHECK(BlockFaceProceed(glm::i32vec3{72334, -3245, 0x23}, BlockFaces::kFront) ==
 	      glm::i32vec3{72334, -3245, 0x24}); // Check proceed to the front
 	CHECK(BlockFaceProceed(glm::i32vec3{1424, -245, 0x234}, BlockFaces::kBack) ==
-	      glm::i32vec3{1424, -245, 0x233});  // Check proceed to the back
+	      glm::i32vec3{1424, -245, 0x233}); // Check proceed to the back
 }
