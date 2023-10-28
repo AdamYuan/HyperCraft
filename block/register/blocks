@@ -13,6 +13,7 @@ kBlueIce,
 kIce,
 kSandstone,
 kWater,
+kFlowingWater,
 
 // TREE
 kLeaves,

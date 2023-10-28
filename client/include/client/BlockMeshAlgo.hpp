@@ -203,14 +203,28 @@ private:
 				return;
 
 			const block::BlockMesh *mesh = b.GetCustomMesh();
+
+			uint32_t face_count = mesh->face_count;
+			const block::BlockMeshFace *faces = mesh->faces;
+			if (mesh->dynamic_mesh_faces.p_dynamic_mesh_func) {
+				for (uint32_t i = 0; i < mesh->dynamic_mesh_faces.fetch_neighbour_count; ++i) {
+					const auto &dp = mesh->dynamic_mesh_faces.fetch_neighbours[i];
+					m_neighbour_block_buffer[i] =
+					    get_block_func(int32_t(x) + dp.x, int32_t(y) + dp.y, int32_t(z) + dp.z);
+				}
+				mesh->dynamic_mesh_faces.p_dynamic_mesh_func(m_neighbour_block_buffer, m_dynamic_block_mesh_buffer,
+				                                             &face_count);
+				faces = m_dynamic_block_mesh_buffer;
+			}
+
 			glm::vec<3, int32_t> pos{x, y, z};
 			glm::u32vec3 base = glm::u32vec3{x, y, z} << BlockVertex::kUnitBitOffset;
 
 			auto cur_light_face = std::numeric_limits<block::BlockFace>::max();
 			uint8_t cur_light_axis{}, u_light_axis{}, v_light_axis{};
 			Light4 low_light4{}, high_light4{};
-			for (uint32_t i = 0; i < mesh->face_count; ++i) {
-				const block::BlockMeshFace *mesh_face = mesh->faces + i;
+			for (uint32_t i = 0; i < face_count; ++i) {
+				const block::BlockMeshFace *mesh_face = faces + i;
 
 				if (mesh_face->light_face != cur_light_face) {
 					cur_light_face = mesh_face->light_face;
@@ -440,6 +454,9 @@ private:
 
 	std::vector<BlockMesh> m_meshes;
 	BlockMesh m_opaque_mesh_info, m_transparent_mesh_info;
+
+	block::Block m_neighbour_block_buffer[block::kBlockDynamicMeshMaxNeighbours];
+	block::BlockMeshFace m_dynamic_block_mesh_buffer[block::kBlockMeshMaxFaceCount];
 
 public:
 	template <typename GetBlockFunc, typename GetLightFunc>
