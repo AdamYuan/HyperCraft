@@ -84,8 +84,6 @@ public:
 		});
 		for (auto &handle : mesh_handles)
 			transaction.Destroy(std::move(handle));
-
-		transaction.Submit();
 	}
 
 	inline void SetTransferCapacity(VkDeviceSize max_transfer_bytes_per_sec, double delta) {

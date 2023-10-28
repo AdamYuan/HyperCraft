@@ -55,8 +55,8 @@ private:
 
 	// ID Counters
 	std::atomic_uint64_t m_mesh_id_counter{1}, m_cluster_id_counter{1};
-	inline uint64_t gen_mesh_id() { return m_mesh_id_counter.fetch_add(1, std::memory_order_acq_rel); }
-	inline uint64_t gen_cluster_id() { return m_cluster_id_counter.fetch_add(1, std::memory_order_acq_rel); }
+	inline uint64_t gen_mesh_id() { return m_mesh_id_counter.fetch_add(1, std::memory_order_relaxed); }
+	inline uint64_t gen_cluster_id() { return m_cluster_id_counter.fetch_add(1, std::memory_order_relaxed); }
 
 	// Local Updates
 	moodycamel::ConcurrentQueue<LocalUpdateEntry> m_local_update_queue;

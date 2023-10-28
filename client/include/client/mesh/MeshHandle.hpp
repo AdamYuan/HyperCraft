@@ -139,7 +139,7 @@ public:
 		}
 		return nullptr;
 	}
-	inline void Destroy(std::unique_ptr<MeshHandle<Vertex, Index, Info>> &&handler) {
+	inline void Destroy(std::unique_ptr<MeshHandle<Vertex, Index, Info>> handler) {
 		if (handler->m_pool_ptr != m_pool_ptr)
 			return;
 		auto opt_local_erase = handler->destruct();
