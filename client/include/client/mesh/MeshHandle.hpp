@@ -123,14 +123,16 @@ public:
 template <typename Vertex, typename Index, typename Info> class MeshHandleTransaction {
 private:
 	using LocalTransaction = typename MeshPool<Vertex, Index, Info>::LocalTransaction;
+	std::shared_ptr<MeshPool<Vertex, Index, Info>> m_pool_ptr;
 	LocalTransaction m_local_transaction;
 
 public:
+	inline explicit MeshHandleTransaction(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr)
+	    : m_pool_ptr{pool_ptr} {}
 	inline std::unique_ptr<MeshHandle<Vertex, Index, Info>>
-	Create(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr, const std::vector<Vertex> &vertices,
-	       const std::vector<Index> &indices, const Info &info) {
+	Create(const std::vector<Vertex> &vertices, const std::vector<Index> &indices, const Info &info) {
 		auto ret = std::make_unique<MeshHandle<Vertex, Index, Info>>();
-		auto opt_local_insert = ret->construct(pool_ptr, vertices, indices, info);
+		auto opt_local_insert = ret->construct(m_pool_ptr, vertices, indices, info);
 		if (opt_local_insert) {
 			m_local_transaction.inserts.push_back(std::move(opt_local_insert.value()));
 			return ret;
@@ -138,14 +140,19 @@ public:
 		return nullptr;
 	}
 	inline void Destroy(std::unique_ptr<MeshHandle<Vertex, Index, Info>> &&handler) {
+		if (handler->m_pool_ptr != m_pool_ptr)
+			return;
 		auto opt_local_erase = handler->destruct();
 		if (opt_local_erase)
 			m_local_transaction.erases.push_back(std::move(opt_local_erase.value()));
 	}
-	inline void Submit(const std::shared_ptr<MeshPool<Vertex, Index, Info>> &pool_ptr) {
-		pool_ptr->m_local_update_queue.enqueue(std::move(m_local_transaction));
+	inline void Submit() {
+		if (m_local_transaction.inserts.empty() && m_local_transaction.erases.empty())
+			return;
+		m_pool_ptr->m_local_update_queue.enqueue(std::move(m_local_transaction));
 		m_local_transaction = {};
 	}
+	inline ~MeshHandleTransaction() { Submit(); }
 };
 
 } // namespace hc::client::mesh

@@ -67,25 +67,25 @@ public:
 	inline const std::shared_ptr<World> &GetWorldPtr() const { return m_world_ptr; }
 
 	inline void PushChunkMesh(const ChunkPos3 &chunk_pos, std::vector<BlockMesh> &&meshes) {
-		ChunkMeshHandleTransaction transaction;
+		ChunkMeshHandleTransaction transaction{m_chunk_mesh_pool};
 
 		glm::i32vec3 base_position = (glm::i32vec3)chunk_pos * (int32_t)Chunk::kSize;
 		std::vector<std::unique_ptr<ChunkMeshHandle>> mesh_handles(meshes.size());
 		for (uint32_t i = 0; i < meshes.size(); ++i) {
 			auto &info = meshes[i];
 			mesh_handles[i] = transaction.Create(
-			    m_chunk_mesh_pool, info.vertices, info.indices,
+			    info.vertices, info.indices,
 			    {(fAABB)info.aabb / glm::vec3(1u << BlockVertex::kUnitBitOffset) + (glm::vec3)base_position,
 			     base_position, (uint32_t)info.transparent});
 		}
-		m_chunk_mesh_map.uprase_fn(chunk_pos, [&mesh_handles, &transaction](auto &data, libcuckoo::UpsertContext) {
-			for (auto &handle : data)
-				transaction.Destroy(std::move(handle));
-			data = std::move(mesh_handles);
+		m_chunk_mesh_map.uprase_fn(chunk_pos, [&mesh_handles](auto &data, libcuckoo::UpsertContext) {
+			std::swap(data, mesh_handles);
 			return false;
 		});
+		for (auto &handle : mesh_handles)
+			transaction.Destroy(std::move(handle));
 
-		transaction.Submit(m_chunk_mesh_pool);
+		transaction.Submit();
 	}
 
 	inline void SetTransferCapacity(VkDeviceSize max_transfer_bytes_per_sec, double delta) {
