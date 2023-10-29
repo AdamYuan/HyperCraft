@@ -110,7 +110,7 @@ void ChunkTaskRunner<ChunkTaskType::kMesh>::Run(ChunkTaskPool *p_task_pool,
 	    });
 
 	meshes =
-	    BlockMeshAlgo<BlockAlgoConfig<uint32_t, BlockAlgoBound<uint32_t>{0, 0, 0, kChunkSize, kChunkSize, kChunkSize},
+	    BlockMeshAlgo<BlockAlgoConfig<InnerPos1, BlockAlgoBound<InnerPos1>{0, 0, 0, kChunkSize, kChunkSize, kChunkSize},
 	                                  kBlockAlgoSwizzleYZX>>{}
 	        .Generate(
 	            [&neighbour_chunks](auto x, auto y, auto z) -> block::Block {

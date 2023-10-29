@@ -8,6 +8,8 @@
 #include <common/Size.hpp>
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/hash.hpp>
+
 #include <vector>
 
 namespace hc::client {
@@ -69,41 +71,41 @@ private:
 		    {{11, 2, 5}, {11, 20, 23}, {17, 26, 23}, {17, 8, 5}},     {{9, 0, 3}, {15, 6, 3}, {15, 24, 21}, {9, 18,
 		21}}}; constexpr uint32_t kLookup1[6] = {22, 4, 16, 10, 14, 12};*/
 
-		constexpr int32_t kLookup1v[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-		constexpr int32_t kLookup3v[6][4][3][3] = {{
-		                                               {{1, 0, -1}, {1, -1, -1}, {1, -1, 0}},
-		                                               {{1, 0, -1}, {1, 1, -1}, {1, 1, 0}},
-		                                               {{1, 0, 1}, {1, 1, 1}, {1, 1, 0}},
-		                                               {{1, 0, 1}, {1, -1, 1}, {1, -1, 0}},
-		                                           },
-		                                           {
-		                                               {{-1, 0, -1}, {-1, -1, -1}, {-1, -1, 0}},
-		                                               {{-1, 0, 1}, {-1, -1, 1}, {-1, -1, 0}},
-		                                               {{-1, 0, 1}, {-1, 1, 1}, {-1, 1, 0}},
-		                                               {{-1, 0, -1}, {-1, 1, -1}, {-1, 1, 0}},
-		                                           },
-		                                           {
-		                                               {{0, 1, -1}, {-1, 1, -1}, {-1, 1, 0}},
-		                                               {{0, 1, 1}, {-1, 1, 1}, {-1, 1, 0}},
-		                                               {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}},
-		                                               {{0, 1, -1}, {1, 1, -1}, {1, 1, 0}},
-		                                           },
-		                                           {
-		                                               {{0, -1, -1}, {-1, -1, -1}, {-1, -1, 0}},
-		                                               {{0, -1, -1}, {1, -1, -1}, {1, -1, 0}},
-		                                               {{0, -1, 1}, {1, -1, 1}, {1, -1, 0}},
-		                                               {{0, -1, 1}, {-1, -1, 1}, {-1, -1, 0}},
-		                                           },
-		                                           {
-		                                               {{0, -1, 1}, {-1, -1, 1}, {-1, 0, 1}},
-		                                               {{0, -1, 1}, {1, -1, 1}, {1, 0, 1}},
-		                                               {{0, 1, 1}, {1, 1, 1}, {1, 0, 1}},
-		                                               {{0, 1, 1}, {-1, 1, 1}, {-1, 0, 1}},
-		                                           },
-		                                           {{{0, -1, -1}, {-1, -1, -1}, {-1, 0, -1}},
-		                                            {{0, 1, -1}, {-1, 1, -1}, {-1, 0, -1}},
-		                                            {{0, 1, -1}, {1, 1, -1}, {1, 0, -1}},
-		                                            {{0, -1, -1}, {1, -1, -1}, {1, 0, -1}}}};
+		constexpr int8_t kLookup1v[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+		constexpr int8_t kLookup3v[6][4][3][3] = {{
+		                                              {{1, 0, -1}, {1, -1, -1}, {1, -1, 0}},
+		                                              {{1, 0, -1}, {1, 1, -1}, {1, 1, 0}},
+		                                              {{1, 0, 1}, {1, 1, 1}, {1, 1, 0}},
+		                                              {{1, 0, 1}, {1, -1, 1}, {1, -1, 0}},
+		                                          },
+		                                          {
+		                                              {{-1, 0, -1}, {-1, -1, -1}, {-1, -1, 0}},
+		                                              {{-1, 0, 1}, {-1, -1, 1}, {-1, -1, 0}},
+		                                              {{-1, 0, 1}, {-1, 1, 1}, {-1, 1, 0}},
+		                                              {{-1, 0, -1}, {-1, 1, -1}, {-1, 1, 0}},
+		                                          },
+		                                          {
+		                                              {{0, 1, -1}, {-1, 1, -1}, {-1, 1, 0}},
+		                                              {{0, 1, 1}, {-1, 1, 1}, {-1, 1, 0}},
+		                                              {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}},
+		                                              {{0, 1, -1}, {1, 1, -1}, {1, 1, 0}},
+		                                          },
+		                                          {
+		                                              {{0, -1, -1}, {-1, -1, -1}, {-1, -1, 0}},
+		                                              {{0, -1, -1}, {1, -1, -1}, {1, -1, 0}},
+		                                              {{0, -1, 1}, {1, -1, 1}, {1, -1, 0}},
+		                                              {{0, -1, 1}, {-1, -1, 1}, {-1, -1, 0}},
+		                                          },
+		                                          {
+		                                              {{0, -1, 1}, {-1, -1, 1}, {-1, 0, 1}},
+		                                              {{0, -1, 1}, {1, -1, 1}, {1, 0, 1}},
+		                                              {{0, 1, 1}, {1, 1, 1}, {1, 0, 1}},
+		                                              {{0, 1, 1}, {-1, 1, 1}, {-1, 0, 1}},
+		                                          },
+		                                          {{{0, -1, -1}, {-1, -1, -1}, {-1, 0, -1}},
+		                                           {{0, 1, -1}, {-1, 1, -1}, {-1, 0, -1}},
+		                                           {{0, 1, -1}, {1, 1, -1}, {1, 0, -1}},
+		                                           {{0, -1, -1}, {1, -1, -1}, {1, 0, -1}}}};
 
 		bool indirect_pass[3], direct_pass[4];
 
@@ -197,86 +199,110 @@ private:
 	inline void generate_custom_mesh(GetBlockFunc &&get_block_func, GetLightFunc &&get_light_func) {
 		using T = typename Config::Type;
 
-		Config::template Loop3([&](T x, T y, T z) {
-			block::Block b = get_block_func(x, y, z);
-			if (!b.HaveCustomMesh())
-				return;
+		for (T a1 = Config::template GetMin<Config::kA1>() - 1; a1 <= Config::template GetMax<Config::kA1>(); ++a1) {
+			bool in1 = Config::template GetMin<Config::kA1>() <= a1 && a1 < Config::template GetMax<Config::kA1>();
+			for (T a2 = Config::template GetMin<Config::kA2>() - 1; a2 <= Config::template GetMax<Config::kA2>();
+			     ++a2) {
+				bool in2 = Config::template GetMin<Config::kA2>() <= a2 && a2 < Config::template GetMax<Config::kA2>();
+				for (T a3 = Config::template GetMin<Config::kA3>() - 1; a3 <= Config::template GetMax<Config::kA3>();
+				     ++a3) {
+					bool in3 =
+					    Config::template GetMin<Config::kA3>() <= a3 && a3 < Config::template GetMax<Config::kA3>();
 
-			const block::BlockMesh *mesh = b.GetCustomMesh();
+					auto [x, y, z] = Config::ToXYZ(a1, a2, a3);
+					block::Block b = get_block_func(x, y, z);
 
-			uint32_t face_count = mesh->face_count;
-			const block::BlockMeshFace *faces = mesh->faces;
-			if (mesh->dynamic_mesh_faces.p_dynamic_mesh_func) {
-				for (uint32_t i = 0; i < mesh->dynamic_mesh_faces.fetch_neighbour_count; ++i) {
-					const auto &dp = mesh->dynamic_mesh_faces.fetch_neighbours[i];
-					m_neighbour_block_buffer[i] =
-					    get_block_func(int32_t(x) + dp.x, int32_t(y) + dp.y, int32_t(z) + dp.z);
+					const block::BlockMesh *mesh = b.GetCustomMesh();
+					if (mesh == nullptr)
+						continue;
+
+					uint32_t face_count = mesh->face_count;
+					const block::BlockMeshFace *faces = mesh->faces;
+					if (mesh->p_dynamic_mesh_func) {
+						for (uint32_t i = 0; i < mesh->fetch_neighbour_count; ++i) {
+							const auto &dp = mesh->fetch_neighbours[i];
+							m_neighbour_block_buffer[i] = get_block_func(x + dp.x, y + dp.y, z + dp.z);
+						}
+						bool use_dynamic_texture = false;
+						mesh->p_dynamic_mesh_func(m_neighbour_block_buffer, m_dynamic_block_mesh_buffer, &face_count,
+						                          m_dynamic_block_texture_buffer.data(), &use_dynamic_texture);
+
+						if (use_dynamic_texture) {
+							m_dynamic_block_textures[glm::vec<3, T>{x, y, z}] =
+							    std::array<texture::BlockTexture, 6>{m_dynamic_block_texture_buffer};
+						}
+
+						faces = m_dynamic_block_mesh_buffer;
+					}
+
+					// Not a inner block, just get its face textures
+					if (!in1 || !in2 || !in3)
+						continue;
+
+					glm::vec<3, int32_t> pos{x, y, z};
+					glm::u32vec3 base = glm::u32vec3{x, y, z} << BlockVertex::kUnitBitOffset;
+
+					auto cur_light_face = std::numeric_limits<block::BlockFace>::max();
+					uint8_t cur_light_axis{}, u_light_axis{}, v_light_axis{};
+					Light4 low_light4{}, high_light4{};
+					for (uint32_t i = 0; i < face_count; ++i) {
+						const block::BlockMeshFace *mesh_face = faces + i;
+
+						if (mesh_face->light_face != cur_light_face) {
+							cur_light_face = mesh_face->light_face;
+							cur_light_axis = cur_light_face >> 1u;
+							u_light_axis = (cur_light_axis + 1) % 3;
+							v_light_axis = (cur_light_axis + 2) % 3;
+							if (cur_light_face & 1u)
+								std::swap(u_light_axis, v_light_axis);
+
+							auto op_nei_pos = block::BlockFaceProceed(pos, block::BlockFaceOpposite(cur_light_face)),
+							     nei_pos = block::BlockFaceProceed(pos, cur_light_face);
+							light4_init(get_block_func, get_light_func, &low_light4, cur_light_face, op_nei_pos.x,
+							            op_nei_pos.y, op_nei_pos.z);
+							if (get_block_func(nei_pos.x, nei_pos.y, nei_pos.z).GetIndirectLightPass())
+								light4_init(get_block_func, get_light_func, &high_light4, cur_light_face, pos.x, pos.y,
+								            pos.z);
+							else
+								high_light4 = low_light4;
+						}
+
+						BlockMesh &info =
+						    mesh_face->texture.UseTransparentPass() ? m_transparent_mesh_info : m_opaque_mesh_info;
+						// if indices would exceed, restart
+						uint16_t cur_vertex = info.vertices.size();
+						if (cur_vertex + 4 > UINT16_MAX) {
+							bool trans = info.transparent;
+							m_meshes.push_back(std::move(info));
+							info = BlockMesh{};
+							info.transparent = trans;
+						}
+
+						for (const auto &vert : mesh_face->vertices) {
+							info.aabb.Merge({base.x + vert.x, base.y + vert.y, base.z + vert.z});
+							uint8_t du = vert.pos[u_light_axis], dv = vert.pos[v_light_axis],
+							        dw = std::min(vert.pos[cur_light_axis], (uint8_t)BlockVertex::kUnitOffset);
+							if (cur_light_face & 1u)
+								dw = BlockVertex::kUnitOffset - (int32_t)dw;
+							uint8_t ao = vert.ao, sunlight, torchlight;
+							light4_interpolate(low_light4, high_light4, du, dv, dw, &ao, &sunlight, &torchlight);
+							info.vertices.emplace_back(base.x + vert.x, base.y + vert.y, base.z + vert.z,
+							                           mesh_face->axis, mesh_face->render_face, ao, sunlight,
+							                           torchlight, mesh_face->texture.GetID(),
+							                           mesh_face->texture.GetTransformation());
+						}
+
+						info.indices.push_back(cur_vertex);
+						info.indices.push_back(cur_vertex + 1);
+						info.indices.push_back(cur_vertex + 2);
+
+						info.indices.push_back(cur_vertex);
+						info.indices.push_back(cur_vertex + 2);
+						info.indices.push_back(cur_vertex + 3);
+					}
 				}
-				mesh->dynamic_mesh_faces.p_dynamic_mesh_func(m_neighbour_block_buffer, m_dynamic_block_mesh_buffer,
-				                                             &face_count);
-				faces = m_dynamic_block_mesh_buffer;
 			}
-
-			glm::vec<3, int32_t> pos{x, y, z};
-			glm::u32vec3 base = glm::u32vec3{x, y, z} << BlockVertex::kUnitBitOffset;
-
-			auto cur_light_face = std::numeric_limits<block::BlockFace>::max();
-			uint8_t cur_light_axis{}, u_light_axis{}, v_light_axis{};
-			Light4 low_light4{}, high_light4{};
-			for (uint32_t i = 0; i < face_count; ++i) {
-				const block::BlockMeshFace *mesh_face = faces + i;
-
-				if (mesh_face->light_face != cur_light_face) {
-					cur_light_face = mesh_face->light_face;
-					cur_light_axis = cur_light_face >> 1u;
-					u_light_axis = (cur_light_axis + 1) % 3;
-					v_light_axis = (cur_light_axis + 2) % 3;
-					if (cur_light_face & 1u)
-						std::swap(u_light_axis, v_light_axis);
-
-					auto op_nei_pos = block::BlockFaceProceed(pos, block::BlockFaceOpposite(cur_light_face)),
-					     nei_pos = block::BlockFaceProceed(pos, cur_light_face);
-					light4_init(get_block_func, get_light_func, &low_light4, cur_light_face, op_nei_pos.x, op_nei_pos.y,
-					            op_nei_pos.z);
-					if (get_block_func(nei_pos.x, nei_pos.y, nei_pos.z).GetIndirectLightPass())
-						light4_init(get_block_func, get_light_func, &high_light4, cur_light_face, pos.x, pos.y, pos.z);
-					else
-						high_light4 = low_light4;
-				}
-
-				BlockMesh &info =
-				    mesh_face->texture.UseTransparentPass() ? m_transparent_mesh_info : m_opaque_mesh_info;
-				// if indices would exceed, restart
-				uint16_t cur_vertex = info.vertices.size();
-				if (cur_vertex + 4 > UINT16_MAX) {
-					bool trans = info.transparent;
-					m_meshes.push_back(std::move(info));
-					info = BlockMesh{};
-					info.transparent = trans;
-				}
-
-				for (const auto &vert : mesh_face->vertices) {
-					info.aabb.Merge({base.x + vert.x, base.y + vert.y, base.z + vert.z});
-					uint8_t du = vert.pos[u_light_axis], dv = vert.pos[v_light_axis],
-					        dw = std::min(vert.pos[cur_light_axis], (uint8_t)BlockVertex::kUnitOffset);
-					if (cur_light_face & 1u)
-						dw = BlockVertex::kUnitOffset - (int32_t)dw;
-					uint8_t ao = vert.ao, sunlight, torchlight;
-					light4_interpolate(low_light4, high_light4, du, dv, dw, &ao, &sunlight, &torchlight);
-					info.vertices.emplace_back(base.x + vert.x, base.y + vert.y, base.z + vert.z, mesh_face->axis,
-					                           mesh_face->render_face, ao, sunlight, torchlight,
-					                           mesh_face->texture.GetID(), mesh_face->texture.GetTransformation());
-				}
-
-				info.indices.push_back(cur_vertex);
-				info.indices.push_back(cur_vertex + 1);
-				info.indices.push_back(cur_vertex + 2);
-
-				info.indices.push_back(cur_vertex);
-				info.indices.push_back(cur_vertex + 2);
-				info.indices.push_back(cur_vertex + 3);
-			}
-		});
+		}
 	}
 
 	template <BlockAlgoAxis Axis, typename GetBlockFunc, typename GetLightFunc>
@@ -292,20 +318,23 @@ private:
 			{
 				uint32_t counter = 0;
 				Config::template Loop2<Axis>(xa, [&](T x, T y, T z) {
-					int32_t nx = Axis == 0 ? (int32_t)x - 1 : (int32_t)x, ny = Axis == 1 ? (int32_t)y - 1 : (int32_t)y,
-					        nz = Axis == 2 ? (int32_t)z - 1 : (int32_t)z;
-					const block::Block blk_a = get_block_func(nx, ny, nz);
-					const block::Block blk_b = get_block_func(x, y, z);
+					T nx = Axis == 0 ? x - 1 : x, ny = Axis == 1 ? y - 1 : y, nz = Axis == 2 ? z - 1 : z;
+					const auto get_tex = [this, &get_block_func](auto x, auto y, auto z, block::BlockFace face) {
+						auto it = m_dynamic_block_textures.find(glm::vec<3, T>(x, y, z));
+						return it == m_dynamic_block_textures.end() ? get_block_func(x, y, z).GetTexture(face)
+						                                            : it->second[face];
+					};
+					constexpr block::BlockFace kFA = Axis << 1, kFB = kFA | 1;
+					const texture::BlockTexture tex_a = get_tex(nx, ny, nz, kFA), tex_b = get_tex(x, y, z, kFB);
 
-					block::BlockFace f;
-					if (xa != Config::template GetMin<Axis>() && blk_a.ShowFace((f = Axis << 1), blk_b)) {
-						texture_mask[0][counter] = blk_a.GetTexture(f);
-						light4_init(get_block_func, get_light_func, light_mask[0] + counter, f, nx, ny, nz);
+					if (xa != Config::template GetMin<Axis>() && tex_a.Show(tex_b)) {
+						texture_mask[0][counter] = tex_a;
+						light4_init(get_block_func, get_light_func, light_mask[0] + counter, kFA, nx, ny, nz);
 						face_mask |= 1u;
 					}
-					if (xa != Config::template GetMax<Axis>() && blk_b.ShowFace((f = (Axis << 1) | 1), blk_a)) {
-						texture_mask[1][counter] = blk_b.GetTexture(f);
-						light4_init(get_block_func, get_light_func, light_mask[1] + counter, f, x, y, z);
+					if (xa != Config::template GetMax<Axis>() && tex_b.Show(tex_a)) {
+						texture_mask[1][counter] = tex_b;
+						light4_init(get_block_func, get_light_func, light_mask[1] + counter, kFB, x, y, z);
 						face_mask |= 2u;
 					}
 
@@ -457,14 +486,19 @@ private:
 
 	block::Block m_neighbour_block_buffer[block::kBlockDynamicMeshMaxNeighbours];
 	block::BlockMeshFace m_dynamic_block_mesh_buffer[block::kBlockMeshMaxFaceCount];
+	std::unordered_map<glm::vec<3, typename Config::Type>, std::array<texture::BlockTexture, 6>>
+	    m_dynamic_block_textures;
+	std::array<texture::BlockTexture, 6> m_dynamic_block_texture_buffer;
 
 public:
 	template <typename GetBlockFunc, typename GetLightFunc>
 	inline std::vector<BlockMesh> Generate(GetBlockFunc &&get_block_func, GetLightFunc &&get_light_func) {
 		using T = typename Config::Type;
-		static_assert(std::is_integral_v<T> && std::is_unsigned_v<T>);
+		static_assert(std::is_integral_v<T>);
+		static_assert(Config::kBound.min_x >= 0 && Config::kBound.min_y >= 0 && Config::kBound.min_z >= 0);
 
 		m_meshes.clear();
+		m_dynamic_block_textures.clear();
 
 		m_opaque_mesh_info = {};
 		m_opaque_mesh_info.transparent = false;

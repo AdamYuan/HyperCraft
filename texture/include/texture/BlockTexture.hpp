@@ -65,12 +65,22 @@ public:
 		return {GetID(), (BlockTexTrans)(GetTransformation() ^ BlockTextures::kTransNegV)};
 	}
 
+	inline constexpr bool Show(BlockTexture r) const {
+		if (Empty() || *this == r)
+			return false;
+		if (!IsTransparent() && !r.IsTransparent())
+			return false;
+		if (IsLiquid() && !r.Empty())
+			return false;
+		return !IsTransparent() || r.IsTransparent() || r.IsLiquid();
+	}
+
 	bool operator==(BlockTexture r) const { return m_data == r.m_data; }
 	bool operator!=(BlockTexture r) const { return m_data != r.m_data; }
 };
 
 #include <generated/block_texture_png.inl>
 
-}
+} // namespace hc::texture
 
 #endif

@@ -204,6 +204,8 @@ void Application::select_block() {
 	m_selected_block = std::nullopt;
 }
 
+static int flowing_water_meta = 7;
+
 void Application::modify_block() {
 	static constexpr double kClickInterval = 0.05;
 	static double last_click_time = glfwGetTime();
@@ -218,7 +220,8 @@ void Application::modify_block() {
 	} else if (glfwGetMouseButton(m_window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
 		left_first_click = true;
 		if (m_outer_selected_pos && (right_first_click || glfwGetTime() - last_click_time >= kClickInterval)) {
-			m_world->SetBlock(m_outer_selected_pos.value(), block::Blocks::kGlowstone);
+			m_world->SetBlock(m_outer_selected_pos.value(),
+			                  {block::Blocks::kFlowingWater, (block::BlockMeta)flowing_water_meta, 0});
 			last_click_time = glfwGetTime();
 			right_first_click = false;
 		}
@@ -280,8 +283,8 @@ void Application::Run() {
 		ImGui::Text("cam: %f %f %f", m_camera->m_position.x, m_camera->m_position.y, m_camera->m_position.z);
 		ImGui::Text("pending tasks: %zu", m_world->GetChunkTaskPool().GetPendingTaskCount());
 		ImGui::Text("running tasks (approx): %zu", m_world->GetChunkTaskPool().GetRunningTaskCountApprox());
-		ImGui::Text("delta: %f", delta.count());
 		ImGui::DragFloat("day night", &m_day_night, 0.01f, 0.0f, 1.0f);
+		ImGui::DragInt("water meta", &flowing_water_meta, 1, 0, 7);
 
 		if (ImGui::DragInt("concurrency", &concurrency, 1, 1, (int)std::thread::hardware_concurrency()))
 			m_world_worker->Relaunch(std::clamp<std::size_t>(concurrency, 1, std::thread::hardware_concurrency()));

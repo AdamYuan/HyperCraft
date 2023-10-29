@@ -32,12 +32,7 @@ struct BlockMeshFace {
 };
 
 constexpr uint32_t kBlockDynamicMeshMaxNeighbours = 26;
-using BlockDynamicMeshFunc = void (*)(const Block *, BlockMeshFace *, uint32_t *);
-struct BlockDynamicMeshFaces {
-	glm::i8vec3 fetch_neighbours[kBlockDynamicMeshMaxNeighbours]{};
-	uint32_t fetch_neighbour_count{};
-	BlockDynamicMeshFunc p_dynamic_mesh_func{};
-};
+using BlockDynamicMeshFunc = void (*)(const Block *, BlockMeshFace *, uint32_t *, texture::BlockTexture[6], bool *);
 
 constexpr uint32_t kBlockMeshMaxFaceCount = 16;
 constexpr uint32_t kBlockMeshMaxAABBCount = 4;
@@ -47,7 +42,9 @@ struct BlockMesh {
 	uint32_t face_count{};
 	u8AABB aabbs[kBlockMeshMaxAABBCount];
 	uint32_t aabb_count{};
-	BlockDynamicMeshFaces dynamic_mesh_faces{};
+	BlockDynamicMeshFunc p_dynamic_mesh_func{};
+	glm::i8vec3 fetch_neighbours[kBlockDynamicMeshMaxNeighbours]{};
+	uint32_t fetch_neighbour_count{};
 };
 
 } // namespace hc::block
