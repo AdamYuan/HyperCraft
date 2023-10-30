@@ -1,12 +1,16 @@
 #pragma once
 #include "public/Trait.hpp"
 
+inline static constexpr uint8_t get_flowing_water_height(BlockMeta variant) { return std::max(variant * 2, 1); }
+
 template <BlockMeta Variant>
 inline static constexpr void flowing_water_mesh_gen(const Block *neighbours, BlockMeshFace *p_out_faces,
                                                     uint32_t *p_out_face_count, BlockTexture p_out_textures[6],
                                                     bool *p_dynamic_texture) {
 	const auto get_nei_height = [](Block block) -> uint8_t {
-		return block.GetID() == kWater ? 16 : (block.GetID() == kFlowingWater ? (block.GetMeta() + 1) * 2 : 0);
+		return block.GetID() == kWater
+		           ? 16
+		           : (block.GetID() == kFlowingWater ? get_flowing_water_height(block.GetMeta()) : 0);
 	};
 	uint8_t nhs[] =
 	    {
@@ -14,7 +18,7 @@ inline static constexpr void flowing_water_mesh_gen(const Block *neighbours, Blo
 	        get_nei_height(neighbours[3]), get_nei_height(neighbours[4]), get_nei_height(neighbours[5]),
 	        get_nei_height(neighbours[6]), get_nei_height(neighbours[7]),
 	    },
-	        nb = (Variant + 1) * 2;
+	        nb = get_flowing_water_height(Variant);
 
 	// 0 1 2
 	// 3   4
@@ -121,7 +125,7 @@ template <BlockMeta Variant>
 inline static constexpr BlockMesh kFlowingWaterMesh = {
     {},
     0,
-    {{{0, 0, 0}, {16, (Variant + 1) << 1, 16}}},
+    {{{0, 0, 0}, {16, get_flowing_water_height(Variant), 16}}},
     1,
     flowing_water_mesh_gen<Variant>,
     {
