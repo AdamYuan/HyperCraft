@@ -36,8 +36,8 @@ public:
 		m_block_updates.find_fn(chunk_pos, [&ret](auto &data) { ret = data; });
 		return ret;
 	}
-	void SetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos, InnerPos1 sunlight_height, bool active);
-	void SetSunlightUpdateBulk(ChunkPos3 chunk_pos, std::span<const std::pair<InnerPos2, InnerPos1>> sunlights, bool active);
+	void SetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos, InnerPos1 sunlight_height);
+	void SetSunlightUpdateBulk(ChunkPos3 chunk_pos, std::span<const std::pair<InnerPos2, InnerPos1>> sunlights);
 
 	inline std::optional<InnerPos1> GetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos) const {
 		std::optional<InnerPos1> ret = std::nullopt;

@@ -16,9 +16,8 @@ ChunkTaskData<ChunkTaskType::kSetSunlight>::Pop(const ChunkTaskPoolLocked &task_
 		return std::nullopt;
 	auto set_sunlights = std::move(m_set_sunlights);
 	m_set_sunlights.clear();
-	bool high_priority = m_high_priority;
-	m_high_priority = false;
-	return ChunkTaskRunnerData<ChunkTaskType::kSetSunlight>{std::move(chunk), std::move(set_sunlights), high_priority};
+
+	return ChunkTaskRunnerData<ChunkTaskType::kSetSunlight>{std::move(chunk), std::move(set_sunlights)};
 }
 
 void ChunkTaskRunner<ChunkTaskType::kSetSunlight>::Run(ChunkTaskPool *p_task_pool,
@@ -57,7 +56,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetSunlight>::Run(ChunkTaskPool *p_task_poo
 		ChunkPos3 nei_pos;
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk->GetPosition();
-		p_task_pool->Push<ChunkTaskType::kMesh>(nei_pos, data.IsHighPriority());
+		p_task_pool->Push<ChunkTaskType::kMesh>(nei_pos);
 	}
 }
 
