@@ -83,6 +83,8 @@ public:
 		pipeline_state.m_input_assembly_state.Enable(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		pipeline_state.m_rasterization_state.Initialize(VK_POLYGON_MODE_FILL, VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		                                                VK_CULL_MODE_NONE);
+		pipeline_state.m_rasterization_state.m_create_info.depthBiasEnable = VK_TRUE;
+		pipeline_state.m_rasterization_state.m_create_info.depthBiasConstantFactor = 5.0f;
 		pipeline_state.m_depth_stencil_state.Enable(VK_TRUE, VK_FALSE);
 		pipeline_state.m_multisample_state.Enable(VK_SAMPLE_COUNT_1_BIT);
 
