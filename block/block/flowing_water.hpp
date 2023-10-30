@@ -1,6 +1,8 @@
 #pragma once
 #include "public/Trait.hpp"
 
+#include <algorithm>
+
 inline static constexpr uint8_t get_flowing_water_height(BlockMeta variant) { return std::max(variant * 2, 1); }
 
 template <BlockMeta Variant>
