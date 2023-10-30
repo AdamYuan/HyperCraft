@@ -30,12 +30,18 @@ public:
 
 template <> class ChunkTaskData<ChunkTaskType::kMesh> final : public ChunkTaskDataBase<ChunkTaskType::kMesh> {
 private:
-	bool m_queued{false};
+	bool m_queued{false}, m_high_priority{false};
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kMesh;
 
-	inline void Push() { m_queued = true; }
+	inline void Push(bool high_priority = false) {
+		m_queued = true;
+		m_high_priority |= high_priority;
+	}
+	inline ChunkTaskPriority GetPriority() const {
+		return m_high_priority ? ChunkTaskPriority::kHigh : ChunkTaskPriority::kLow;
+	}
 	inline bool IsQueued() const { return m_queued; }
 	std::optional<ChunkTaskRunnerData<ChunkTaskType::kMesh>> Pop(const ChunkTaskPoolLocked &task_pool,
 	                                                             const ChunkPos3 &chunk_pos);

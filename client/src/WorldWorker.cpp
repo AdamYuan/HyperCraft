@@ -16,9 +16,14 @@ void WorldWorker::launch_worker_threads(std::size_t concurrency) {
 }
 
 void WorldWorker::worker_thread_func() {
-	ChunkTaskPoolToken token{&m_world_ptr->m_chunk_task_pool};
+	ChunkTaskPoolProducerConfig producer_config{};
+	producer_config.max_high_priority_tasks = 64;
+	producer_config.max_tick_tasks = 64;
+	producer_config.max_tasks = 256;
+
+	ChunkTaskPoolToken token{&m_world_ptr->m_chunk_task_pool, producer_config};
 	while (m_running.load(std::memory_order_acquire))
-		m_world_ptr->m_chunk_task_pool.Run(&token, 256);
+		m_world_ptr->m_chunk_task_pool.Run(&token);
 }
 
 } // namespace hc::client

@@ -34,6 +34,7 @@ ChunkTaskData<ChunkTaskType::kMesh>::Pop(const ChunkTaskPoolLocked &task_pool, c
 	}
 
 	m_queued = false;
+	m_high_priority = false;
 	return ChunkTaskRunnerData<ChunkTaskType::kMesh>{std::move(chunks)};
 }
 

@@ -60,14 +60,13 @@ void ChunkTaskPool::produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t
 					        if (data.m_running)
 						        return;
 					        if constexpr (TaskPriority == ChunkTaskPriority::kHigh)
-						        if (data.m_priority == ChunkTaskPriority::kLow)
+						        if (data.GetPriority() == ChunkTaskPriority::kLow)
 							        return;
 					        auto runner_data_opt = data.Pop(locked_pool, e.pos);
 					        if (runner_data_opt.has_value()) {
 						        runner_data_vec.emplace_back(std::move(runner_data_opt.value()));
 
 						        data.m_running = true;
-						        data.m_priority = ChunkTaskPriority::kLow;
 					        }
 				        }(),
 				        ...);
@@ -89,18 +88,21 @@ void ChunkTaskPool::produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t
 	}
 }
 
-void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token, std::size_t producer_max_tasks) {
-	RunnerDataVariant runner_data = std::monostate{};
-	if (m_high_priority_producer_flag.exchange(false, std::memory_order_acq_rel)) {
-		std::scoped_lock lock{m_producer_mutex};
-		produce_runner_data<ChunkTaskPriority::kHigh>(p_token, producer_max_tasks);
-		return;
+void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token) {
+	if (p_token->m_producer_config.max_high_priority_tasks) {
+		if (m_high_priority_producer_flag.exchange(false, std::memory_order_acq_rel)) {
+			std::scoped_lock lock{m_producer_mutex};
+			produce_runner_data<ChunkTaskPriority::kHigh>(p_token, p_token->m_producer_config.max_high_priority_tasks);
+			return;
+		}
 	}
+
+	RunnerDataVariant runner_data = std::monostate{};
 	if (!m_high_priority_runner_data_queue.try_dequeue(p_token->m_high_priority_consumer_token, runner_data) &&
 	    !m_low_priority_runner_data_queue.try_dequeue(p_token->m_low_priority_consumer_token, runner_data)) {
 		std::scoped_lock lock{m_producer_mutex};
 		if (!m_low_priority_runner_data_queue.try_dequeue(p_token->m_low_priority_consumer_token, runner_data)) {
-			produce_runner_data<ChunkTaskPriority::kLow>(p_token, producer_max_tasks);
+			produce_runner_data<ChunkTaskPriority::kLow>(p_token, p_token->m_producer_config.max_tick_tasks);
 			return;
 		}
 	}

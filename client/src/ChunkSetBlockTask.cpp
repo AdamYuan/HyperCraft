@@ -18,8 +18,9 @@ ChunkTaskData<ChunkTaskType::kSetBlock>::Pop(const ChunkTaskPoolLocked &task_poo
 		return std::nullopt;
 	auto set_blocks = std::move(m_set_blocks);
 	m_set_blocks.clear();
-
-	return ChunkTaskRunnerData<ChunkTaskType::kSetBlock>{std::move(chunk), std::move(set_blocks)};
+	bool high_priority = m_high_priority;
+	m_high_priority = false;
+	return ChunkTaskRunnerData<ChunkTaskType::kSetBlock>{std::move(chunk), std::move(set_blocks), high_priority};
 }
 
 void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
@@ -60,12 +61,11 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		ChunkPos3 nei_pos;
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk->GetPosition();
-		p_task_pool->Push<ChunkTaskType::kMesh, ChunkTaskPriority::kHigh>(nei_pos);
+		p_task_pool->Push<ChunkTaskType::kMesh>(nei_pos, data.IsHighPriority());
 	}
 
 	auto flood_sunlight_vec = std::vector<InnerPos2>{flood_sunlights.begin(), flood_sunlights.end()};
-	p_task_pool->Push<ChunkTaskType::kFloodSunlight, ChunkTaskPriority::kHigh>(chunk->GetPosition(),
-	                                                                           std::span{flood_sunlight_vec});
+	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(chunk->GetPosition(), std::span{flood_sunlight_vec});
 }
 
 } // namespace hc::client

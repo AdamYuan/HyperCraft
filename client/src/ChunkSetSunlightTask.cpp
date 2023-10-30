@@ -56,7 +56,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetSunlight>::Run(ChunkTaskPool *p_task_poo
 		ChunkPos3 nei_pos;
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk->GetPosition();
-		p_task_pool->Push<ChunkTaskType::kMesh, ChunkTaskPriority::kLow>(nei_pos);
+		p_task_pool->Push<ChunkTaskType::kMesh>(nei_pos);
 	}
 }
 

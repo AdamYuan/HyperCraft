@@ -7,13 +7,21 @@ class ClientBase;
 template <> class ChunkTaskData<ChunkTaskType::kSetBlock> final : public ChunkTaskDataBase<ChunkTaskType::kSetBlock> {
 private:
 	std::vector<std::pair<InnerPos3, block::Block>> m_set_blocks;
+	bool m_high_priority{false};
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kSetBlock;
 
-	inline void Push(InnerPos3 inner_pos, block::Block block) { m_set_blocks.emplace_back(inner_pos, block); }
-	inline void Push(std::span<const std::pair<InnerPos3, block::Block>> set_blocks) {
+	inline void Push(InnerPos3 inner_pos, block::Block block, bool high_priority = false) {
+		m_set_blocks.emplace_back(inner_pos, block);
+		m_high_priority |= high_priority;
+	}
+	inline void Push(std::span<const std::pair<InnerPos3, block::Block>> set_blocks, bool high_priority = false) {
 		m_set_blocks.insert(m_set_blocks.end(), set_blocks.begin(), set_blocks.end());
+		m_high_priority |= high_priority;
+	}
+	inline ChunkTaskPriority GetPriority() const {
+		return m_high_priority ? ChunkTaskPriority::kHigh : ChunkTaskPriority::kLow;
 	}
 	inline bool IsQueued() const { return !m_set_blocks.empty(); }
 	std::optional<ChunkTaskRunnerData<ChunkTaskType::kSetBlock>> Pop(const ChunkTaskPoolLocked &task_pool,
@@ -26,12 +34,14 @@ template <> class ChunkTaskRunnerData<ChunkTaskType::kSetBlock> {
 private:
 	std::shared_ptr<Chunk> m_chunk_ptr;
 	std::vector<std::pair<InnerPos3, block::Block>> m_set_blocks;
+	bool m_high_priority{false};
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kSetBlock;
 	inline ChunkTaskRunnerData(std::shared_ptr<Chunk> chunk_ptr,
-	                           std::vector<std::pair<InnerPos3, block::Block>> &&set_blocks)
-	    : m_chunk_ptr{std::move(chunk_ptr)}, m_set_blocks{std::move(set_blocks)} {}
+	                           std::vector<std::pair<InnerPos3, block::Block>> &&set_blocks, bool high_priority)
+	    : m_chunk_ptr{std::move(chunk_ptr)}, m_set_blocks{std::move(set_blocks)}, m_high_priority{high_priority} {}
+	inline bool IsHighPriority() const { return m_high_priority; }
 	inline const ChunkPos3 &GetChunkPos() const { return m_chunk_ptr->GetPosition(); }
 	inline const std::shared_ptr<Chunk> &GetChunkPtr() const { return m_chunk_ptr; }
 	inline const auto &GetSetBlocks() const { return m_set_blocks; }

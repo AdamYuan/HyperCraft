@@ -112,7 +112,7 @@ public:
 
 	inline void SetBlock(const BlockPos3 &pos, block::Block block) {
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
-		m_chunk_update_pool.SetBlockUpdate(chunk_pos, inner_pos, block);
+		m_chunk_update_pool.SetBlockUpdate(chunk_pos, inner_pos, block, true);
 	}
 	inline std::optional<block::Block> GetBlock(const BlockPos3 &pos) const {
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
@@ -127,11 +127,11 @@ public:
 
 		for (const auto &b : blocks) {
 			auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(b.first);
-			chunk_set_blocks[chunk_pos].push_back({inner_pos, b.second});
+			chunk_set_blocks[chunk_pos].emplace_back(inner_pos, b.second);
 		}
 
 		for (const auto &c : chunk_set_blocks)
-			m_chunk_update_pool.SetBlockUpdateBulk(c.first, std::span{c.second});
+			m_chunk_update_pool.SetBlockUpdateBulk(c.first, std::span{c.second}, true);
 	}
 };
 

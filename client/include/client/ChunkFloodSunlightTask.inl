@@ -14,6 +14,7 @@ public:
 	inline void Push(std::span<const InnerPos2> xz_updates) {
 		m_xz_updates.insert(m_xz_updates.end(), xz_updates.begin(), xz_updates.end());
 	}
+	inline constexpr ChunkTaskPriority GetPriority() const { return ChunkTaskPriority::kLow; }
 	inline bool IsQueued() const { return !m_xz_updates.empty(); }
 	std::optional<ChunkTaskRunnerData<ChunkTaskType::kFloodSunlight>> Pop(const ChunkTaskPoolLocked &task_pool,
 	                                                                      const ChunkPos3 &chunk_pos);

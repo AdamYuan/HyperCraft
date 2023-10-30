@@ -16,10 +16,14 @@ enum class BlockCollision : uint8_t { kNone, kSolid, kWater };
 struct BlockProperty {
 	const char *name{"Unnamed"};
 	texture::BlockTexture textures[6]{};
+	// Light Properties
 	BlockTransparency transparency{BlockTransparency::kOpaque};
 	LightLvl light_level{0};
+	// Collision
 	BlockCollision collision{BlockCollision::kSolid};
+	// Mesh & Hitbox
 	const BlockMesh *p_custom_mesh{nullptr};
+	// Events
 
 	inline constexpr BlockProperty RotateCW(uint8_t axis) const {
 		if (axis == 0) {

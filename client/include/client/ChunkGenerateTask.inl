@@ -23,6 +23,7 @@ public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kGenerate;
 
 	inline void Push() { m_queued = true; }
+	inline constexpr ChunkTaskPriority GetPriority() const { return ChunkTaskPriority::kLow; }
 	inline bool IsQueued() const { return m_queued; }
 	std::optional<ChunkTaskRunnerData<ChunkTaskType::kGenerate>> Pop(const ChunkTaskPoolLocked &task_pool,
 	                                                                 const ChunkPos3 &chunk_pos);

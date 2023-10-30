@@ -19,8 +19,9 @@ private:
 
 public:
 	inline explicit ChunkUpdatePool(World *p_world) : m_world{*p_world} {}
-	void SetBlockUpdate(ChunkPos3 chunk_pos, InnerPos3 inner_pos, block::Block block);
-	void SetBlockUpdateBulk(ChunkPos3 chunk_pos, std::span<const std::pair<InnerPos3, block::Block>> blocks);
+	void SetBlockUpdate(ChunkPos3 chunk_pos, InnerPos3 inner_pos, block::Block block, bool active);
+	void SetBlockUpdateBulk(ChunkPos3 chunk_pos, std::span<const std::pair<InnerPos3, block::Block>> blocks,
+	                        bool active);
 	inline std::optional<block::Block> GetBlockUpdate(ChunkPos3 chunk_pos, InnerPos3 inner_pos) const {
 		std::optional<block::Block> ret = std::nullopt;
 		m_block_updates.find_fn(chunk_pos, [inner_pos, &ret](auto &data) {

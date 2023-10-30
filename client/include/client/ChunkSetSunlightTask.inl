@@ -16,6 +16,7 @@ public:
 	inline void Push(std::span<const std::pair<InnerPos2, InnerPos1>> set_sunlights) {
 		m_set_sunlights.insert(m_set_sunlights.end(), set_sunlights.begin(), set_sunlights.end());
 	}
+	inline constexpr ChunkTaskPriority GetPriority() const { return ChunkTaskPriority::kLow; }
 	inline bool IsQueued() const { return !m_set_sunlights.empty(); }
 	std::optional<ChunkTaskRunnerData<ChunkTaskType::kSetSunlight>> Pop(const ChunkTaskPoolLocked &task_pool,
 	                                                                    const ChunkPos3 &chunk_pos);

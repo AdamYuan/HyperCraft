@@ -22,7 +22,7 @@ class ChunkTaskPool;
 class ChunkTaskPoolLocked;
 
 enum class ChunkTaskType { kGenerate, kSetBlock, kSetSunlight, kMesh, kFloodSunlight, COUNT };
-enum class ChunkTaskPriority { kHigh, kLow };
+enum class ChunkTaskPriority { kHigh, kTick, kLow };
 
 template <ChunkTaskType> class ChunkTaskData;
 template <ChunkTaskType> class ChunkTaskRunnerData;
@@ -31,7 +31,6 @@ template <ChunkTaskType> class ChunkTaskRunner;
 template <ChunkTaskType Type> class ChunkTaskDataBase {
 private:
 	bool m_running{false};
-	ChunkTaskPriority m_priority{ChunkTaskPriority::kLow};
 
 	friend class ChunkTaskPool;
 	friend class ChunkTaskPoolLocked;
@@ -103,17 +102,16 @@ private:
 public:
 	inline explicit ChunkTaskPool(World *p_world) : m_world{*p_world}, m_high_priority_producer_flag{false} {}
 
-	template <ChunkTaskType TaskType, ChunkTaskPriority TaskPriority = ChunkTaskPriority::kLow, typename... Args>
-	inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
-		m_data_map.uprase_fn(chunk_pos,
-		                     [... args = std::forward<Args>(args)](DataTuple &data_tuple, libcuckoo::UpsertContext) {
-			                     auto &data = std::get<static_cast<std::size_t>(TaskType)>(data_tuple);
-			                     data.Push(args...);
-			                     if constexpr (TaskPriority == ChunkTaskPriority::kHigh)
-				                     data.m_priority = ChunkTaskPriority::kHigh;
-			                     return false;
-		                     });
-		if constexpr (TaskPriority == ChunkTaskPriority::kHigh)
+	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
+		bool high_priority = false;
+		m_data_map.uprase_fn(chunk_pos, [&high_priority, ... args = std::forward<Args>(args)](
+		                                    DataTuple &data_tuple, libcuckoo::UpsertContext) {
+			auto &data = std::get<static_cast<std::size_t>(TaskType)>(data_tuple);
+			data.Push(args...);
+			high_priority = data.GetPriority() == ChunkTaskPriority::kHigh;
+			return false;
+		});
+		if (high_priority)
 			m_high_priority_producer_flag.store(true, std::memory_order_release);
 	}
 	inline void Clear() {
@@ -128,7 +126,7 @@ public:
 	inline auto GetRunningTaskCountApprox() const {
 		return m_low_priority_runner_data_queue.size_approx() + m_high_priority_runner_data_queue.size_approx();
 	}
-	void Run(ChunkTaskPoolToken *p_token, std::size_t producer_max_tasks);
+	void Run(ChunkTaskPoolToken *p_token);
 };
 
 class ChunkTaskPoolLocked {
@@ -170,6 +168,10 @@ public:
 	inline auto &GetDataMap() { return m_data_map; }
 };
 
+struct ChunkTaskPoolProducerConfig {
+	std::size_t max_tasks, max_high_priority_tasks, max_tick_tasks;
+};
+
 class ChunkTaskPoolToken {
 private:
 	using RunnerTuple = typename ChunkTaskRunnerTuple<>::Type;
@@ -178,14 +180,16 @@ private:
 	moodycamel::ConsumerToken m_high_priority_consumer_token, m_low_priority_consumer_token;
 	RunnerTuple m_runners;
 
+	ChunkTaskPoolProducerConfig m_producer_config;
+
 	friend class ChunkTaskPool;
 
 public:
-	inline explicit ChunkTaskPoolToken(ChunkTaskPool *p_pool)
+	inline explicit ChunkTaskPoolToken(ChunkTaskPool *p_pool, const ChunkTaskPoolProducerConfig &producer_config)
 	    : m_high_priority_producer_token{p_pool->m_high_priority_runner_data_queue},
 	      m_high_priority_consumer_token{p_pool->m_high_priority_runner_data_queue},
 	      m_low_priority_producer_token{p_pool->m_low_priority_runner_data_queue},
-	      m_low_priority_consumer_token{p_pool->m_low_priority_runner_data_queue} {}
+	      m_low_priority_consumer_token{p_pool->m_low_priority_runner_data_queue}, m_producer_config{producer_config} {}
 };
 
 } // namespace hc::client
