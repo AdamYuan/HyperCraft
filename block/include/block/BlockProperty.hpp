@@ -2,6 +2,7 @@
 
 #include <texture/BlockTexture.hpp>
 
+#include "BlockEvent.hpp"
 #include "BlockFace.hpp"
 #include "BlockMesh.hpp"
 #include "Light.hpp"
@@ -24,6 +25,7 @@ struct BlockProperty {
 	// Mesh & Hitbox
 	const BlockMesh *p_custom_mesh{nullptr};
 	// Events
+	const BlockEvent *p_event{nullptr};
 
 	inline constexpr BlockProperty RotateCW(uint8_t axis) const {
 		if (axis == 0) {

@@ -58,6 +58,8 @@ public:
 
 	inline bool HaveCustomMesh() const { return get_property()->p_custom_mesh; }
 	inline const BlockMesh *GetCustomMesh() const { return get_property()->p_custom_mesh; }
+	inline bool HaveEvent() const { return get_property()->p_event; }
+	inline const BlockEvent *GetEvent() const { return get_property()->p_event; }
 	inline const u8AABB *GetAABBs() const { return HaveCustomMesh() ? GetCustomMesh()->aabbs : &kDefaultAABB; }
 	inline uint32_t GetAABBCount() const { return HaveCustomMesh() ? GetCustomMesh()->aabb_count : 1; }
 	inline const char *GetName() const { return get_property()->name; }
@@ -85,5 +87,10 @@ public:
 	inline bool operator!=(Block r) const { return m_data != r.m_data; }
 };
 static_assert(sizeof(Block) == 2);
+
+struct BlockUpdateSetBlock {
+	uint16_t idx;
+	Block block;
+};
 
 } // namespace hc::block

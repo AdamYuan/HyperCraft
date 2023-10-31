@@ -1,5 +1,6 @@
 #pragma once
 #include "public/Trait.hpp"
+#include "public/LiquidEvent.hpp"
 
 #include <algorithm>
 
