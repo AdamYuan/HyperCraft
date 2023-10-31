@@ -19,7 +19,7 @@ ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPoolLocked &task_poo
 void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
                                                     ChunkTaskRunnerData<ChunkTaskType::kGenerate> &&data) {
 	std::shared_ptr<ClientBase> client = p_task_pool->GetWorld().LockClient();
-	if (!client || !client->IsConnected())
+	if (!client)
 		return;
 
 	const auto &chunk_ptr = data.GetChunkPtr();

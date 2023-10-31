@@ -45,6 +45,7 @@ public:
 
 	inline const ChunkPos3 &GetPosition() const { return m_position; }
 
+	// TODO: Protect Block & Light RW with mutexes
 	// Block Getter and Setter
 	inline const Block *GetBlockData() const { return m_blocks; }
 	template <typename T> inline Block GetBlock(T x, T y, T z) const { return m_blocks[ChunkXYZ2Index(x, y, z)]; }
@@ -53,6 +54,12 @@ public:
 	inline Block &GetBlockRef(uint32_t idx) { return m_blocks[idx]; }
 	template <typename T> inline void SetBlock(T x, T y, T z, Block b) { m_blocks[ChunkXYZ2Index(x, y, z)] = b; }
 	inline void SetBlock(uint32_t idx, Block b) { m_blocks[idx] = b; }
+	template <std::signed_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
+		return m_blocks[ChunkXYZ2Index((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
+	}
+	template <std::unsigned_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
+		return m_blocks[ChunkXYZ2Index(x % kSize, y % kSize, z % kSize)];
+	}
 
 	// Sunlight Getter and Setter
 	inline InnerPos1 GetSunlightHeight(uint32_t idx) const { return m_sunlight_heights[idx]; }
@@ -67,14 +74,6 @@ public:
 	template <typename T> inline bool GetSunlight(T x, T y, T z) const {
 		return y >= m_sunlight_heights[ChunkXZ2Index(x, z)];
 	}
-
-	// Neighbours
-	template <std::signed_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
-		return m_blocks[ChunkXYZ2Index((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
-	}
-	template <std::unsigned_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
-		return m_blocks[ChunkXYZ2Index(x % kSize, y % kSize, z % kSize)];
-	}
 	template <std::signed_integral T> inline bool GetSunlightFromNeighbour(T x, T y, T z) const {
 		return GetSunlight((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize);
 	}
@@ -83,20 +82,18 @@ public:
 	}
 
 	// Creation
-	static inline std::shared_ptr<Chunk> Create(const ChunkPos3 &position) {
-		auto ret = std::make_shared<Chunk>();
-		ret->m_position = position;
-		return ret;
-	}
+	inline explicit Chunk(const ChunkPos3 &position) : m_position{position} {}
+	static inline std::shared_ptr<Chunk> Create(const ChunkPos3 &position) { return std::make_shared<Chunk>(position); }
 
 	// Generated Flag
 	inline void SetGeneratedFlag() { m_generated_flag.store(true, std::memory_order_release); }
 	inline bool IsGenerated() const { return m_generated_flag.load(std::memory_order_acquire); }
 
 private:
+	const ChunkPos3 m_position{};
+
 	Block m_blocks[kSize * kSize * kSize];
 	InnerPos1 m_sunlight_heights[kSize * kSize]{};
-	ChunkPos3 m_position{};
 	std::atomic_bool m_generated_flag{false};
 };
 

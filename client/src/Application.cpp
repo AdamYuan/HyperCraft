@@ -325,7 +325,8 @@ void Application::glfw_key_callback(GLFWwindow *window, int key, int scancode, i
 	} else if (key == GLFW_KEY_ESCAPE) {
 		app->m_mouse_captured ^= 1;
 		glfwSetInputMode(window, GLFW_CURSOR, app->m_mouse_captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-	}
+	} else if (key == GLFW_KEY_U)
+		app->m_world->NextTick();
 }
 
 void Application::glfw_framebuffer_resize_callback(GLFWwindow *window, int width, int height) {

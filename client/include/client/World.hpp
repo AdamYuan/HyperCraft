@@ -47,6 +47,7 @@ private:
 	friend class ChunkUpdatePool;
 	template <ChunkTaskType> friend class ChunkTaskRunner;
 
+	std::atomic_uint64_t m_tick;
 	static_assert(sizeof(ChunkPos3) <= sizeof(uint64_t));
 	std::atomic_uint64_t m_center_chunk_pos;
 	std::atomic<ChunkPos1> m_load_chunk_radius, m_unload_chunk_radius;
@@ -105,6 +106,12 @@ public:
 
 	inline const std::weak_ptr<ClientBase> &GetClientWeakPtr() const { return m_client_weak_ptr; }
 	inline std::shared_ptr<ClientBase> LockClient() const { return m_client_weak_ptr.lock(); }
+
+	inline uint64_t GetCurrentTick() const { return m_tick.load(std::memory_order_acquire); }
+	inline void NextTick() {
+		m_tick.fetch_add(1, std::memory_order_acq_rel);
+		m_chunk_task_pool.ProduceTickTasks();
+	}
 
 	const auto &GetChunkPool() const { return m_chunk_pool; }
 	const auto &GetChunkTaskPool() const { return m_chunk_task_pool; }

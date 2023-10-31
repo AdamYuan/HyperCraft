@@ -21,7 +21,7 @@ class Chunk;
 class ChunkTaskPool;
 class ChunkTaskPoolLocked;
 
-enum class ChunkTaskType { kGenerate, kSetBlock, kSetSunlight, kMesh, kFloodSunlight, COUNT };
+enum class ChunkTaskType { kGenerate, kSetBlock, kSetSunlight, kMesh, kFloodSunlight, kUpdateBlock, COUNT };
 enum class ChunkTaskPriority { kHigh, kTick, kLow };
 
 template <ChunkTaskType> class ChunkTaskData;
@@ -46,6 +46,7 @@ public:
 #include "ChunkMeshTask.inl"
 #include "ChunkSetBlockTask.inl"
 #include "ChunkSetSunlightTask.inl"
+#include "ChunkUpdateBlockTask.inl"
 
 namespace hc::client {
 
@@ -90,17 +91,19 @@ private:
 	World &m_world;
 	libcuckoo::cuckoohash_map<ChunkPos3, DataTuple> m_data_map;
 	moodycamel::ConcurrentQueue<RunnerDataVariant> m_high_priority_runner_data_queue, m_low_priority_runner_data_queue;
-	std::atomic_bool m_high_priority_producer_flag;
+	std::atomic_bool m_high_priority_producer_flag, m_tick_producer_flag;
 	std::mutex m_producer_mutex;
 
-	template <ChunkTaskPriority TaskPriority>
-	void produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t max_tasks);
+	template <ChunkTaskPriority... TaskPriorities>
+	void produce_runner_data(moodycamel::ConcurrentQueue<RunnerDataVariant> *p_queue,
+	                         const moodycamel::ProducerToken &token, std::size_t max_tasks);
 
 	friend class ChunkTaskPoolToken;
 	friend class ChunkTaskPoolLocked;
 
 public:
-	inline explicit ChunkTaskPool(World *p_world) : m_world{*p_world}, m_high_priority_producer_flag{false} {}
+	inline explicit ChunkTaskPool(World *p_world)
+	    : m_world{*p_world}, m_high_priority_producer_flag{false}, m_tick_producer_flag{false} {}
 
 	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
 		bool high_priority = false;
@@ -127,6 +130,7 @@ public:
 		return m_low_priority_runner_data_queue.size_approx() + m_high_priority_runner_data_queue.size_approx();
 	}
 	void Run(ChunkTaskPoolToken *p_token);
+	inline void ProduceTickTasks() { m_tick_producer_flag.store(true, std::memory_order_release); }
 };
 
 class ChunkTaskPoolLocked {

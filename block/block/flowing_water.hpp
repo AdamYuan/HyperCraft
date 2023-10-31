@@ -1,6 +1,6 @@
 #pragma once
-#include "public/Trait.hpp"
 #include "public/LiquidEvent.hpp"
+#include "public/Trait.hpp"
 
 #include <algorithm>
 
@@ -162,6 +162,7 @@ template <> struct BlockTrait<kFlowingWater> {
 		    (LightLvl)0,
 		    BlockCollision::kWater,
 		    &kFlowingWaterMesh<Variant>,
+		    &kLiquidEvent<kWater, kFlowingWater, 8, 5>,
 		};
 	}
 };

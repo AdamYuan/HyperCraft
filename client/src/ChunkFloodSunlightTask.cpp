@@ -47,7 +47,7 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 		auto up_sl = up_chunk->GetSunlightHeight(xz_idx), sl = chunk->GetSunlightHeight(xz_idx);
 		if (up_sl > 0) {
 			if (sl != kChunkSize) {
-				set_sunlights.push_back({xz, kChunkSize});
+				set_sunlights.emplace_back(xz, kChunkSize);
 				xz_next_updates.push_back(xz);
 			}
 		} else {
@@ -57,7 +57,7 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 				;
 			++y;
 			if (sl != y)
-				set_sunlights.push_back({xz, y});
+				set_sunlights.emplace_back(xz, y);
 			if ((sl == 0) != (y == 0))
 				xz_next_updates.push_back(xz);
 		}

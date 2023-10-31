@@ -13,8 +13,9 @@ struct ChunkTaskSortEntry {
 	inline bool operator<(const ChunkTaskSortEntry &r) const { return dist2 < r.dist2; }
 };
 
-template <ChunkTaskPriority TaskPriority>
-void ChunkTaskPool::produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t max_tasks) {
+template <ChunkTaskPriority... TaskPriorities>
+void ChunkTaskPool::produce_runner_data(moodycamel::ConcurrentQueue<ChunkTaskPool::RunnerDataVariant> *p_queue,
+                                        const moodycamel::ProducerToken &token, std::size_t max_tasks) {
 	auto center_pos = m_world.GetCenterChunkPos();
 	auto load_radius = m_world.GetLoadChunkRadius(), unload_radius = m_world.GetUnloadChunkRadius();
 
@@ -59,9 +60,11 @@ void ChunkTaskPool::produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t
 				        [&] {
 					        if (data.m_running)
 						        return;
-					        if constexpr (TaskPriority == ChunkTaskPriority::kHigh)
-						        if (data.GetPriority() == ChunkTaskPriority::kLow)
+					        {
+						        auto p = data.GetPriority();
+						        if (((p != TaskPriorities) && ...))
 							        return;
+					        }
 					        auto runner_data_opt = data.Pop(locked_pool, e.pos);
 					        if (runner_data_opt.has_value()) {
 						        runner_data_vec.emplace_back(std::move(runner_data_opt.value()));
@@ -77,22 +80,26 @@ void ChunkTaskPool::produce_runner_data(ChunkTaskPoolToken *p_token, std::size_t
 		}
 	}
 	if (!runner_data_vec.empty()) {
-		if constexpr (TaskPriority == ChunkTaskPriority::kHigh)
-			m_high_priority_runner_data_queue.enqueue_bulk(p_token->m_high_priority_producer_token,
-			                                               std::make_move_iterator(runner_data_vec.begin()),
-			                                               runner_data_vec.size());
-		else
-			m_low_priority_runner_data_queue.enqueue_bulk(p_token->m_low_priority_producer_token,
-			                                              std::make_move_iterator(runner_data_vec.begin()),
-			                                              runner_data_vec.size());
+		p_queue->enqueue_bulk(token, std::make_move_iterator(runner_data_vec.begin()), runner_data_vec.size());
 	}
 }
 
 void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token) {
+	if (p_token->m_producer_config.max_tick_tasks) {
+		if (m_tick_producer_flag.exchange(false, std::memory_order_acq_rel)) {
+			std::scoped_lock lock{m_producer_mutex};
+			produce_runner_data<ChunkTaskPriority::kTick>(&m_high_priority_runner_data_queue,
+			                                              p_token->m_high_priority_producer_token,
+			                                              p_token->m_producer_config.max_tick_tasks);
+			return;
+		}
+	}
 	if (p_token->m_producer_config.max_high_priority_tasks) {
 		if (m_high_priority_producer_flag.exchange(false, std::memory_order_acq_rel)) {
 			std::scoped_lock lock{m_producer_mutex};
-			produce_runner_data<ChunkTaskPriority::kHigh>(p_token, p_token->m_producer_config.max_high_priority_tasks);
+			produce_runner_data<ChunkTaskPriority::kHigh>(&m_high_priority_runner_data_queue,
+			                                              p_token->m_high_priority_producer_token,
+			                                              p_token->m_producer_config.max_high_priority_tasks);
 			return;
 		}
 	}
@@ -102,7 +109,9 @@ void ChunkTaskPool::Run(ChunkTaskPoolToken *p_token) {
 	    !m_low_priority_runner_data_queue.try_dequeue(p_token->m_low_priority_consumer_token, runner_data)) {
 		std::scoped_lock lock{m_producer_mutex};
 		if (!m_low_priority_runner_data_queue.try_dequeue(p_token->m_low_priority_consumer_token, runner_data)) {
-			produce_runner_data<ChunkTaskPriority::kLow>(p_token, p_token->m_producer_config.max_tick_tasks);
+			produce_runner_data<ChunkTaskPriority::kHigh, ChunkTaskPriority::kLow>(
+			    &m_low_priority_runner_data_queue, p_token->m_low_priority_producer_token,
+			    p_token->m_producer_config.max_tasks);
 			return;
 		}
 	}
