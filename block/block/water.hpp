@@ -10,6 +10,6 @@ template <> struct BlockTrait<kWater> : public SingleBlockTrait<kWater> {
 	    (LightLvl)0,
 	    BlockCollision::kWater,
 	    nullptr,
-	    &kLiquidEvent<kWater, kFlowingWater, 8, 5>,
+	    &kLiquidEvent<kWater, kFlowingWater, 8, 10>,
 	};
 };

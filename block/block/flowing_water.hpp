@@ -162,7 +162,7 @@ template <> struct BlockTrait<kFlowingWater> {
 		    (LightLvl)0,
 		    BlockCollision::kWater,
 		    &kFlowingWaterMesh<Variant>,
-		    &kLiquidEvent<kWater, kFlowingWater, 8, 5>,
+		    &kLiquidEvent<kWater, kFlowingWater, 8, 10>,
 		};
 	}
 };
