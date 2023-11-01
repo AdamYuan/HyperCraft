@@ -1,13 +1,13 @@
 #pragma once
 
 #include "BlockFace.hpp"
+#include <functional>
 
 namespace hc::block {
 
 class Block;
 
-using BlockExtraGetBlockFunc = Block (*)(glm::i8vec3);
-using BlockOnUpdateFunc = void (*)(const Block *, Block *, BlockExtraGetBlockFunc);
+using BlockOnUpdateFunc = void (*)(const Block *, Block *, std::function<Block(glm::i8vec3)>);
 
 constexpr uint32_t kBlockUpdateMaxNeighbours = 32;
 struct BlockEvent {

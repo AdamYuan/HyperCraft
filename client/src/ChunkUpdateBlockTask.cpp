@@ -58,18 +58,22 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 
 	std::vector<std::pair<InnerPos3, block::Block>> set_blocks[27];
 
-	for (const auto &update : data.GetUpdates()) {
-		const auto *p_blk_event = chunk->GetBlock(update.x, update.y, update.z).GetEvent();
+	for (const auto &update_pos : data.GetUpdates()) {
+		const auto *p_blk_event = chunk->GetBlock(update_pos.x, update_pos.y, update_pos.z).GetEvent();
 		if (!p_blk_event || !p_blk_event->on_update_func)
 			continue;
 		for (uint32_t i = 0; i < p_blk_event->update_neighbour_count; ++i) {
-			InnerPos3 pos = update + p_blk_event->update_neighbours[i];
+			InnerPos3 pos = update_pos + p_blk_event->update_neighbours[i];
 			m_update_neighbour_pos[i] = pos;
 			m_update_neighbours[i] = get_block(pos.x, pos.y, pos.z);
 		}
 		std::copy(m_update_neighbours, m_update_neighbours + p_blk_event->update_neighbour_count, m_update_set_blocks);
 
-		p_blk_event->on_update_func(m_update_neighbours, m_update_set_blocks, nullptr);
+		p_blk_event->on_update_func(m_update_neighbours, m_update_set_blocks,
+		                            [&update_pos, &get_block](glm::i8vec3 pos) {
+			                            pos += update_pos;
+			                            return get_block(pos.x, pos.y, pos.z);
+		                            });
 		for (uint32_t i = 0; i < p_blk_event->update_neighbour_count; ++i) {
 			block::Block set_blk = m_update_set_blocks[i];
 			if (set_blk == m_update_neighbours[i])
