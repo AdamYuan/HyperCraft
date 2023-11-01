@@ -145,7 +145,7 @@ inline static constexpr BlockMesh kFlowingWaterMesh = {
 };
 
 template <> struct BlockTrait<kFlowingWater> {
-	inline static constexpr uint8_t kVariants = 8;
+	inline static constexpr uint8_t kVariants = 9;
 	inline static constexpr uint8_t kVariantBits = std::countr_zero(std::bit_ceil(kVariants));
 	inline static constexpr uint8_t kTransforms = 0;
 	inline static constexpr uint8_t kTransformBits = std::countr_zero(std::bit_ceil(kTransforms));
