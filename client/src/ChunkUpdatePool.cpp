@@ -28,24 +28,25 @@ void ChunkUpdatePool::SetBlockUpdateBulk(ChunkPos3 chunk_pos,
 	    InnerPosCompare{});
 }
 
-void ChunkUpdatePool::SetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos, InnerPos1 sunlight_height) {
+void ChunkUpdatePool::SetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos, InnerPos1 sunlight_height,
+                                        bool active) {
 	m_sunlight_updates.uprase_fn(
 	    chunk_pos,
-	    [this, &chunk_pos, inner_pos, sunlight_height](auto &data, libcuckoo::UpsertContext) {
+	    [this, &chunk_pos, inner_pos, sunlight_height, active](auto &data, libcuckoo::UpsertContext) {
 		    data[inner_pos] = sunlight_height;
-		    m_world.m_chunk_task_pool.Push<ChunkTaskType::kSetSunlight>(chunk_pos, inner_pos, sunlight_height);
+		    m_world.m_chunk_task_pool.Push<ChunkTaskType::kSetSunlight>(chunk_pos, inner_pos, sunlight_height, active);
 		    return false;
 	    },
 	    InnerPosCompare{});
 }
 void ChunkUpdatePool::SetSunlightUpdateBulk(ChunkPos3 chunk_pos,
-                                            std::span<const std::pair<InnerPos2, InnerPos1>> sunlights) {
+                                            std::span<const std::pair<InnerPos2, InnerPos1>> sunlights, bool active) {
 	m_sunlight_updates.uprase_fn(
 	    chunk_pos,
-	    [this, &chunk_pos, sunlights](auto &data, libcuckoo::UpsertContext) {
+	    [this, &chunk_pos, sunlights, active](auto &data, libcuckoo::UpsertContext) {
 		    for (const auto &i : sunlights)
 			    data[i.first] = i.second;
-		    m_world.m_chunk_task_pool.Push<ChunkTaskType::kSetSunlight>(chunk_pos, sunlights);
+		    m_world.m_chunk_task_pool.Push<ChunkTaskType::kSetSunlight>(chunk_pos, sunlights, active);
 		    return false;
 	    },
 	    InnerPosCompare{});

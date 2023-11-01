@@ -87,7 +87,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 
 	// Trigger sunlight flood
 	auto flood_sunlight_vec = std::vector<InnerPos2>{flood_sunlights.begin(), flood_sunlights.end()};
-	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(chunk->GetPosition(), std::span{flood_sunlight_vec});
+	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(chunk->GetPosition(), std::span{flood_sunlight_vec}, true);
 }
 
 } // namespace hc::client

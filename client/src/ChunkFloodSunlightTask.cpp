@@ -27,9 +27,11 @@ ChunkTaskData<ChunkTaskType::kFloodSunlight>::Pop(const ChunkTaskPoolLocked &tas
 
 	auto xz_updates = std::move(m_xz_updates);
 	m_xz_updates.clear();
+	auto high_priority = m_high_priority;
+	m_high_priority = false;
 
 	return ChunkTaskRunnerData<ChunkTaskType::kFloodSunlight>{std::move(chunk), std::move(up_chunk),
-	                                                          std::move(xz_updates)};
+	                                                          std::move(xz_updates), high_priority};
 }
 
 void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_pool,
@@ -62,11 +64,12 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 				xz_next_updates.push_back(xz);
 		}
 	}
-	p_task_pool->GetWorld().m_chunk_update_pool.SetSunlightUpdateBulk(chunk->GetPosition(), set_sunlights);
+	p_task_pool->GetWorld().m_chunk_update_pool.SetSunlightUpdateBulk(chunk->GetPosition(), set_sunlights,
+	                                                                  data.IsHighPriority());
 
 	auto down_chunk_pos = chunk->GetPosition();
 	--down_chunk_pos.y;
-	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(down_chunk_pos, xz_next_updates);
+	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(down_chunk_pos, xz_next_updates, false);
 }
 
 } // namespace hc::client
