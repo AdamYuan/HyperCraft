@@ -88,9 +88,4 @@ public:
 };
 static_assert(sizeof(Block) == 2);
 
-struct BlockUpdateSetBlock {
-	uint16_t idx;
-	Block block;
-};
-
 } // namespace hc::block

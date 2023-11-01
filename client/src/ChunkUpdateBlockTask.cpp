@@ -67,11 +67,14 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 			m_update_neighbour_pos[i] = pos;
 			m_update_neighbours[i] = get_block(pos.x, pos.y, pos.z);
 		}
-		uint32_t set_block_count = 0;
-		p_blk_event->on_update_func(m_update_neighbours, m_update_set_blocks, &set_block_count);
-		for (uint32_t i = 0; i < set_block_count; ++i) {
-			InnerPos3 set_pos = m_update_neighbour_pos[m_update_set_blocks[i].idx];
-			block::Block set_blk = m_update_set_blocks[i].block;
+		std::copy(m_update_neighbours, m_update_neighbours + p_blk_event->update_neighbour_count, m_update_set_blocks);
+
+		p_blk_event->on_update_func(m_update_neighbours, m_update_set_blocks, nullptr);
+		for (uint32_t i = 0; i < p_blk_event->update_neighbour_count; ++i) {
+			block::Block set_blk = m_update_set_blocks[i];
+			if (set_blk == m_update_neighbours[i])
+				continue;
+			InnerPos3 set_pos = m_update_neighbour_pos[i];
 			auto [rel_chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(BlockPos3(set_pos));
 			uint32_t nei_chunk_idx = CmpXYZ2NeighbourIndex(rel_chunk_pos.x, rel_chunk_pos.y, rel_chunk_pos.z);
 			set_blocks[nei_chunk_idx].emplace_back(inner_pos, set_blk);

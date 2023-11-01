@@ -1,5 +1,5 @@
 #pragma once
-#include "public/LiquidEvent.hpp"
+#include "public/Liquid.hpp"
 #include "public/Trait.hpp"
 
 #include <algorithm>
@@ -162,7 +162,7 @@ template <> struct BlockTrait<kFlowingWater> {
 		    (LightLvl)0,
 		    BlockCollision::kWater,
 		    &kFlowingWaterMesh<Variant>,
-		    &kLiquidEvent<kWater, kFlowingWater, 8, 10>,
+		    &kLiquidEvent<kWater, kFlowingWater, 8, 5>,
 		};
 	}
 };

@@ -6,8 +6,8 @@ namespace hc::block {
 
 class Block;
 
-struct BlockUpdateSetBlock; // Forward decl, defined in Block.hpp
-using BlockOnUpdateFunc = void (*)(const Block *, BlockUpdateSetBlock *, uint32_t *);
+using BlockExtraGetBlockFunc = Block (*)(glm::i8vec3);
+using BlockOnUpdateFunc = void (*)(const Block *, Block *, BlockExtraGetBlockFunc);
 
 constexpr uint32_t kBlockUpdateMaxNeighbours = 32;
 struct BlockEvent {

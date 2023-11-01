@@ -45,9 +45,9 @@ public:
 
 template <> class ChunkTaskRunner<ChunkTaskType::kUpdateBlock> {
 private:
-	block::Block m_update_neighbours[block::kBlockUpdateMaxNeighbours];
+	block::Block m_update_neighbours[block::kBlockUpdateMaxNeighbours],
+	    m_update_set_blocks[block::kBlockUpdateMaxNeighbours];
 	InnerPos3 m_update_neighbour_pos[block::kBlockUpdateMaxNeighbours];
-	block::BlockUpdateSetBlock m_update_set_blocks[block::kBlockUpdateMaxNeighbours];
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kUpdateBlock;

@@ -81,7 +81,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		// Trigger block update
 		if (!block_updates[i].empty()) {
 			p_task_pool->Push<ChunkTaskType::kUpdateBlock>(
-				nei_pos, std::vector<InnerPos3>(block_updates[i].begin(), block_updates[i].end()), current_tick);
+			    nei_pos, std::vector<InnerPos3>(block_updates[i].begin(), block_updates[i].end()), current_tick);
 		}
 	}
 

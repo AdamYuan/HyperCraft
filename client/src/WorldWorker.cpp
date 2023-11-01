@@ -18,7 +18,7 @@ void WorldWorker::launch_worker_threads(std::size_t concurrency) {
 void WorldWorker::worker_thread_func() {
 	ChunkTaskPoolProducerConfig producer_config{};
 	producer_config.max_high_priority_tasks = 64;
-	producer_config.max_tick_tasks = 64;
+	producer_config.max_tick_tasks = 16;
 	producer_config.max_tasks = 256;
 
 	ChunkTaskPoolToken token{&m_world_ptr->m_chunk_task_pool, producer_config};
