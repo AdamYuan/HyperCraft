@@ -15,7 +15,7 @@
 
 namespace hc::client {
 
-class DefaultTerrain : public TerrainBase {
+class DefaultTerrain final : public TerrainBase {
 private:
 	using Block = block::Block;
 	using Blocks = block::Blocks;
@@ -541,7 +541,7 @@ public:
 	}
 	~DefaultTerrain() override = default;
 	inline static std::unique_ptr<TerrainBase> Create(uint32_t seed) { return std::make_unique<DefaultTerrain>(seed); }
-	void Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t light_map[kChunkSize * kChunkSize]) override;
+	void Generate(const std::shared_ptr<Chunk> &chunk_ptr) override;
 };
 
 } // namespace hc::client

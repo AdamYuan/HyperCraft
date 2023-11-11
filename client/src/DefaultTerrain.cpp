@@ -7,7 +7,7 @@
 
 namespace hc::client {
 
-void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t light_map[kChunkSize * kChunkSize]) {
+void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr) {
 #if 1
 	std::shared_ptr<const XZInfo> xz_info = m_xz_cache.Acquire(
 	    chunk_ptr->GetPosition().xz(), [this](const ChunkPos2 &pos, XZInfo *info) { generate_xz_info(pos, info); });
@@ -145,8 +145,11 @@ void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t l
 		    generate_combined_xz_info(pos, xz_info, combined_info);
 	    });
 	combined_xz_info->decoration.PopToChunk(chunk_ptr);
-	// pop light info
-	std::copy(std::begin(combined_xz_info->light_map), std::end(combined_xz_info->light_map), light_map);
+	// set initial sunlight from light_map
+	BlockPos1 base_height = chunk_ptr->GetPosition().y * (BlockPos1)kChunkSize;
+	for (uint32_t idx = 0; idx < kChunkSize * kChunkSize; ++idx)
+		chunk_ptr->SetSunlightHeight(
+		    idx, (InnerPos1)(std::clamp(combined_xz_info->light_map[idx] - base_height + 1, 0, (BlockPos1)kChunkSize)));
 #else
 	// pressure test
 	std::mt19937 gen(chunk_ptr->GetPosition().x ^ chunk_ptr->GetPosition().y ^ chunk_ptr->GetPosition().z);

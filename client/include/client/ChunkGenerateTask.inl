@@ -32,9 +32,6 @@ public:
 };
 
 template <> class ChunkTaskRunner<ChunkTaskType::kGenerate> {
-private:
-	int32_t m_y_peak_map[kChunkSize * kChunkSize];
-
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kGenerate;
 
