@@ -1,7 +1,5 @@
 #include <client/Chunk.hpp>
 
-#include <functional>
-
 namespace hc::client {
 
 template <>
@@ -51,13 +49,11 @@ public:
 };
 
 template <> class ChunkTaskRunner<ChunkTaskType::kSetSunlight> {
+private:
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kSetSunlight;
 
-	static void RunWithoutData(ChunkTaskPool *p_task_pool, const LockedChunk<ChunkLockType::kSunlightRW> &locked_chunk,
-	                           std::span<const std::pair<InnerPos2, InnerPos1>> sunlights, bool active,
-	                           const std::function<void()> &on_write_done_func);
-	static void Run(ChunkTaskPool *p_task_pool, ChunkTaskRunnerData<ChunkTaskType::kSetSunlight> &&data);
+	void Run(ChunkTaskPool *p_task_pool, ChunkTaskRunnerData<ChunkTaskType::kSetSunlight> &&data);
 };
 
 } // namespace hc::client

@@ -202,7 +202,7 @@ private:
 				}
 			}
 		}
-		void PopToChunk(const LockedChunk<ChunkLockType::kBlockRW> &chunk) const;
+		void PopToChunk(const std::shared_ptr<Chunk> &chunk_ptr) const;
 	};
 	class DecorationGroup {
 	private:
@@ -541,8 +541,7 @@ public:
 	}
 	~DefaultTerrain() override = default;
 	inline static std::unique_ptr<TerrainBase> Create(uint32_t seed) { return std::make_unique<DefaultTerrain>(seed); }
-	void Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk,
-	              int32_t light_map[kChunkSize * kChunkSize]) override;
+	void Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t light_map[kChunkSize * kChunkSize]) override;
 };
 
 } // namespace hc::client

@@ -51,9 +51,6 @@ template <> class ChunkTaskRunner<ChunkTaskType::kSetBlock> {
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kSetBlock;
 
-	static void RunWithoutData(ChunkTaskPool *p_task_pool, const LockedChunk<ChunkLockType::kBlockRW> &locked_chunk,
-	                           std::span<const std::pair<InnerPos3, block::Block>> blocks, bool active,
-	                           const std::function<void()> &on_write_done_func);
 	static void Run(ChunkTaskPool *p_task_pool, ChunkTaskRunnerData<ChunkTaskType::kSetBlock> &&data);
 };
 

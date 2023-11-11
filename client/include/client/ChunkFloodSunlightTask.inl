@@ -54,7 +54,7 @@ private:
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kFloodSunlight;
 
-	static void Run(ChunkTaskPool *p_task_pool, ChunkTaskRunnerData<ChunkTaskType::kFloodSunlight> &&data);
+	void Run(ChunkTaskPool *p_task_pool, ChunkTaskRunnerData<ChunkTaskType::kFloodSunlight> &&data);
 };
 
 } // namespace hc::client

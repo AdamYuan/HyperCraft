@@ -7,11 +7,10 @@
 
 namespace hc::client {
 
-void DefaultTerrain::Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk,
-                              int32_t light_map[kChunkSize * kChunkSize]) {
+void DefaultTerrain::Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t light_map[kChunkSize * kChunkSize]) {
 #if 1
 	std::shared_ptr<const XZInfo> xz_info = m_xz_cache.Acquire(
-	    chunk.GetPosition().xz(), [this](const ChunkPos2 &pos, XZInfo *info) { generate_xz_info(pos, info); });
+	    chunk_ptr->GetPosition().xz(), [this](const ChunkPos2 &pos, XZInfo *info) { generate_xz_info(pos, info); });
 
 	// base biome blocks
 	for (uint32_t y = 0; y < kChunkSize; ++y) {
@@ -19,7 +18,7 @@ void DefaultTerrain::Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk,
 		for (uint32_t z = 0; z < kChunkSize; ++z) {
 			for (uint32_t x = 0; x < kChunkSize; ++x, ++noise_index) {
 				int32_t height = xz_info->height_map[noise_index],
-				        cur_height = chunk.GetPosition().y * (int)kChunkSize + (int)y;
+				        cur_height = chunk_ptr->GetPosition().y * (int)kChunkSize + (int)y;
 				Biome biome = xz_info->biome_map[noise_index];
 				auto meta = xz_info->meta[noise_index];
 
@@ -33,9 +32,9 @@ void DefaultTerrain::Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk,
 						surface = Blocks::kSnow;
 					if (cur_height <= height) {
 						int32_t sand_height = -int32_t(meta % 4u);
-						chunk.SetBlock(x, y, z, (cur_height >= sand_height ? surface : Blocks::kStone));
+						chunk_ptr->SetBlock(x, y, z, (cur_height >= sand_height ? surface : Blocks::kStone));
 					} else if (cur_height <= 0) {
-						chunk.SetBlock(x, y, z, Blocks::kWater);
+						chunk_ptr->SetBlock(x, y, z, Blocks::kWater);
 					}
 					continue;
 				}
@@ -43,18 +42,18 @@ void DefaultTerrain::Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk,
 				switch (biome) {
 				case Biomes::kPlain:
 					if (cur_height == height) {
-						chunk.SetBlock(x, y, z, {Blocks::kGrassBlock, BlockVariants::Grass::kPlain, 0});
+						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrassBlock, BlockVariants::Grass::kPlain, 0});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 4u) - 1;
-						chunk.SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 					}
 					break;
 				case Biomes::kSavanna:
 					if (cur_height == height) {
-						chunk.SetBlock(x, y, z, {Blocks::kGrassBlock, BlockVariants::Grass::kSavanna, 0});
+						chunk_ptr->SetBlock(x, y, z, {Blocks::kGrassBlock, BlockVariants::Grass::kSavanna, 0});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
-						chunk.SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 					}
 					break;
 					// TODO: Better tundra generation
@@ -62,57 +61,58 @@ void DefaultTerrain::Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk,
 					if (cur_height <= height) {
 						if ((meta % (height + 64)) == 0) {
 							int32_t dirt_height = height - int32_t(meta % 3u);
-							chunk.SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+							chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 						} else if ((meta % (std::max(128 - height, 1))) == 0) {
 							int32_t snow_height = height - int32_t(meta % 2u);
-							chunk.SetBlock(x, y, z, cur_height >= snow_height ? Blocks::kSnow : Blocks::kStone);
+							chunk_ptr->SetBlock(x, y, z, cur_height >= snow_height ? Blocks::kSnow : Blocks::kStone);
 						} else
-							chunk.SetBlock(x, y, z, Blocks::kStone);
+							chunk_ptr->SetBlock(x, y, z, Blocks::kStone);
 					}
 				} break;
 				case Biomes::kGlacier: {
 					int32_t ice_height = height - int32_t(meta % 8u);
 					bool snow_cover = xz_info->meta[noise_index] % 16;
 					if (cur_height <= height)
-						chunk.SetBlock(x, y, z,
-						               cur_height >= ice_height
-						                   ? (snow_cover && cur_height == height ? Blocks::kSnow : Blocks::kBlueIce)
-						                   : Blocks::kStone);
+						chunk_ptr->SetBlock(
+						    x, y, z,
+						    cur_height >= ice_height
+						        ? (snow_cover && cur_height == height ? Blocks::kSnow : Blocks::kBlueIce)
+						        : Blocks::kStone);
 				} break;
 				case Biomes::kDesert: {
 					if (cur_height <= height) {
 						int32_t sand_height = height - int32_t(meta % 4u);
 						if (sand_height <= cur_height) {
-							chunk.SetBlock(x, y, z, Blocks::kSand);
+							chunk_ptr->SetBlock(x, y, z, Blocks::kSand);
 						} else {
 							int32_t sandstone_height = sand_height - int32_t(meta % 6u);
-							chunk.SetBlock(x, y, z,
-							               cur_height >= sandstone_height ? Blocks::kSandstone : Blocks::kStone);
+							chunk_ptr->SetBlock(x, y, z,
+							                    cur_height >= sandstone_height ? Blocks::kSandstone : Blocks::kStone);
 						}
 					}
 				} break;
 				case Biomes::kForest: {
 					if (cur_height == height) {
-						chunk.SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockVariants::Grass::kPlain, 0});
+						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockVariants::Grass::kPlain, 0});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
-						chunk.SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 					}
 				} break;
 				case Biomes::kTropicalForest: {
 					if (cur_height == height) {
-						chunk.SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockVariants::Grass::kTropical, 0});
+						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockVariants::Grass::kTropical, 0});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
-						chunk.SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 					}
 				} break;
 				case Biomes::kBorealForest: {
 					if (cur_height == height) {
-						chunk.SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockVariants::Grass::kBoreal, 0});
+						chunk_ptr->SetBlock(x, y, z, Block{Blocks::kGrassBlock, BlockVariants::Grass::kBoreal, 0});
 					} else if (cur_height < height) {
 						int32_t dirt_height = height - int32_t(meta % 6u) - 3;
-						chunk.SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
+						chunk_ptr->SetBlock(x, y, z, cur_height >= dirt_height ? Blocks::kDirt : Blocks::kStone);
 					}
 				} break;
 				default:
@@ -122,39 +122,40 @@ void DefaultTerrain::Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk,
 		}
 	}
 	// cave
-	if ((BlockPos1)chunk.GetPosition().y * (BlockPos1)kChunkSize <= xz_info->max_height) {
+	if ((BlockPos1)chunk_ptr->GetPosition().y * (BlockPos1)kChunkSize <= xz_info->max_height) {
 		// Generate a 16 x 16 x 16 area of noise
 		thread_local static float cave_noise_output[kChunkSize * kChunkSize * kChunkSize];
-		m_cave_noise->GenUniformGrid3D(cave_noise_output, chunk.GetPosition().x * (int)kChunkSize,
-		                               chunk.GetPosition().y * (int)kChunkSize, chunk.GetPosition().z * (int)kChunkSize,
-		                               kChunkSize, kChunkSize, kChunkSize, kCaveNoiseFrequency, (int)GetSeed());
+		m_cave_noise->GenUniformGrid3D(cave_noise_output, chunk_ptr->GetPosition().x * (int)kChunkSize,
+		                               chunk_ptr->GetPosition().y * (int)kChunkSize,
+		                               chunk_ptr->GetPosition().z * (int)kChunkSize, kChunkSize, kChunkSize, kChunkSize,
+		                               kCaveNoiseFrequency, (int)GetSeed());
 
 		for (uint32_t z = 0, noise_index = 0; z < kChunkSize; ++z) {
 			for (uint32_t y = 0; y < kChunkSize; ++y) {
 				for (uint32_t x = 0; x < kChunkSize; ++x, ++noise_index) {
-					if (cave_noise_output[noise_index] >= 0.0f && chunk.GetBlock(x, y, z) != Blocks::kWater)
-						chunk.SetBlock(x, y, z, Blocks::kAir);
+					if (cave_noise_output[noise_index] >= 0.0f && chunk_ptr->GetBlock(x, y, z) != Blocks::kWater)
+						chunk_ptr->SetBlock(x, y, z, Blocks::kAir);
 				}
 			}
 		}
 	}
 	// decorations
 	std::shared_ptr<const CombinedXZInfo> combined_xz_info = m_combined_xz_cache.Acquire(
-	    chunk.GetPosition().xz(), [&xz_info, this](const ChunkPos2 &pos, CombinedXZInfo *combined_info) {
+	    chunk_ptr->GetPosition().xz(), [&xz_info, this](const ChunkPos2 &pos, CombinedXZInfo *combined_info) {
 		    generate_combined_xz_info(pos, xz_info, combined_info);
 	    });
-	combined_xz_info->decoration.PopToChunk(chunk);
+	combined_xz_info->decoration.PopToChunk(chunk_ptr);
 	// pop light info
 	std::copy(std::begin(combined_xz_info->light_map), std::end(combined_xz_info->light_map), light_map);
 #else
 	// pressure test
-	std::mt19937 gen(chunk.GetPosition().x ^ chunk.GetPosition().y ^ chunk.GetPosition().z);
-	if (chunk.GetPosition().y <= 0) {
+	std::mt19937 gen(chunk_ptr->GetPosition().x ^ chunk_ptr->GetPosition().y ^ chunk_ptr->GetPosition().z);
+	if (chunk_ptr->GetPosition().y <= 0) {
 		for (uint32_t i = 0; i < 1000; ++i)
-			chunk.SetBlock(gen() % kChunkSize, gen() % kChunkSize, gen() % kChunkSize, gen() % 8);
+			chunk_ptr->SetBlock(gen() % kChunkSize, gen() % kChunkSize, gen() % kChunkSize, gen() % 8);
 	} else {
 		for (uint32_t i = 0; i < 10; ++i)
-			chunk.SetBlock(gen() % kChunkSize, gen() % kChunkSize, gen() % kChunkSize, gen() % 8);
+			chunk_ptr->SetBlock(gen() % kChunkSize, gen() % kChunkSize, gen() % kChunkSize, gen() % 8);
 	}
 #endif
 }
@@ -492,8 +493,8 @@ void DefaultTerrain::generate_combined_xz_info(const ChunkPos2 &pos,
 	combined_info->decoration.PopToLightMap(combined_info->light_map);
 }
 
-void DefaultTerrain::DecorationInfo::PopToChunk(const LockedChunk<ChunkLockType::kBlockRW> &chunk) const {
-	int32_t base_y = (int32_t)chunk.GetPosition().y * (int32_t)kChunkSize;
+void DefaultTerrain::DecorationInfo::PopToChunk(const std::shared_ptr<Chunk> &chunk_ptr) const {
+	int32_t base_y = (int32_t)chunk_ptr->GetPosition().y * (int32_t)kChunkSize;
 	if (m_y_max < base_y || m_y_min >= base_y + (int32_t)kChunkSize)
 		return;
 	for (const auto &i : m_blocks) {
@@ -502,10 +503,10 @@ void DefaultTerrain::DecorationInfo::PopToChunk(const LockedChunk<ChunkLockType:
 			continue;
 		uint32_t idx = ChunkXYZ2Index(i.first.x, y, i.first.z);
 		// TODO: better override condition
-		if (!i.second.GetIndirectLightPass() || chunk.GetBlock(idx) == Blocks::kAir ||
-		    chunk.GetBlock(idx) == Blocks::kWater || i.second.GetID() == Blocks::kAir ||
+		if (!i.second.GetIndirectLightPass() || chunk_ptr->GetBlock(idx) == Blocks::kAir ||
+		    chunk_ptr->GetBlock(idx) == Blocks::kWater || i.second.GetID() == Blocks::kAir ||
 		    i.second.GetID() == Blocks::kWater)
-			chunk.SetBlock(idx, i.second);
+			chunk_ptr->SetBlock(idx, i.second);
 	}
 }
 
