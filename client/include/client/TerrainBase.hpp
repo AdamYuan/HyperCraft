@@ -10,9 +10,10 @@
 
 #include <spdlog/spdlog.h>
 
+#include <client/Chunk.hpp>
+
 namespace hc::client {
 
-class Chunk;
 class TerrainBase {
 private:
 	uint32_t m_seed{};
@@ -23,7 +24,7 @@ public:
 	inline uint32_t GetSeed() const { return m_seed; }
 
 	// chunk: the chunk to be generated; peak: the estimated block peak of the y-axis (used to generate sunlight)
-	virtual void Generate(const std::shared_ptr<Chunk> &chunk_ptr, int32_t *y_peak) = 0;
+	virtual void Generate(const LockedChunk<ChunkLockType::kBlockRW> &chunk, int32_t *y_peak) = 0;
 };
 
 template <typename Key, typename T, uint32_t SIZE> class TerrainCache {

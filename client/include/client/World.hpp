@@ -127,7 +127,11 @@ public:
 		if (opt_update)
 			return opt_update.value();
 		auto chunk = m_chunk_pool.FindChunk(chunk_pos);
-		return chunk ? std::optional(chunk->GetBlock(inner_pos.x, inner_pos.y, inner_pos.z)) : std::nullopt;
+		if (chunk) {
+			auto [locked_chunk] = Chunk::Lock<ChunkLockType::kBlockR>(chunk);
+			return locked_chunk.GetBlock(inner_pos.x, inner_pos.y, inner_pos.z);
+		}
+		return std::nullopt;
 	}
 	inline void SetBlockBulk(std::span<const std::pair<BlockPos3, block::Block>> blocks) {
 		std::unordered_map<ChunkPos3, std::vector<std::pair<InnerPos3, block::Block>>> chunk_set_blocks;

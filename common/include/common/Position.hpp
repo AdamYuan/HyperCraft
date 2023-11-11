@@ -130,7 +130,7 @@ template <std::unsigned_integral T> static inline constexpr bool IsValidChunkPos
 // cmp_{x, y, z} = -1, 0, 1, indicating the neighbour's relative position
 template <std::integral T> static inline constexpr uint32_t CmpXYZ2NeighbourIndex(T cmp_x, T cmp_y, T cmp_z) {
 	constexpr uint32_t kLookUp[3] = {1, 2, 0};
-	return kLookUp[cmp_x + 1] * 9u + kLookUp[cmp_y + 1] * 3u + kLookUp[cmp_z + 1];
+	return kLookUp[cmp_x + 1] + kLookUp[cmp_y + 1] * 9u + kLookUp[cmp_z + 1] * 3u;
 }
 template <std::integral T> static inline constexpr uint32_t GetBlockChunkNeighbourIndex(T x, T y, T z) {
 	return CmpXYZ2NeighbourIndex(x < 0 ? -1 : (x >= (T)kChunkSize ? 1 : 0), y < 0 ? -1 : (y >= (T)kChunkSize ? 1 : 0),
@@ -138,10 +138,24 @@ template <std::integral T> static inline constexpr uint32_t GetBlockChunkNeighbo
 }
 template <std::signed_integral T> static inline constexpr void NeighbourIndex2CmpXYZ(uint32_t idx, T *cmp_xyz) {
 	constexpr T kRevLookUp[3] = {1, -1, 0};
-	cmp_xyz[2] = kRevLookUp[idx % 3u];
+	cmp_xyz[0] = kRevLookUp[idx % 3u];
 	idx /= 3u;
-	cmp_xyz[1] = kRevLookUp[idx % 3u];
-	cmp_xyz[0] = kRevLookUp[idx / 3u];
+	cmp_xyz[2] = kRevLookUp[idx % 3u];
+	cmp_xyz[1] = kRevLookUp[idx / 3u];
+}
+
+template <std::integral T> static inline constexpr uint32_t CmpXYZ2SurroundIndex(T cmp_x, T cmp_y, T cmp_z) {
+	return (cmp_x + 1) + (cmp_y + 1) * 9u + (cmp_z + 1) * 3u;
+}
+template <std::integral T> static inline constexpr uint32_t GetBlockChunkSurroundIndex(T x, T y, T z) {
+	return CmpXYZ2SurroundIndex(x < 0 ? -1 : (x >= (T)kChunkSize ? 1 : 0), y < 0 ? -1 : (y >= (T)kChunkSize ? 1 : 0),
+	                            z < 0 ? -1 : (z >= (T)kChunkSize ? 1 : 0));
+}
+template <std::signed_integral T> static inline constexpr void SurroundIndex2CmpXYZ(uint32_t idx, T *cmp_xyz) {
+	cmp_xyz[0] = idx % 3u;
+	idx /= 3u;
+	cmp_xyz[2] = idx % 3u;
+	cmp_xyz[1] = idx / 3u;
 }
 
 } // namespace hc

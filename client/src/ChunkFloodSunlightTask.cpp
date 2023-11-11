@@ -3,6 +3,7 @@
 #include <client/World.hpp>
 
 #include <glm/gtx/hash.hpp>
+#include <unordered_set>
 
 namespace hc::client {
 
@@ -43,29 +44,40 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 
 	const auto &up_chunk = data.GetUpChunkPtr(), &chunk = data.GetChunkPtr();
 
-	for (auto xz : xz_updates) {
-		uint32_t xz_idx = ChunkXZ2Index(xz.x, xz.y);
+	{
+		auto [locked_chunk, locked_up_chunk] =
+		    Chunk::Lock<ChunkLockType::kBlockRSunlightRW, ChunkLockType::kSunlightR>(chunk, up_chunk);
 
-		auto up_sl = up_chunk->GetSunlightHeight(xz_idx), sl = chunk->GetSunlightHeight(xz_idx);
-		if (up_sl > 0) {
-			if (sl != kChunkSize) {
-				set_sunlights.emplace_back(xz, kChunkSize);
-				xz_next_updates.push_back(xz);
+		for (auto xz : xz_updates) {
+			uint32_t xz_idx = ChunkXZ2Index(xz.x, xz.y);
+
+			auto up_sl = locked_up_chunk.GetSunlightHeight(xz_idx), sl = locked_chunk.GetSunlightHeight(xz_idx);
+			if (up_sl > 0) {
+				if (sl != kChunkSize) {
+					set_sunlights.emplace_back(xz, kChunkSize);
+					xz_next_updates.push_back(xz);
+				}
+			} else {
+				InnerPos1 y;
+				for (y = kChunkSize - 1;
+				     (~y) &&
+				     locked_chunk.GetBlock(xz_idx + (uint32_t)y * kChunkSize * kChunkSize).GetVerticalLightPass();
+				     --y)
+					;
+				++y;
+				if (sl != y)
+					set_sunlights.emplace_back(xz, y);
+				if ((sl == 0) != (y == 0))
+					xz_next_updates.push_back(xz);
 			}
-		} else {
-			InnerPos1 y;
-			for (y = kChunkSize - 1;
-			     (~y) && chunk->GetBlock(xz_idx + (uint32_t)y * kChunkSize * kChunkSize).GetVerticalLightPass(); --y)
-				;
-			++y;
-			if (sl != y)
-				set_sunlights.emplace_back(xz, y);
-			if ((sl == 0) != (y == 0))
-				xz_next_updates.push_back(xz);
 		}
+		locked_up_chunk.Unlock();
+
+		ChunkTaskRunner<ChunkTaskType::kSetSunlight>::RunWithoutData(
+		    p_task_pool, locked_chunk.As<ChunkLockType::kSunlightRW>(), set_sunlights, data.IsHighPriority(),
+		    [&locked_chunk]() { locked_chunk.Unlock(); });
+		// TODO: add to update pool
 	}
-	p_task_pool->GetWorld().m_chunk_update_pool.SetSunlightUpdateBulk(chunk->GetPosition(), set_sunlights,
-	                                                                  data.IsHighPriority());
 
 	auto down_chunk_pos = chunk->GetPosition();
 	--down_chunk_pos.y;

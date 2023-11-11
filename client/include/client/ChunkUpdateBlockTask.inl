@@ -37,8 +37,12 @@ public:
 	inline ChunkTaskRunnerData(std::array<std::shared_ptr<Chunk>, 27> &&chunk_ptr_array,
 	                           std::vector<InnerPos3> &&updates)
 	    : m_chunk_ptr_array{std::move(chunk_ptr_array)}, m_updates{std::move(updates)} {}
-	inline const ChunkPos3 &GetChunkPos() const { return m_chunk_ptr_array[26]->GetPosition(); }
-	inline const std::shared_ptr<Chunk> &GetChunkPtr() const { return m_chunk_ptr_array[26]; }
+	inline const ChunkPos3 &GetChunkPos() const {
+		return m_chunk_ptr_array[CmpXYZ2SurroundIndex(0, 0, 0)]->GetPosition();
+	}
+	inline const std::shared_ptr<Chunk> &GetChunkPtr() const {
+		return m_chunk_ptr_array[CmpXYZ2SurroundIndex(0, 0, 0)];
+	}
 	inline const auto &GetChunkPtrArray() const { return m_chunk_ptr_array; }
 	inline const auto &GetUpdates() const { return m_updates; }
 };
