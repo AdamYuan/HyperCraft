@@ -26,17 +26,17 @@ ChunkTaskData<ChunkTaskType::kUpdateBlock>::Pop(const ChunkTaskPoolLocked &task_
 		chunks[i] = std::move(nei_chunk);
 	}
 
-	std::vector<InnerPos3> updates_to_apply;
+	std::vector<InnerIndex3> updates_to_apply;
 
 	uint64_t current_tick = task_pool.GetWorld().GetCurrentTick();
 	for (auto it = m_updates.begin(); it != m_updates.end();) {
-		auto pos = it->first;
-		auto block = chunk->GetBlock(pos.x, pos.y, pos.z);
+		auto idx = it->first;
+		auto block = chunk->GetBlock(idx);
 
 		if (block.GetEvent() == nullptr || block.GetEvent()->on_update_func == nullptr)
 			it = m_updates.erase(it);
 		else if (it->second + block.GetEvent()->update_tick_interval <= current_tick) {
-			updates_to_apply.push_back(pos);
+			updates_to_apply.push_back(idx);
 			it = m_updates.erase(it);
 		} else
 			++it;
@@ -59,8 +59,9 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 
 	std::vector<ChunkSetBlock> set_blocks[27];
 
-	for (const auto &update_pos : data.GetUpdates()) {
-		const auto *p_blk_event = chunk->GetBlock(update_pos.x, update_pos.y, update_pos.z).GetEvent();
+	for (const auto &update_idx : data.GetUpdates()) {
+		auto update_pos = ChunkIndex2XYZ(update_idx);
+		const auto *p_blk_event = chunk->GetBlock(update_idx).GetEvent();
 		if (!p_blk_event || !p_blk_event->on_update_func)
 			continue;
 		for (uint32_t i = 0; i < p_blk_event->update_neighbour_count; ++i) {

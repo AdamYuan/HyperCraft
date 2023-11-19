@@ -8,13 +8,13 @@ namespace hc::client {
 template <>
 class ChunkTaskData<ChunkTaskType::kUpdateBlock> final : public ChunkTaskDataBase<ChunkTaskType::kUpdateBlock> {
 private:
-	std::unordered_map<InnerPos3, uint64_t> m_updates;
+	std::unordered_map<InnerIndex3, uint64_t> m_updates;
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kUpdateBlock;
 
-	inline void Push(InnerPos3 update, uint64_t tick) { m_updates[update] = tick; }
-	inline void Push(std::span<const InnerPos3> updates, uint64_t tick) {
+	inline void Push(InnerIndex3 update, uint64_t tick) { m_updates[update] = tick; }
+	inline void Push(std::span<const InnerIndex3> updates, uint64_t tick) {
 		for (const auto &pos : updates)
 			m_updates[pos] = tick;
 	}
@@ -29,13 +29,13 @@ public:
 template <> class ChunkTaskRunnerData<ChunkTaskType::kUpdateBlock> {
 private:
 	std::array<std::shared_ptr<Chunk>, 27> m_chunk_ptr_array;
-	std::vector<InnerPos3> m_updates;
+	std::vector<InnerIndex3> m_updates;
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kUpdateBlock;
 
 	inline ChunkTaskRunnerData(std::array<std::shared_ptr<Chunk>, 27> &&chunk_ptr_array,
-	                           std::vector<InnerPos3> &&updates)
+	                           std::vector<InnerIndex3> &&updates)
 	    : m_chunk_ptr_array{std::move(chunk_ptr_array)}, m_updates{std::move(updates)} {}
 	inline const ChunkPos3 &GetChunkPos() const { return m_chunk_ptr_array[26]->GetPosition(); }
 	inline const std::shared_ptr<Chunk> &GetChunkPtr() const { return m_chunk_ptr_array[26]; }

@@ -35,8 +35,8 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 
 	std::bitset<27> neighbour_remesh_set{};
 
-	std::unordered_set<InnerPos2> flood_sunlights;
-	std::unordered_set<InnerPos3> block_updates[27];
+	std::unordered_set<InnerIndex2> flood_sunlights;
+	std::unordered_set<InnerIndex3> block_updates[27];
 
 	for (const auto &block_change : block_changes) {
 		auto block_idx = block_change.first;
@@ -50,7 +50,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		const auto register_block_update = [&block_updates](InnerPos3 pos) {
 			auto [rel_chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(BlockPos3(pos));
 			uint32_t chunk_idx = CmpXYZ2NeighbourIndex(rel_chunk_pos.x, rel_chunk_pos.y, rel_chunk_pos.z);
-			block_updates[chunk_idx].insert(inner_pos);
+			block_updates[chunk_idx].insert(ChunkXYZ2Index(inner_pos));
 		};
 		register_block_update(block_pos);
 		register_block_update({block_pos.x - 1, block_pos.y, block_pos.z});
@@ -60,7 +60,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		register_block_update({block_pos.x, block_pos.y, block_pos.z - 1});
 		register_block_update({block_pos.x, block_pos.y, block_pos.z + 1});
 
-		flood_sunlights.emplace(block_pos.x, block_pos.z);
+		flood_sunlights.emplace(ChunkXZ2Index(block_pos.x, block_pos.z));
 
 		neighbour_remesh_set[26] = true;
 		for (uint32_t i = 0; i < 26; ++i) {
@@ -83,12 +83,12 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		// Trigger block update
 		if (!block_updates[i].empty()) {
 			p_task_pool->Push<ChunkTaskType::kUpdateBlock>(
-			    nei_pos, std::vector<InnerPos3>(block_updates[i].begin(), block_updates[i].end()), current_tick);
+			    nei_pos, std::vector<InnerIndex3>(block_updates[i].begin(), block_updates[i].end()), current_tick);
 		}
 	}
 
 	// Trigger sunlight flood
-	auto flood_sunlight_vec = std::vector<InnerPos2>{flood_sunlights.begin(), flood_sunlights.end()};
+	auto flood_sunlight_vec = std::vector<InnerIndex2>{flood_sunlights.begin(), flood_sunlights.end()};
 	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(chunk->GetPosition(), std::span{flood_sunlight_vec}, true);
 }
 
