@@ -49,6 +49,7 @@ ChunkTaskData<ChunkTaskType::kUpdateBlock>::Pop(const ChunkTaskPoolLocked &task_
 
 void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_pool,
                                                        ChunkTaskRunnerData<ChunkTaskType::kUpdateBlock> &&data) {
+	// TODO: Implement OCC transaction
 	const auto &neighbour_chunks = data.GetChunkPtrArray();
 	const auto &chunk = neighbour_chunks.back();
 
@@ -56,7 +57,7 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 		return neighbour_chunks[Chunk::GetBlockNeighbourIndex(x, y, z)]->GetBlockFromNeighbour(x, y, z);
 	};
 
-	std::vector<std::pair<InnerPos3, block::Block>> set_blocks[27];
+	std::vector<ChunkSetBlock> set_blocks[27];
 
 	for (const auto &update_pos : data.GetUpdates()) {
 		const auto *p_blk_event = chunk->GetBlock(update_pos.x, update_pos.y, update_pos.z).GetEvent();
@@ -81,7 +82,8 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 			InnerPos3 set_pos = m_update_neighbour_pos[i];
 			auto [rel_chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(BlockPos3(set_pos));
 			uint32_t nei_chunk_idx = CmpXYZ2NeighbourIndex(rel_chunk_pos.x, rel_chunk_pos.y, rel_chunk_pos.z);
-			set_blocks[nei_chunk_idx].emplace_back(inner_pos, set_blk);
+			set_blocks[nei_chunk_idx].push_back(
+			    {(InnerIndex3)ChunkXYZ2Index(inner_pos), set_blk, ChunkUpdateType::kLocal});
 		}
 	}
 

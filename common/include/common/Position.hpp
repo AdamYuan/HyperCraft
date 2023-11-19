@@ -27,6 +27,9 @@ struct InnerPosCompare {
 	bool operator()(InnerPos3 l, InnerPos3 r) const { return std::tie(l.x, l.y, l.z) < std::tie(r.x, r.y, r.z); }
 };
 
+using InnerIndex3 = uint16_t;
+using InnerIndex2 = uint16_t;
+
 static_assert(std::numeric_limits<InnerPos1>::max() >= kChunkSize);
 
 using ChunkPos1 = int16_t;
@@ -102,6 +105,10 @@ template <std::integral T> static inline constexpr uint32_t ChunkXYZ2Index(T x, 
 	return x + (y * kChunkSize + z) * kChunkSize;
 }
 
+template <std::integral T> static inline constexpr uint32_t ChunkXYZ2Index(const glm::vec<3, T> &xyz) {
+	return xyz[0] + (xyz[1] * kChunkSize + xyz[2]) * kChunkSize;
+}
+
 template <std::integral T> static inline constexpr void ChunkIndex2XZ(uint32_t idx, T *xz) {
 	xz[0] = idx % kChunkSize;
 	xz[1] = idx / kChunkSize;
@@ -113,6 +120,9 @@ template <std::integral T = InnerPos1> static inline constexpr glm::vec<2, T> Ch
 	return xz;
 }
 template <std::integral T> static inline constexpr uint32_t ChunkXZ2Index(T x, T z) { return x + z * kChunkSize; }
+template <std::integral T> static inline constexpr uint32_t ChunkXZ2Index(const glm::vec<2, T> &xz) {
+	return xz[0] + xz[1] * kChunkSize;
+}
 
 template <std::signed_integral T> static inline constexpr bool IsValidChunkPosition(T x, T y, T z) {
 	return x >= 0 && x < (T)kChunkSize && y >= 0 && y < (T)kChunkSize && z >= 0 && z < (T)kChunkSize;

@@ -26,14 +26,9 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 
 	client->GetTerrain()->Generate(chunk_ptr);
 	// apply block updates
-	auto block_updates = p_task_pool->GetWorld().GetChunkUpdatePool().GetBlockUpdateBulk(chunk_ptr->GetPosition());
-	for (const auto &u : block_updates)
-		chunk_ptr->SetBlock(u.first.x, u.first.y, u.first.z, u.second);
+	p_task_pool->GetWorld().m_chunk_update_pool.ApplyBlockUpdates(chunk_ptr);
 	// apply sunlight updates
-	auto sunlight_updates =
-	    p_task_pool->GetWorld().GetChunkUpdatePool().GetSunlightUpdateBulk(chunk_ptr->GetPosition());
-	for (const auto &u : sunlight_updates)
-		chunk_ptr->SetSunlightHeight(u.first.x, u.first.y, u.second);
+	p_task_pool->GetWorld().m_chunk_update_pool.ApplySunlightUpdates(chunk_ptr);
 
 	chunk_ptr->SetGeneratedFlag();
 

@@ -36,7 +36,7 @@ private:
 	friend class ChunkTaskPoolLocked;
 
 public:
-	inline bool NotIdle() const { return static_cast<const ChunkTaskData<Type> *>(this)->IsQueued() || m_running; }
+	[[nodiscard]] inline bool NotIdle() const { return static_cast<const ChunkTaskData<Type> *>(this)->IsQueued() || m_running; }
 };
 
 } // namespace hc::client
@@ -144,15 +144,15 @@ private:
 public:
 	inline explicit ChunkTaskPoolLocked(ChunkTaskPool *p_pool)
 	    : m_world{p_pool->m_world}, m_data_map{p_pool->m_data_map.lock_table()} {}
-	inline const World &GetWorld() const { return m_world; }
+	[[nodiscard]] inline const World &GetWorld() const { return m_world; }
 	inline World &GetWorld() { return m_world; }
 
-	template <ChunkTaskType... TaskTypes> inline bool AllNotIdle(const ChunkPos3 &chunk_pos) const {
+	template <ChunkTaskType... TaskTypes> [[nodiscard]] inline bool AllNotIdle(const ChunkPos3 &chunk_pos) const {
 		auto it = m_data_map.find(chunk_pos);
 		return !(it == m_data_map.end()) &&
 		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() && ...);
 	}
-	template <ChunkTaskType... TaskTypes> inline bool AnyNotIdle(const ChunkPos3 &chunk_pos) const {
+	template <ChunkTaskType... TaskTypes> [[nodiscard]] inline bool AnyNotIdle(const ChunkPos3 &chunk_pos) const {
 		auto it = m_data_map.find(chunk_pos);
 		return !(it == m_data_map.end()) &&
 		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() || ...);
@@ -168,7 +168,7 @@ public:
 			Push<TaskType>(*it, args...);
 	}
 
-	inline const auto &GetDataMap() const { return m_data_map; }
+	[[nodiscard]] inline const auto &GetDataMap() const { return m_data_map; }
 	inline auto &GetDataMap() { return m_data_map; }
 };
 

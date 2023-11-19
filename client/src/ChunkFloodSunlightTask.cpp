@@ -39,7 +39,7 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 	std::unordered_set<InnerPos2> xz_updates{data.GetXZUpdates().begin(), data.GetXZUpdates().end()};
 	std::vector<InnerPos2> xz_next_updates;
 
-	std::vector<std::pair<InnerPos2, InnerPos1>> set_sunlights;
+	std::vector<ChunkSetSunlight> set_sunlights;
 
 	const auto &up_chunk = data.GetUpChunkPtr(), &chunk = data.GetChunkPtr();
 
@@ -49,7 +49,7 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 		auto up_sl = up_chunk->GetSunlightHeight(xz_idx), sl = chunk->GetSunlightHeight(xz_idx);
 		if (up_sl > 0) {
 			if (sl != kChunkSize) {
-				set_sunlights.emplace_back(xz, kChunkSize);
+				set_sunlights.push_back({(InnerIndex2)xz_idx, kChunkSize, ChunkUpdateType::kLocal});
 				xz_next_updates.push_back(xz);
 			}
 		} else {
@@ -59,7 +59,7 @@ void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_p
 				;
 			++y;
 			if (sl != y)
-				set_sunlights.emplace_back(xz, y);
+				set_sunlights.push_back({(InnerIndex2)xz_idx, y, ChunkUpdateType::kLocal});
 			if ((sl == 0) != (y == 0))
 				xz_next_updates.push_back(xz);
 		}

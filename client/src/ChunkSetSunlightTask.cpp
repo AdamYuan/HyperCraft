@@ -23,17 +23,19 @@ ChunkTaskData<ChunkTaskType::kSetSunlight>::Pop(const ChunkTaskPoolLocked &task_
 
 void ChunkTaskRunner<ChunkTaskType::kSetSunlight>::Run(ChunkTaskPool *p_task_pool,
                                                        ChunkTaskRunnerData<ChunkTaskType::kSetSunlight> &&data) {
-	std::unordered_map<InnerPos2, InnerPos1> sunlight_changes;
+	std::unordered_map<InnerIndex2, InnerPos1> sunlight_changes;
 	for (const auto &set_sunlight : data.GetSetSunlights())
-		sunlight_changes[set_sunlight.first] = set_sunlight.second;
+		sunlight_changes[set_sunlight.index] = set_sunlight.sunlight;
+
+	// TODO: trigger server event for local changes
 
 	const auto &chunk = data.GetChunkPtr();
 
 	std::bitset<27> neighbour_remesh_set{};
 
 	for (const auto &sunlight_change : sunlight_changes) {
-		auto xz_pos = sunlight_change.first;
-		auto xz_idx = ChunkXZ2Index(xz_pos.x, xz_pos.y);
+		auto xz_idx = sunlight_change.first;
+		auto xz_pos = ChunkIndex2XZ(xz_idx);
 		auto new_sunlight = sunlight_change.second, old_sunlight = chunk->GetSunlightHeight(xz_idx);
 		if (new_sunlight == old_sunlight)
 			continue;

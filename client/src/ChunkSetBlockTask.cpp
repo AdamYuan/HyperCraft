@@ -25,9 +25,11 @@ ChunkTaskData<ChunkTaskType::kSetBlock>::Pop(const ChunkTaskPoolLocked &task_poo
 
 void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
                                                     ChunkTaskRunnerData<ChunkTaskType::kSetBlock> &&data) {
-	std::unordered_map<InnerPos3, block::Block> block_changes;
+	std::unordered_map<InnerIndex3, block::Block> block_changes;
 	for (const auto &set_block : data.GetSetBlocks())
-		block_changes[set_block.first] = set_block.second;
+		block_changes[set_block.index] = set_block.block;
+
+	// TODO: trigger server event for local changes
 
 	const auto &chunk = data.GetChunkPtr();
 
@@ -37,8 +39,8 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 	std::unordered_set<InnerPos3> block_updates[27];
 
 	for (const auto &block_change : block_changes) {
-		auto block_pos = block_change.first;
-		auto block_idx = ChunkXYZ2Index(block_pos.x, block_pos.y, block_pos.z);
+		auto block_idx = block_change.first;
+		auto block_pos = ChunkIndex2XYZ(block_idx);
 		auto new_block = block_change.second, old_block = chunk->GetBlock(block_idx);
 		if (new_block == old_block)
 			continue;
