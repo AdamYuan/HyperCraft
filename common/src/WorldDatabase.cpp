@@ -107,7 +107,7 @@ void WorldDatabase::SetSunlights(ChunkPos3 chunk_pos, std::span<const DBChunkSun
 
 	std::unordered_map<InnerIndex2, InnerPos1> sunlight_map;
 	for (auto b : sunlights)
-		sunlight_map[b.index] = b.sunlight;
+		sunlight_map[b.GetIndex()] = b.GetSunlight();
 
 	MDB_txn *txn{};
 	mdb_txn_begin(m_env, nullptr, 0, &txn);
@@ -117,9 +117,9 @@ void WorldDatabase::SetSunlights(ChunkPos3 chunk_pos, std::span<const DBChunkSun
 	if (mdb_get(txn, m_sunlight_db, &key, &val) != MDB_NOTFOUND) {
 		entries = {(DBChunkSunlightEntry *)val.mv_data, (DBChunkSunlightEntry *)((uint8_t *)val.mv_data + val.mv_size)};
 		for (auto &entry : entries) {
-			auto it = sunlight_map.find(entry.index);
+			auto it = sunlight_map.find(entry.GetIndex());
 			if (it != sunlight_map.end()) {
-				entry.sunlight = it->second;
+				entry = {it->first, it->second};
 				sunlight_map.erase(it);
 			}
 		}

@@ -15,11 +15,17 @@ struct DBChunkBlockEntry {
 	block::Block block;
 };
 static_assert(sizeof(DBChunkBlockEntry) == 4);
-struct DBChunkSunlightEntry {
-	InnerIndex2 index : 10;
-	InnerPos1 sunlight : 6;
+
+class DBChunkSunlightEntry {
+private:
+	uint16_t m_data{};
+
+public:
+	inline DBChunkSunlightEntry(InnerIndex2 index, InnerPos1 sunlight) : m_data((index << 6u) | sunlight) {}
+	inline InnerIndex2 GetIndex() const { return m_data >> 6u; }
+	inline InnerPos1 GetSunlight() const { return m_data & 0x3fu; }
 };
-static_assert((kChunkSize + 1) <= (1 << 6) && (kChunkSize * kChunkSize <= (1 << 10)));
+static_assert((kChunkSize + 1) <= (1 << 6) && kChunkSize * kChunkSize <= (1 << 10));
 static_assert(sizeof(DBChunkSunlightEntry) == 2);
 
 struct DBChunk {
