@@ -31,4 +31,16 @@ LocalClient::~LocalClient() {
 	m_tick_thread.join();
 }
 
+std::vector<std::future<ClientChunk>> LocalClient::LoadChunks(std::span<const ChunkPos3> chunk_pos_s) {
+	return {};
+}
+
+void LocalClient::SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ClientChunkBlock> blocks) {
+
+}
+
+void LocalClient::SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ClientChunkSunlight> sunlights) {
+
+}
+
 } // namespace hc::client

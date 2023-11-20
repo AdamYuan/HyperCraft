@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Trait.hpp"
+#include <algorithm>
 #include <block/Block.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <texture/BlockTexture.hpp>

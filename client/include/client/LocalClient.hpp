@@ -23,9 +23,9 @@ public:
 
 	static std::shared_ptr<LocalClient> Create(const std::shared_ptr<World> &world_ptr, const char *database_filename);
 
-	std::vector<std::future<ClientChunk>> LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final { return {}; }
-	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ClientChunkBlock> blocks) final {}
-	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ClientChunkSunlight> sunlights) final {}
+	std::vector<std::future<ClientChunk>> LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final;
+	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ClientChunkBlock> blocks) final;
+	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ClientChunkSunlight> sunlights) final;
 };
 
 } // namespace hc::client

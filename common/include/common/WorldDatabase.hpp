@@ -6,6 +6,7 @@
 #include <lmdb.h>
 #include <memory>
 #include <span>
+#include <vector>
 
 namespace hc {
 
@@ -32,8 +33,7 @@ private:
 	MDB_dbi m_config_db{}, m_block_db{}, m_sunlight_db{};
 
 public:
-	static std::unique_ptr<WorldDatabase> Create(const char *filename,
-	                                             std::size_t max_size = 1024 * 1024 * 1024);
+	static std::unique_ptr<WorldDatabase> Create(const char *filename, std::size_t max_size = 1024 * 1024 * 1024);
 
 	void SetSeed(uint32_t seed);
 	[[nodiscard]] uint32_t GetSeed() const;
