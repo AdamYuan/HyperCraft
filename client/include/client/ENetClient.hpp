@@ -9,7 +9,7 @@
 
 namespace hc::client {
 
-class ENetClient : public ClientBase, public std::enable_shared_from_this<ENetClient> {
+class ENetClient final : public ClientBase, public std::enable_shared_from_this<ENetClient> {
 private:
 	ENetHost *m_host{};
 	ENetPeer *m_peer{nullptr};
@@ -18,17 +18,21 @@ private:
 	ENetPeer *connect(std::string &&host, uint16_t port, uint32_t timeout);
 
 public:
-	~ENetClient() override = default;
+	~ENetClient() final = default;
 	static std::shared_ptr<ENetClient> Create(const std::shared_ptr<World> &world_ptr, const char *host, uint16_t port,
 	                                          uint32_t timeout = 5000);
 
-	bool IsConnected() override;
+	bool IsConnected() final;
 	void Disconnect() {
 		if (m_peer) {
 			enet_peer_disconnect(m_peer, ENET_EVENT_TYPE_DISCONNECT);
 			m_peer = nullptr;
 		}
 	}
+
+	std::vector<std::future<ClientChunk>> LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final { return {}; }
+	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ClientChunkBlock> blocks) final {}
+	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ClientChunkSunlight> sunlights) final {}
 };
 
 } // namespace hc::client

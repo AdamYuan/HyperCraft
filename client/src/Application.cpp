@@ -242,9 +242,10 @@ Application::Application() {
 	m_camera->m_speed = 32.0f;
 
 	m_world_renderer = WorldRenderer::Create(m_device, m_world);
-	m_client = LocalClient::Create(m_world, "world.db"); // Should be placed before worker creation
+	m_client = LocalClient::Create(m_world, "world"); // Should be placed before worker creation
 
-	m_world_worker = WorldWorker::Create(m_world, std::thread::hardware_concurrency() * 3 / 4);
+	m_world_worker = WorldWorker::Create(m_world);
+	m_world_worker->Launch(std::thread::hardware_concurrency() * 3 / 4);
 
 	for (auto &world_rg : m_world_render_graphs) {
 		world_rg = rg::WorldRenderGraph::Create(m_main_queue, m_frame_manager, m_world_renderer, m_global_texture);
@@ -283,7 +284,7 @@ void Application::Run() {
 		ImGui::DragFloat("day night", &m_day_night, 0.01f, 0.0f, 1.0f);
 
 		if (ImGui::DragInt("concurrency", &concurrency, 1, 1, (int)std::thread::hardware_concurrency()))
-			m_world_worker->Relaunch(std::clamp<std::size_t>(concurrency, 1, std::thread::hardware_concurrency()));
+			m_world_worker->Launch(std::clamp<std::size_t>(concurrency, 1, std::thread::hardware_concurrency()));
 
 		ImGui::End();
 

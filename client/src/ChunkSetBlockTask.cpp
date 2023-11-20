@@ -40,7 +40,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 
 	for (const auto &block_change : block_changes) {
 		auto block_idx = block_change.first;
-		auto block_pos = ChunkIndex2XYZ(block_idx);
+		auto block_pos = InnerPos3FromIndex(block_idx);
 		auto new_block = block_change.second, old_block = chunk->GetBlock(block_idx);
 		if (new_block == old_block)
 			continue;
@@ -50,7 +50,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		const auto register_block_update = [&block_updates](InnerPos3 pos) {
 			auto [rel_chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(BlockPos3(pos));
 			uint32_t chunk_idx = CmpXYZ2NeighbourIndex(rel_chunk_pos.x, rel_chunk_pos.y, rel_chunk_pos.z);
-			block_updates[chunk_idx].insert(ChunkXYZ2Index(inner_pos));
+			block_updates[chunk_idx].insert(InnerIndex3FromPos(inner_pos));
 		};
 		register_block_update(block_pos);
 		register_block_update({block_pos.x - 1, block_pos.y, block_pos.z});
@@ -60,7 +60,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetBlock>::Run(ChunkTaskPool *p_task_pool,
 		register_block_update({block_pos.x, block_pos.y, block_pos.z - 1});
 		register_block_update({block_pos.x, block_pos.y, block_pos.z + 1});
 
-		flood_sunlights.emplace(ChunkXZ2Index(block_pos.x, block_pos.z));
+		flood_sunlights.emplace(InnerIndex2FromPos(block_pos.x, block_pos.z));
 
 		neighbour_remesh_set[26] = true;
 		for (uint32_t i = 0; i < 26; ++i) {

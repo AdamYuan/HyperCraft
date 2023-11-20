@@ -24,7 +24,7 @@ public:
 	void SetBlockUpdateBulk(ChunkPos3 chunk_pos, std::span<const ChunkSetBlock> set_blocks, bool active);
 	inline std::optional<block::Block> GetBlockUpdate(ChunkPos3 chunk_pos, InnerPos3 inner_pos) const {
 		std::optional<block::Block> ret = std::nullopt;
-		InnerIndex3 idx = ChunkXYZ2Index(inner_pos);
+		InnerIndex3 idx = InnerIndex3FromPos(inner_pos);
 		m_block_updates.find_fn(chunk_pos, [idx, &ret](auto &data) {
 			auto it = data.find(idx);
 			if (it != data.end())
@@ -53,7 +53,7 @@ public:
 
 	inline std::optional<InnerPos1> GetSunlightUpdate(ChunkPos3 chunk_pos, InnerPos2 inner_pos) const {
 		std::optional<InnerPos1> ret = std::nullopt;
-		InnerIndex2 idx = ChunkXZ2Index(inner_pos);
+		InnerIndex2 idx = InnerIndex2FromPos(inner_pos);
 		m_sunlight_updates.find_fn(chunk_pos, [idx, &ret](auto &data) {
 			auto it = data.find(idx);
 			if (it != data.end())

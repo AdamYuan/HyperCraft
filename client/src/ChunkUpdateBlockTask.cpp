@@ -60,7 +60,7 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 	std::vector<ChunkSetBlock> set_blocks[27];
 
 	for (const auto &update_idx : data.GetUpdates()) {
-		auto update_pos = ChunkIndex2XYZ(update_idx);
+		auto update_pos = InnerPos3FromIndex(update_idx);
 		const auto *p_blk_event = chunk->GetBlock(update_idx).GetEvent();
 		if (!p_blk_event || !p_blk_event->on_update_func)
 			continue;
@@ -84,7 +84,7 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 			auto [rel_chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(BlockPos3(set_pos));
 			uint32_t nei_chunk_idx = CmpXYZ2NeighbourIndex(rel_chunk_pos.x, rel_chunk_pos.y, rel_chunk_pos.z);
 			set_blocks[nei_chunk_idx].push_back(
-			    {(InnerIndex3)ChunkXYZ2Index(inner_pos), set_blk, ChunkUpdateType::kLocal});
+			    {(InnerIndex3)InnerIndex3FromPos(inner_pos), set_blk, ChunkUpdateType::kLocal});
 		}
 	}
 

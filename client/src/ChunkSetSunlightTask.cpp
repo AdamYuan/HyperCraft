@@ -35,7 +35,7 @@ void ChunkTaskRunner<ChunkTaskType::kSetSunlight>::Run(ChunkTaskPool *p_task_poo
 
 	for (const auto &sunlight_change : sunlight_changes) {
 		auto xz_idx = sunlight_change.first;
-		auto xz_pos = ChunkIndex2XZ(xz_idx);
+		auto xz_pos = InnerPos2FromIndex(xz_idx);
 		auto new_sunlight = sunlight_change.second, old_sunlight = chunk->GetSunlightHeight(xz_idx);
 		if (new_sunlight == old_sunlight)
 			continue;

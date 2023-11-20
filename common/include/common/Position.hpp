@@ -21,14 +21,8 @@ using InnerPos1 = int8_t;
 using InnerPos2 = glm::vec<2, InnerPos1>;
 using InnerPos3 = glm::vec<3, InnerPos1>;
 
-struct InnerPosCompare {
-	bool operator()(InnerPos1 l, InnerPos1 r) const { return l < r; }
-	bool operator()(InnerPos2 l, InnerPos2 r) const { return std::tie(l.x, l.y) < std::tie(r.x, r.y); }
-	bool operator()(InnerPos3 l, InnerPos3 r) const { return std::tie(l.x, l.y, l.z) < std::tie(r.x, r.y, r.z); }
-};
-
-using InnerIndex3 = uint16_t;
 using InnerIndex2 = uint16_t;
+using InnerIndex3 = uint16_t;
 
 static_assert(std::numeric_limits<InnerPos1>::max() >= kChunkSize);
 
@@ -87,13 +81,13 @@ static inline constexpr uint32_t ChunkPosDistance2(const ChunkPos3 &l, const Chu
 	return ChunkPosLength2(l - r);
 }
 
-template <std::integral T> static inline constexpr void ChunkIndex2XYZ(uint32_t idx, T *xyz) {
-	xyz[0] = idx % kChunkSize;
-	idx /= kChunkSize;
-	xyz[2] = idx % kChunkSize;
-	xyz[1] = idx / kChunkSize;
-}
-template <std::integral T = InnerPos1> static inline constexpr glm::vec<3, T> ChunkIndex2XYZ(uint32_t idx) {
+/* template <std::integral T> static inline constexpr void InnerPos3FromIndex(InnerIndex3 idx, T *xyz) {
+    xyz[0] = idx % kChunkSize;
+    idx /= kChunkSize;
+    xyz[2] = idx % kChunkSize;
+    xyz[1] = idx / kChunkSize;
+} */
+template <std::integral T = InnerPos1> static inline constexpr glm::vec<3, T> InnerPos3FromIndex(InnerIndex3 idx) {
 	glm::vec<3, T> xyz;
 	xyz[0] = idx % kChunkSize;
 	idx /= kChunkSize;
@@ -101,39 +95,42 @@ template <std::integral T = InnerPos1> static inline constexpr glm::vec<3, T> Ch
 	xyz[1] = idx / kChunkSize;
 	return xyz;
 }
-template <std::integral T> static inline constexpr uint32_t ChunkXYZ2Index(T x, T y, T z) {
+template <std::integral T> static inline constexpr InnerIndex3 InnerIndex3FromPos(T x, T y, T z) {
 	return x + (y * kChunkSize + z) * kChunkSize;
 }
 
-template <std::integral T> static inline constexpr uint32_t ChunkXYZ2Index(const glm::vec<3, T> &xyz) {
+template <std::integral T> static inline constexpr InnerIndex3 InnerIndex3FromPos(const glm::vec<3, T> &xyz) {
 	return xyz[0] + (xyz[1] * kChunkSize + xyz[2]) * kChunkSize;
 }
 
-template <std::integral T> static inline constexpr void ChunkIndex2XZ(uint32_t idx, T *xz) {
-	xz[0] = idx % kChunkSize;
-	xz[1] = idx / kChunkSize;
-}
-template <std::integral T = InnerPos1> static inline constexpr glm::vec<2, T> ChunkIndex2XZ(uint32_t idx) {
+/* template <std::integral T> static inline constexpr void InnerPos2FromIndex(InnerIndex2 idx, T *xz) {
+    xz[0] = idx % kChunkSize;
+    xz[1] = idx / kChunkSize;
+} */
+template <std::integral T = InnerPos1> static inline constexpr glm::vec<2, T> InnerPos2FromIndex(InnerIndex2 idx) {
 	glm::vec<2, T> xz;
 	xz[0] = idx % kChunkSize;
 	xz[1] = idx / kChunkSize;
 	return xz;
 }
-template <std::integral T> static inline constexpr uint32_t ChunkXZ2Index(T x, T z) { return x + z * kChunkSize; }
-template <std::integral T> static inline constexpr uint32_t ChunkXZ2Index(const glm::vec<2, T> &xz) {
+template <std::integral T = InnerPos1> static inline constexpr InnerIndex2 InnerIndex2FromPos(T x, T z) {
+	return x + z * kChunkSize;
+}
+template <std::integral T = InnerPos1>
+static inline constexpr InnerIndex2 InnerIndex2FromPos(const glm::vec<2, T> &xz) {
 	return xz[0] + xz[1] * kChunkSize;
 }
 
-template <std::signed_integral T> static inline constexpr bool IsValidChunkPosition(T x, T y, T z) {
+template <std::signed_integral T> static inline constexpr bool IsValidInnerPos(T x, T y, T z) {
 	return x >= 0 && x < (T)kChunkSize && y >= 0 && y < (T)kChunkSize && z >= 0 && z < (T)kChunkSize;
 }
-template <std::unsigned_integral T> static inline constexpr bool IsValidChunkPosition(T x, T y, T z) {
+template <std::unsigned_integral T> static inline constexpr bool IsValidInnerPos(T x, T y, T z) {
 	return x <= kChunkSize && y <= kChunkSize && z <= kChunkSize;
 }
-template <std::signed_integral T> static inline constexpr bool IsValidChunkPosition(T x, T z) {
+template <std::signed_integral T> static inline constexpr bool IsValidInnerPos(T x, T z) {
 	return x >= 0 && x < (T)kChunkSize && z >= 0 && z < (T)kChunkSize;
 }
-template <std::unsigned_integral T> static inline constexpr bool IsValidChunkPosition(T x, T z) {
+template <std::unsigned_integral T> static inline constexpr bool IsValidInnerPos(T x, T z) {
 	return x <= kChunkSize && z <= kChunkSize;
 }
 

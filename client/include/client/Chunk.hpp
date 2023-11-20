@@ -48,31 +48,31 @@ public:
 	// TODO: Protect Block & Light RW with mutexes
 	// Block Getter and Setter
 	inline const Block *GetBlockData() const { return m_blocks; }
-	template <typename T> inline Block GetBlock(T x, T y, T z) const { return m_blocks[ChunkXYZ2Index(x, y, z)]; }
-	template <typename T> inline Block &GetBlockRef(T x, T y, T z) { return m_blocks[ChunkXYZ2Index(x, y, z)]; }
+	template <typename T> inline Block GetBlock(T x, T y, T z) const { return m_blocks[InnerIndex3FromPos(x, y, z)]; }
+	template <typename T> inline Block &GetBlockRef(T x, T y, T z) { return m_blocks[InnerIndex3FromPos(x, y, z)]; }
 	inline Block GetBlock(uint32_t idx) const { return m_blocks[idx]; }
 	inline Block &GetBlockRef(uint32_t idx) { return m_blocks[idx]; }
-	template <typename T> inline void SetBlock(T x, T y, T z, Block b) { m_blocks[ChunkXYZ2Index(x, y, z)] = b; }
+	template <typename T> inline void SetBlock(T x, T y, T z, Block b) { m_blocks[InnerIndex3FromPos(x, y, z)] = b; }
 	inline void SetBlock(uint32_t idx, Block b) { m_blocks[idx] = b; }
 	template <std::signed_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
-		return m_blocks[ChunkXYZ2Index((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
+		return m_blocks[InnerIndex3FromPos((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize)];
 	}
 	template <std::unsigned_integral T> inline Block GetBlockFromNeighbour(T x, T y, T z) const {
-		return m_blocks[ChunkXYZ2Index(x % kSize, y % kSize, z % kSize)];
+		return m_blocks[InnerIndex3FromPos(x % kSize, y % kSize, z % kSize)];
 	}
 
 	// Sunlight Getter and Setter
 	inline InnerPos1 GetSunlightHeight(uint32_t idx) const { return m_sunlight_heights[idx]; }
 	template <typename T> inline InnerPos1 GetSunlightHeight(T x, T z) const {
-		return m_sunlight_heights[ChunkXZ2Index(x, z)];
+		return m_sunlight_heights[InnerIndex2FromPos(x, z)];
 	}
 	inline void SetSunlightHeight(uint32_t idx, InnerPos1 h) { m_sunlight_heights[idx] = h; }
 	template <typename T> inline void SetSunlightHeight(T x, T z, InnerPos1 h) {
-		m_sunlight_heights[ChunkXZ2Index(x, z)] = h;
+		m_sunlight_heights[InnerIndex2FromPos(x, z)] = h;
 	}
 	template <std::integral T> inline bool GetSunlight(uint32_t idx, T y) const { return y >= m_sunlight_heights[idx]; }
 	template <typename T> inline bool GetSunlight(T x, T y, T z) const {
-		return y >= m_sunlight_heights[ChunkXZ2Index(x, z)];
+		return y >= m_sunlight_heights[InnerIndex2FromPos(x, z)];
 	}
 	template <std::signed_integral T> inline bool GetSunlightFromNeighbour(T x, T y, T z) const {
 		return GetSunlight((x + kSize) % kSize, (y + kSize) % kSize, (z + kSize) % kSize);

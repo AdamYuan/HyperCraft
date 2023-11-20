@@ -1,14 +1,14 @@
 #ifndef HYPERCRAFT_CLIENT_LOCAL_CLIENT_HPP
 #define HYPERCRAFT_CLIENT_LOCAL_CLIENT_HPP
 
+#include <atomic>
 #include <client/ClientBase.hpp>
 #include <common/WorldDatabase.hpp>
 #include <thread>
-#include <atomic>
 
 namespace hc::client {
 
-class LocalClient : public ClientBase, public std::enable_shared_from_this<LocalClient> {
+class LocalClient final : public ClientBase, public std::enable_shared_from_this<LocalClient> {
 private:
 	std::unique_ptr<WorldDatabase> m_world_database;
 
@@ -18,10 +18,14 @@ private:
 	void tick_thread_func();
 
 public:
-	~LocalClient() override;
-	inline bool IsConnected() override { return true; }
+	~LocalClient() final;
+	inline bool IsConnected() final { return true; }
 
 	static std::shared_ptr<LocalClient> Create(const std::shared_ptr<World> &world_ptr, const char *database_filename);
+
+	std::vector<std::future<ClientChunk>> LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final { return {}; }
+	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ClientChunkBlock> blocks) final {}
+	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ClientChunkSunlight> sunlights) final {}
 };
 
 } // namespace hc::client
