@@ -54,7 +54,7 @@ public:
 	inline BlockMeta GetTransform() const { return m_meta >> kBlockIDVariantBits[m_id]; }
 
 	inline constexpr uint16_t GetData() const { return m_data; }
-	// inline void SetData(uint16_t data) { m_data = data; }
+	inline void SetData(uint16_t data) { m_data = data; }
 
 	inline bool HaveCustomMesh() const { return get_property()->p_custom_mesh; }
 	inline const BlockMesh *GetCustomMesh() const { return get_property()->p_custom_mesh; }

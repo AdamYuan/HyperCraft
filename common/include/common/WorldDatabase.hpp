@@ -1,37 +1,13 @@
 #ifndef HYPERCRAFT_COMMON_DATABASE_HPP
 #define HYPERCRAFT_COMMON_DATABASE_HPP
 
-#include <block/Block.hpp>
-#include <common/Position.hpp>
+#include <common/Data.hpp>
 #include <lmdb.h>
 #include <memory>
 #include <span>
 #include <vector>
 
 namespace hc {
-
-struct DBChunkBlockEntry {
-	InnerIndex3 index{};
-	block::Block block;
-};
-static_assert(sizeof(DBChunkBlockEntry) == 4);
-
-class DBChunkSunlightEntry {
-private:
-	uint16_t m_data{};
-
-public:
-	inline DBChunkSunlightEntry(InnerIndex2 index, InnerPos1 sunlight) : m_data((index << 6u) | sunlight) {}
-	inline InnerIndex2 GetIndex() const { return m_data >> 6u; }
-	inline InnerPos1 GetSunlight() const { return m_data & 0x3fu; }
-};
-static_assert((kChunkSize + 1) <= (1 << 6) && kChunkSize * kChunkSize <= (1 << 10));
-static_assert(sizeof(DBChunkSunlightEntry) == 2);
-
-struct DBChunk {
-	std::vector<DBChunkBlockEntry> blocks;
-	std::vector<DBChunkSunlightEntry> sunlights;
-};
 
 class WorldDatabase {
 private:
@@ -46,9 +22,9 @@ public:
 
 	static_assert(sizeof(ChunkPos1) == sizeof(unsigned short) && sizeof(ChunkPos3) == 3 * sizeof(unsigned short));
 
-	[[nodiscard]] DBChunk GetChunk(ChunkPos3 chunk_pos) const;
-	void SetBlocks(ChunkPos3 chunk_pos, std::span<const DBChunkBlockEntry> blocks);
-	void SetSunlights(ChunkPos3 chunk_pos, std::span<const DBChunkSunlightEntry> sunlights);
+	[[nodiscard]] std::vector<PackedChunkEntry> GetChunks(std::span<const ChunkPos3> chunk_pos_s) const;
+	void SetBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks);
+	void SetSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights);
 
 	~WorldDatabase();
 };

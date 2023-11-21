@@ -31,16 +31,16 @@ LocalClient::~LocalClient() {
 	m_tick_thread.join();
 }
 
-std::vector<std::future<ClientChunk>> LocalClient::LoadChunks(std::span<const ChunkPos3> chunk_pos_s) {
-	return {};
+void LocalClient::LoadChunks(std::span<const ChunkPos3> chunk_pos_s) {
+	auto chunk_entries = m_world_database->GetChunks(chunk_pos_s);
 }
 
-void LocalClient::SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ClientChunkBlock> blocks) {
-
+void LocalClient::SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks) {
+	m_world_database->SetBlocks(chunk_pos, blocks);
 }
 
-void LocalClient::SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ClientChunkSunlight> sunlights) {
-
+void LocalClient::SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights) {
+	m_world_database->SetSunlights(chunk_pos, sunlights);
 }
 
 } // namespace hc::client

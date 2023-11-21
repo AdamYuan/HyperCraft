@@ -30,9 +30,9 @@ public:
 		}
 	}
 
-	std::vector<std::future<ClientChunk>> LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final { return {}; }
-	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ClientChunkBlock> blocks) final {}
-	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ClientChunkSunlight> sunlights) final {}
+	void LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final {}
+	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks) final {}
+	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights) final {}
 };
 
 } // namespace hc::client

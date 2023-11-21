@@ -9,10 +9,12 @@ std::optional<ChunkTaskRunnerData<ChunkTaskType::kGenerate>>
 ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPoolLocked &task_pool, const ChunkPos3 &chunk_pos) {
 	if (!m_queued)
 		return std::nullopt;
-	std::shared_ptr<Chunk> chunk = task_pool.GetWorld().GetChunkPool().FindRawChunk(chunk_pos);
-	if (!chunk)
-		return std::nullopt;
 	m_queued = false;
+
+	std::shared_ptr<Chunk> chunk = task_pool.GetWorld().GetChunkPool().FindRawChunk(chunk_pos);
+	if (!chunk || chunk->IsGenerated())
+		return std::nullopt;
+
 	return ChunkTaskRunnerData<ChunkTaskType::kGenerate>{std::move(chunk)};
 }
 
