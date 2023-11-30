@@ -8,15 +8,25 @@ namespace hc::client {
 template <>
 class ChunkTaskData<ChunkTaskType::kUpdateBlock> final : public ChunkTaskDataBase<ChunkTaskType::kUpdateBlock> {
 private:
-	std::unordered_map<InnerIndex3, uint64_t> m_updates;
+	struct UpdateInfo {
+		uint64_t tick{};
+		bool activate{};
+	};
+	std::unordered_map<InnerIndex3, UpdateInfo> m_updates;
 
 public:
 	inline static constexpr ChunkTaskType kType = ChunkTaskType::kUpdateBlock;
 
-	inline void Push(InnerIndex3 update, uint64_t tick) { m_updates[update] = tick; }
-	inline void Push(std::span<const InnerIndex3> updates, uint64_t tick) {
+	// inline void Push(InnerIndex3 update, uint64_t tick) { m_updates[update] = tick; }
+	inline void Push(std::span<const InnerIndex3> updates, uint64_t tick, std::span<const InnerIndex3> activates) {
 		for (const auto &pos : updates)
-			m_updates[pos] = tick;
+			m_updates[pos].tick = tick;
+
+		for (const auto &pos : activates) {
+			auto it = m_updates.find(pos);
+			if (it != m_updates.end())
+				it->second.activate = true;
+		}
 	}
 	inline constexpr ChunkTaskPriority GetPriority() const { return ChunkTaskPriority::kTick; }
 	inline bool IsQueued() const { return !m_updates.empty(); }

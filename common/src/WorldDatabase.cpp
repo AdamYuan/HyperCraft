@@ -26,8 +26,8 @@ std::unique_ptr<WorldDatabase> WorldDatabase::Create(const char *filename, std::
 	MDB_txn *txn{};
 	mdb_txn_begin(ret->m_env, nullptr, 0, &txn);
 	MDB_CALL(nullptr, mdb_dbi_open, txn, kConfigDBName, MDB_CREATE, &ret->m_config_db)
-	MDB_CALL(nullptr, mdb_dbi_open, txn, kBlockDBName, MDB_CREATE | MDB_INTEGERKEY, &ret->m_block_db)
-	MDB_CALL(nullptr, mdb_dbi_open, txn, kSunlightDBName, MDB_CREATE | MDB_INTEGERKEY, &ret->m_sunlight_db)
+	MDB_CALL(nullptr, mdb_dbi_open, txn, kBlockDBName, MDB_CREATE, &ret->m_block_db)
+	MDB_CALL(nullptr, mdb_dbi_open, txn, kSunlightDBName, MDB_CREATE, &ret->m_sunlight_db)
 	mdb_txn_commit(txn);
 
 	return ret;
@@ -76,13 +76,17 @@ std::vector<PackedChunkEntry> WorldDatabase::GetChunks(std::span<const ChunkPos3
 	return chunks;
 }
 
-void WorldDatabase::SetBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks) {
+std::vector<PackedChunkBlockEntry> WorldDatabase::SetBlocks(ChunkPos3 chunk_pos,
+                                                            std::span<const ChunkSetBlockEntry> blocks) {
 	if (blocks.empty())
-		return;
+		return {};
 
-	std::unordered_map<InnerIndex3, block::Block> block_map;
+	std::unordered_map<InnerIndex3, std::pair<block::Block, block::Block>> block_map;
 	for (auto b : blocks)
-		block_map[b.index] = b.block;
+		block_map[b.index] = {b.old_block, b.new_block}; // TODO: do we need to deal with overlapped blocks ?
+
+	std::vector<PackedChunkBlockEntry> ret;
+	ret.reserve(blocks.size());
 
 	MDB_txn *txn{};
 	mdb_txn_begin(m_env, nullptr, 0, &txn);
@@ -95,26 +99,37 @@ void WorldDatabase::SetBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEnt
 		for (auto &entry : entries) {
 			auto it = block_map.find(entry.GetIndex());
 			if (it != block_map.end()) {
-				entry = {it->first, it->second};
+				if (entry.GetBlock() == it->second.first) // SetBlock only if old_block == current block
+					entry = {it->first, it->second.second};
+
+				ret.push_back(entry);
 				block_map.erase(it);
 			}
 		}
 	}
-	for (const auto &b : block_map)
-		entries.emplace_back(b.first, b.second);
+	for (const auto &b : block_map) {
+		entries.emplace_back(b.first, b.second.second);
+		ret.push_back(entries.back());
+	}
 
 	val = {.mv_size = entries.size() * sizeof(PackedChunkBlockEntry), .mv_data = entries.data()};
 	mdb_put(txn, m_block_db, &key, &val, 0);
 	mdb_txn_commit(txn);
+
+	return ret;
 }
 
-void WorldDatabase::SetSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights) {
+std::vector<PackedChunkSunlightEntry> WorldDatabase::SetSunlights(ChunkPos3 chunk_pos,
+                                                                  std::span<const ChunkSetSunlightEntry> sunlights) {
 	if (sunlights.empty())
-		return;
+		return {};
 
-	std::unordered_map<InnerIndex2, InnerPos1> sunlight_map;
+	std::unordered_map<InnerIndex2, std::pair<InnerPos1, InnerPos1>> sunlight_map;
 	for (auto b : sunlights)
-		sunlight_map[b.index] = b.sunlight;
+		sunlight_map[b.index] = {b.old_sunlight, b.new_sunlight};
+
+	std::vector<PackedChunkSunlightEntry> ret;
+	ret.reserve(sunlights.size());
 
 	MDB_txn *txn{};
 	mdb_txn_begin(m_env, nullptr, 0, &txn);
@@ -124,20 +139,28 @@ void WorldDatabase::SetSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunli
 	if (mdb_get(txn, m_sunlight_db, &key, &val) != MDB_NOTFOUND) {
 		entries = {(PackedChunkSunlightEntry *)val.mv_data,
 		           (PackedChunkSunlightEntry *)((uint8_t *)val.mv_data + val.mv_size)};
+
 		for (auto &entry : entries) {
 			auto it = sunlight_map.find(entry.GetIndex());
 			if (it != sunlight_map.end()) {
-				entry = {it->first, it->second};
+				if (entry.GetSunlight() == it->second.first)
+					entry = {it->first, it->second.second};
+
+				ret.push_back(entry);
 				sunlight_map.erase(it);
 			}
 		}
 	}
-	for (const auto &b : sunlight_map)
-		entries.emplace_back(b.first, b.second);
+	for (const auto &b : sunlight_map) {
+		entries.emplace_back(b.first, b.second.second);
+		ret.push_back(entries.back());
+	}
 
 	val = {.mv_size = entries.size() * sizeof(PackedChunkSunlightEntry), .mv_data = entries.data()};
 	mdb_put(txn, m_sunlight_db, &key, &val, 0);
 	mdb_txn_commit(txn);
+
+	return ret;
 }
 
 } // namespace hc

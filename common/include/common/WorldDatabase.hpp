@@ -23,8 +23,8 @@ public:
 	static_assert(sizeof(ChunkPos1) == sizeof(unsigned short) && sizeof(ChunkPos3) == 3 * sizeof(unsigned short));
 
 	[[nodiscard]] std::vector<PackedChunkEntry> GetChunks(std::span<const ChunkPos3> chunk_pos_s) const;
-	void SetBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks);
-	void SetSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights);
+	std::vector<PackedChunkBlockEntry> SetBlocks(ChunkPos3 chunk_pos, std::span<const ChunkSetBlockEntry> blocks);
+	std::vector<PackedChunkSunlightEntry> SetSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSetSunlightEntry> sunlights);
 
 	~WorldDatabase();
 };

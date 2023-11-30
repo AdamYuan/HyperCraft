@@ -35,7 +35,7 @@ ChunkTaskData<ChunkTaskType::kUpdateBlock>::Pop(const ChunkTaskPoolLocked &task_
 
 		if (block.GetEvent() == nullptr || block.GetEvent()->on_update_func == nullptr)
 			it = m_updates.erase(it);
-		else if (it->second + block.GetEvent()->update_tick_interval <= current_tick) {
+		else if (it->second.activate && it->second.tick + block.GetEvent()->update_tick_interval <= current_tick) {
 			updates_to_apply.push_back(idx);
 			it = m_updates.erase(it);
 		} else
@@ -57,7 +57,7 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 		return neighbour_chunks[Chunk::GetBlockNeighbourIndex(x, y, z)]->GetBlockFromNeighbour(x, y, z);
 	};
 
-	std::vector<ChunkSetBlock> set_blocks[27];
+	std::vector<ChunkBlockEntry> set_blocks[27];
 
 	for (const auto &update_idx : data.GetUpdates()) {
 		auto update_pos = InnerPos3FromIndex(update_idx);
@@ -84,7 +84,7 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 			auto [rel_chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(BlockPos3(set_pos));
 			uint32_t nei_chunk_idx = CmpXYZ2NeighbourIndex(rel_chunk_pos.x, rel_chunk_pos.y, rel_chunk_pos.z);
 			set_blocks[nei_chunk_idx].push_back(
-			    {(InnerIndex3)InnerIndex3FromPos(inner_pos), set_blk, ChunkUpdateType::kLocal});
+			    {.index = (InnerIndex3)InnerIndex3FromPos(inner_pos), .block = set_blk});
 		}
 	}
 
@@ -94,7 +94,7 @@ void ChunkTaskRunner<ChunkTaskType::kUpdateBlock>::Run(ChunkTaskPool *p_task_poo
 		ChunkPos3 nei_pos;
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk->GetPosition();
-		p_task_pool->GetWorld().m_chunk_update_pool.SetBlockUpdateBulk(nei_pos, set_blocks[i], true);
+		p_task_pool->Push<ChunkTaskType::kSetBlock>(nei_pos, set_blocks[i], ChunkUpdateType::kLocal, false);
 	}
 }
 

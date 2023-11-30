@@ -23,7 +23,7 @@ ChunkTaskData<ChunkTaskType::kMesh>::Pop(const ChunkTaskPoolLocked &task_pool, c
 		Chunk::NeighbourIndex2CmpXYZ(i, glm::value_ptr(nei_pos));
 		nei_pos += chunk_pos;
 
-		if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock, ChunkTaskType::kSetSunlight>(
+		if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate /*, ChunkTaskType::kSetBlock , ChunkTaskType::kSetSunlight*/>(
 		        nei_pos))
 			return std::nullopt;
 

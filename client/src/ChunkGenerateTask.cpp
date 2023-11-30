@@ -15,7 +15,7 @@ ChunkTaskData<ChunkTaskType::kGenerate>::Pop(const ChunkTaskPoolLocked &task_poo
 	if (!chunk || chunk->IsGenerated())
 		return std::nullopt;
 
-	return ChunkTaskRunnerData<ChunkTaskType::kGenerate>{std::move(chunk)};
+	return ChunkTaskRunnerData<ChunkTaskType::kGenerate>{std::move(chunk), std::move(m_chunk_entry)};
 }
 
 void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
@@ -28,9 +28,10 @@ void ChunkTaskRunner<ChunkTaskType::kGenerate>::Run(ChunkTaskPool *p_task_pool,
 
 	client->GetTerrain()->Generate(chunk_ptr);
 	// apply block updates
-	p_task_pool->GetWorld().m_chunk_update_pool.ApplyBlockUpdates(chunk_ptr);
-	// apply sunlight updates
-	p_task_pool->GetWorld().m_chunk_update_pool.ApplySunlightUpdates(chunk_ptr);
+	for (const auto &block_entry : data.GetChunkEntry().blocks)
+		chunk_ptr->SetBlock(block_entry.GetIndex(), block_entry.GetBlock());
+	for (const auto &sunlight_entry : data.GetChunkEntry().sunlights)
+		chunk_ptr->SetSunlightHeight(sunlight_entry.GetIndex(), sunlight_entry.GetSunlight());
 
 	chunk_ptr->SetGeneratedFlag();
 

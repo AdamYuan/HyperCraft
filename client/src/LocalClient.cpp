@@ -33,14 +33,23 @@ LocalClient::~LocalClient() {
 
 void LocalClient::LoadChunks(std::span<const ChunkPos3> chunk_pos_s) {
 	auto chunk_entries = m_world_database->GetChunks(chunk_pos_s);
+	{
+		ChunkTaskPoolLocked locked_task_pool{&m_world_ptr->m_chunk_task_pool};
+		for (std::size_t i = 0; i < chunk_pos_s.size(); ++i)
+			locked_task_pool.Push<ChunkTaskType::kGenerate>(chunk_pos_s[i], std::move(chunk_entries[i]));
+	}
 }
 
-void LocalClient::SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks) {
-	m_world_database->SetBlocks(chunk_pos, blocks);
+void LocalClient::SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkSetBlockEntry> blocks) {
+	m_world_ptr->m_chunk_task_pool.Push<ChunkTaskType::kSetBlock>(
+	    chunk_pos, PackedChunkBlockEntry::Unpack(m_world_database->SetBlocks(chunk_pos, blocks)),
+	    ChunkUpdateType::kRemote);
 }
 
-void LocalClient::SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights) {
-	m_world_database->SetSunlights(chunk_pos, sunlights);
+void LocalClient::SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSetSunlightEntry> sunlights) {
+	m_world_ptr->m_chunk_task_pool.Push<ChunkTaskType::kSetSunlight>(
+	    chunk_pos, PackedChunkSunlightEntry::Unpack(m_world_database->SetSunlights(chunk_pos, sunlights)),
+	    ChunkUpdateType::kRemote);
 }
 
 } // namespace hc::client

@@ -13,11 +13,9 @@ ChunkTaskData<ChunkTaskType::kFloodSunlight>::Pop(const ChunkTaskPoolLocked &tas
 
 	ChunkPos3 up_chunk_pos = {chunk_pos.x, chunk_pos.y + 1, chunk_pos.z};
 
-	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock, ChunkTaskType::kSetSunlight>(
-	        chunk_pos))
+	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock>(chunk_pos))
 		return std::nullopt;
-	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetBlock, ChunkTaskType::kSetSunlight>(
-	        up_chunk_pos))
+	if (task_pool.AnyNotIdle<ChunkTaskType::kGenerate, ChunkTaskType::kSetSunlight>(up_chunk_pos))
 		return std::nullopt;
 	std::shared_ptr<Chunk> chunk, up_chunk;
 	if (!(chunk = task_pool.GetWorld().GetChunkPool().FindChunk(chunk_pos)))
@@ -27,47 +25,44 @@ ChunkTaskData<ChunkTaskType::kFloodSunlight>::Pop(const ChunkTaskPoolLocked &tas
 
 	auto xz_updates = std::move(m_xz_updates);
 	m_xz_updates.clear();
-	auto high_priority = m_high_priority;
-	m_high_priority = false;
 
 	return ChunkTaskRunnerData<ChunkTaskType::kFloodSunlight>{std::move(chunk), std::move(up_chunk),
-	                                                          std::move(xz_updates), high_priority};
+	                                                          std::move(xz_updates)};
 }
 
 void ChunkTaskRunner<ChunkTaskType::kFloodSunlight>::Run(ChunkTaskPool *p_task_pool,
                                                          ChunkTaskRunnerData<ChunkTaskType::kFloodSunlight> &&data) {
 	std::unordered_set<InnerIndex2> xz_updates{data.GetXZUpdates().begin(), data.GetXZUpdates().end()};
-	std::vector<InnerIndex2> xz_next_updates;
 
-	std::vector<ChunkSetSunlight> set_sunlights;
+	std::vector<ChunkSunlightEntry> set_sunlights;
 
 	const auto &up_chunk = data.GetUpChunkPtr(), &chunk = data.GetChunkPtr();
 
 	for (auto xz_idx : xz_updates) {
-		auto up_sl = up_chunk->GetSunlightHeight(xz_idx), sl = chunk->GetSunlightHeight(xz_idx);
+		auto up_sl = up_chunk->GetSunlightHeight(xz_idx); //, sl = chunk->GetSunlightHeight(xz_idx);
 		if (up_sl > 0) {
-			if (sl != kChunkSize) {
-				set_sunlights.push_back({(InnerIndex2)xz_idx, kChunkSize, ChunkUpdateType::kLocal});
-				xz_next_updates.push_back(xz_idx);
-			}
+			// if (sl != kChunkSize)
+			set_sunlights.push_back({.index = xz_idx, .sunlight = kChunkSize});
 		} else {
 			InnerPos1 y;
 			for (y = kChunkSize - 1;
 			     (~y) && chunk->GetBlock(xz_idx + (uint32_t)y * kChunkSize * kChunkSize).GetVerticalLightPass(); --y)
 				;
 			++y;
-			if (sl != y)
-				set_sunlights.push_back({(InnerIndex2)xz_idx, y, ChunkUpdateType::kLocal});
-			if ((sl == 0) != (y == 0))
-				xz_next_updates.push_back(xz_idx);
+			// if (sl != y)
+			set_sunlights.push_back({.index = xz_idx, .sunlight = y});
+			// if ((sl == 0) != (y == 0))
+			// 	xz_next_updates.push_back(xz_idx);
 		}
 	}
-	p_task_pool->GetWorld().m_chunk_update_pool.SetSunlightUpdateBulk(chunk->GetPosition(), set_sunlights,
-	                                                                  data.IsHighPriority());
 
-	auto down_chunk_pos = chunk->GetPosition();
+	p_task_pool->Push<ChunkTaskType::kSetSunlight>(chunk->GetPosition(), set_sunlights, ChunkUpdateType::kLocal);
+	// p_task_pool->GetWorld().m_chunk_update_pool.SetSunlightUpdateBulk(chunk->GetPosition(), set_sunlights,
+	//                                                                   data.IsHighPriority());
+
+	/* auto down_chunk_pos = chunk->GetPosition();
 	--down_chunk_pos.y;
-	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(down_chunk_pos, xz_next_updates, false);
+	p_task_pool->Push<ChunkTaskType::kFloodSunlight>(down_chunk_pos, xz_next_updates, false); */
 }
 
 } // namespace hc::client

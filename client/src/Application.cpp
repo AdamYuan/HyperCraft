@@ -251,6 +251,8 @@ Application::Application() {
 		world_rg = rg::WorldRenderGraph::Create(m_main_queue, m_frame_manager, m_world_renderer, m_global_texture);
 		world_rg->SetCanvasSize(m_frame_manager->GetExtent());
 	}
+
+	m_world->Start();
 }
 
 void Application::Run() {

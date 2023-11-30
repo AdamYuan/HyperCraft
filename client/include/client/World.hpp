@@ -17,7 +17,6 @@
 #include <client/Chunk.hpp>
 #include <client/ChunkPool.hpp>
 #include <client/ChunkTaskPool.hpp>
-#include <client/ChunkUpdatePool.hpp>
 
 #include "Config.hpp"
 
@@ -55,17 +54,16 @@ private:
 	// Chunks
 	ChunkPool m_chunk_pool;
 	ChunkTaskPool m_chunk_task_pool;
-	ChunkUpdatePool m_chunk_update_pool;
 
 	void update();
 
 public:
 	inline explicit World(ChunkPos1 load_chunk_radius, ChunkPos1 unload_chunk_radius)
-	    : m_chunk_pool{this}, m_chunk_task_pool{this}, m_chunk_update_pool{this},
-	      m_load_chunk_radius{load_chunk_radius}, m_unload_chunk_radius{unload_chunk_radius} {
-		m_chunk_pool.Update();
-	}
+	    : m_chunk_pool{this}, m_chunk_task_pool{this}, m_load_chunk_radius{load_chunk_radius},
+	      m_unload_chunk_radius{unload_chunk_radius} {}
 	~World() = default;
+
+	inline void Start() { update(); }
 
 	inline void SetCenterPos(const glm::vec3 &pos) { SetCenterChunkPos(ChunkPosFromBlockPos(BlockPos3(pos))); }
 	inline void SetCenterChunkPos(const ChunkPos3 &chunk_pos) {
@@ -115,32 +113,28 @@ public:
 
 	const auto &GetChunkPool() const { return m_chunk_pool; }
 	const auto &GetChunkTaskPool() const { return m_chunk_task_pool; }
-	const auto &GetChunkUpdatePool() const { return m_chunk_update_pool; }
 
 	inline void SetBlock(const BlockPos3 &pos, block::Block block) {
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
-		m_chunk_update_pool.SetBlockUpdate(
-		    chunk_pos, {(InnerIndex3)InnerIndex3FromPos(inner_pos), block, ChunkUpdateType::kLocal}, true);
+		auto entry = ChunkBlockEntry{.index = InnerIndex3FromPos(inner_pos), .block = block};
+		m_chunk_task_pool.Push<ChunkTaskType::kSetBlock>(chunk_pos, std::span{&entry, 1}, ChunkUpdateType::kLocal);
 	}
 	inline std::optional<block::Block> GetBlock(const BlockPos3 &pos) const {
 		auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(pos);
-		auto opt_update = m_chunk_update_pool.GetBlockUpdate(chunk_pos, inner_pos);
-		if (opt_update)
-			return opt_update.value();
 		auto chunk = m_chunk_pool.FindChunk(chunk_pos);
 		return chunk ? std::optional(chunk->GetBlock(inner_pos.x, inner_pos.y, inner_pos.z)) : std::nullopt;
 	}
 	inline void SetBlockBulk(std::span<const std::pair<BlockPos3, block::Block>> blocks) {
-		std::unordered_map<ChunkPos3, std::vector<ChunkSetBlock>> chunk_set_blocks;
+		std::unordered_map<ChunkPos3, std::vector<ChunkBlockEntry>> chunk_set_blocks;
 
 		for (const auto &b : blocks) {
 			auto [chunk_pos, inner_pos] = ChunkInnerPosFromBlockPos(b.first);
 			chunk_set_blocks[chunk_pos].push_back(
-			    {(InnerIndex3)InnerIndex3FromPos(inner_pos), b.second, ChunkUpdateType::kLocal});
+			    {.index = (InnerIndex3)InnerIndex3FromPos(inner_pos), .block = b.second});
 		}
 
 		for (const auto &c : chunk_set_blocks)
-			m_chunk_update_pool.SetBlockUpdateBulk(c.first, std::span{c.second}, true);
+			m_chunk_task_pool.Push<ChunkTaskType::kSetBlock>(c.first, std::span{c.second}, ChunkUpdateType::kLocal);
 	}
 };
 

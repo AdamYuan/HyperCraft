@@ -31,8 +31,8 @@ public:
 	}
 
 	void LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final {}
-	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks) final {}
-	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights) final {}
+	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkSetBlockEntry> blocks) final {}
+	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSetSunlightEntry> sunlights) final {}
 };
 
 } // namespace hc::client

@@ -1,5 +1,6 @@
 #include <client/ChunkPool.hpp>
 
+#include <client/ClientBase.hpp>
 #include <client/World.hpp>
 
 namespace hc::client {
@@ -26,11 +27,9 @@ void ChunkPool::Update() {
 			}
 		}
 	}
-	{
-		ChunkTaskPoolLocked locked_task_pool{&m_world.m_chunk_task_pool};
-		locked_task_pool.PushBulk<ChunkTaskType::kGenerate>(generate_chunk_pos_vec.begin(),
-		                                                    generate_chunk_pos_vec.end());
-	}
+	auto client = m_world.LockClient();
+	if (client)
+		client->LoadChunks(generate_chunk_pos_vec);
 }
 
 } // namespace hc::client

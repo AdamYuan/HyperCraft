@@ -36,7 +36,10 @@ private:
 	friend class ChunkTaskPoolLocked;
 
 public:
-	[[nodiscard]] inline bool NotIdle() const { return static_cast<const ChunkTaskData<Type> *>(this)->IsQueued() || m_running; }
+	[[nodiscard]] inline bool NotIdle() const {
+		return static_cast<const ChunkTaskData<Type> *>(this)->IsQueued() || m_running;
+	}
+	[[nodiscard]] inline bool IsRunning() const { return m_running; }
 };
 
 } // namespace hc::client
@@ -107,10 +110,9 @@ public:
 
 	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
 		bool high_priority = false;
-		m_data_map.uprase_fn(chunk_pos, [&high_priority, ... args = std::forward<Args>(args)](
-		                                    DataTuple &data_tuple, libcuckoo::UpsertContext) {
+		m_data_map.uprase_fn(chunk_pos, [&](DataTuple &data_tuple, libcuckoo::UpsertContext) {
 			auto &data = std::get<static_cast<std::size_t>(TaskType)>(data_tuple);
-			data.Push(args...);
+			data.Push(std::forward<Args>(args)...);
 			high_priority = data.GetPriority() == ChunkTaskPriority::kHigh;
 			return false;
 		});
@@ -149,24 +151,30 @@ public:
 
 	template <ChunkTaskType... TaskTypes> [[nodiscard]] inline bool AllNotIdle(const ChunkPos3 &chunk_pos) const {
 		auto it = m_data_map.find(chunk_pos);
-		return !(it == m_data_map.end()) &&
-		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() && ...);
+		return it != m_data_map.end() && (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() && ...);
 	}
 	template <ChunkTaskType... TaskTypes> [[nodiscard]] inline bool AnyNotIdle(const ChunkPos3 &chunk_pos) const {
 		auto it = m_data_map.find(chunk_pos);
-		return !(it == m_data_map.end()) &&
-		       (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() || ...);
+		return it != m_data_map.end() && (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).NotIdle() || ...);
+	}
+	template <ChunkTaskType... TaskTypes> [[nodiscard]] inline bool AllRunning(const ChunkPos3 &chunk_pos) const {
+		auto it = m_data_map.find(chunk_pos);
+		return it != m_data_map.end() && (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).IsRunning() && ...);
+	}
+	template <ChunkTaskType... TaskTypes> [[nodiscard]] inline bool AnyRunning(const ChunkPos3 &chunk_pos) const {
+		auto it = m_data_map.find(chunk_pos);
+		return it != m_data_map.end() && (std::get<static_cast<std::size_t>(TaskTypes)>(it->second).IsRunning() || ...);
 	}
 	template <ChunkTaskType TaskType, typename... Args> inline void Push(const ChunkPos3 &chunk_pos, Args &&...args) {
 		auto it = m_data_map.insert(chunk_pos).first;
 		auto &data = std::get<static_cast<std::size_t>(TaskType)>(it->second);
-		data.Push(args...);
+		data.Push(std::forward<Args>(args)...);
 	}
-	template <ChunkTaskType TaskType, typename Iterator, typename... Args>
+	/* template <ChunkTaskType TaskType, typename Iterator, typename... Args>
 	inline void PushBulk(Iterator chunk_pos_begin, Iterator chunk_pos_end, Args &&...args) {
-		for (Iterator it = chunk_pos_begin; it != chunk_pos_end; ++it)
-			Push<TaskType>(*it, args...);
-	}
+	    for (Iterator it = chunk_pos_begin; it != chunk_pos_end; ++it)
+	        Push<TaskType>(*it, args...);
+	} */
 
 	[[nodiscard]] inline const auto &GetDataMap() const { return m_data_map; }
 	inline auto &GetDataMap() { return m_data_map; }

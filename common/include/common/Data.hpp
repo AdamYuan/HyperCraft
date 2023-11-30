@@ -3,7 +3,19 @@
 #include <block/Block.hpp>
 #include <common/Position.hpp>
 
+#include <span>
+
 namespace hc {
+
+struct ChunkSetBlockEntry {
+	InnerIndex3 index{};
+	block::Block old_block, new_block;
+};
+
+struct ChunkSetSunlightEntry {
+	InnerIndex2 index{};
+	InnerPos1 old_sunlight{}, new_sunlight{};
+};
 
 struct ChunkBlockEntry {
 	InnerIndex3 index{};
@@ -11,8 +23,8 @@ struct ChunkBlockEntry {
 };
 
 struct ChunkSunlightEntry {
-	InnerIndex2 index;
-	InnerPos1 sunlight;
+	InnerIndex2 index{};
+	InnerPos1 sunlight{};
 };
 
 struct ChunkEntry {
@@ -33,6 +45,12 @@ public:
 	}
 	inline uint32_t GetPackedData() const { return (m_index << 16u) | m_block.GetData(); }
 	inline ChunkBlockEntry Unpack() const { return {.index = GetIndex(), .block = GetBlock()}; }
+	inline static std::vector<ChunkBlockEntry> Unpack(std::span<const PackedChunkBlockEntry> packed_entries) {
+		std::vector<ChunkBlockEntry> ret(packed_entries.size());
+		for (std::size_t i = 0; i < packed_entries.size(); ++i)
+			ret[i] = packed_entries[i].Unpack();
+		return ret;
+	}
 	inline InnerIndex3 GetIndex() const { return m_index; }
 	inline block::Block GetBlock() const { return m_block; }
 };
@@ -49,6 +67,12 @@ public:
 	inline explicit PackedChunkSunlightEntry(uint16_t packed_data) : m_data{packed_data} {}
 	inline uint16_t GetPackedData() const { return m_data; }
 	inline ChunkSunlightEntry Unpack() const { return {.index = GetIndex(), .sunlight = GetSunlight()}; }
+	inline static std::vector<ChunkSunlightEntry> Unpack(std::span<const PackedChunkSunlightEntry> packed_entries) {
+		std::vector<ChunkSunlightEntry> ret(packed_entries.size());
+		for (std::size_t i = 0; i < packed_entries.size(); ++i)
+			ret[i] = packed_entries[i].Unpack();
+		return ret;
+	}
 	inline InnerIndex2 GetIndex() const { return m_data >> 6u; }
 	inline InnerPos1 GetSunlight() const { return m_data & 0x3fu; }
 };

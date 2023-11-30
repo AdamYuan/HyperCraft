@@ -13,9 +13,10 @@ private:
 	std::unique_ptr<WorldDatabase> m_world_database;
 
 	std::atomic_bool m_thread_running{true};
-	std::thread m_tick_thread;
+	std::thread m_tick_thread, m_load_chunk_thread;
 
 	void tick_thread_func();
+	void load_chunk_thread_func();
 
 public:
 	~LocalClient() final;
@@ -24,8 +25,8 @@ public:
 	static std::shared_ptr<LocalClient> Create(const std::shared_ptr<World> &world_ptr, const char *database_filename);
 
 	void LoadChunks(std::span<const ChunkPos3> chunk_pos_s) final;
-	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkBlockEntry> blocks) final;
-	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSunlightEntry> sunlights) final;
+	void SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkSetBlockEntry> blocks) final;
+	void SetChunkSunlights(ChunkPos3 chunk_pos, std::span<const ChunkSetSunlightEntry> sunlights) final;
 };
 
 } // namespace hc::client
