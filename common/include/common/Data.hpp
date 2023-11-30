@@ -4,6 +4,7 @@
 #include <common/Position.hpp>
 
 #include <span>
+#include <vector>
 
 namespace hc {
 

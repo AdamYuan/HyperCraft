@@ -9,25 +9,27 @@ inline constexpr char kConfigSeedName[] = "seed";
 inline constexpr MDB_val kConfigSeedKey = {.mv_size = sizeof(kConfigSeedName), .mv_data = (void *)kConfigSeedName};
 
 #define MDB_CALL(ERR_RET_VAL, MDB_FUNC, ...) \
-	if (const auto err = MDB_FUNC(__VA_ARGS__)) { \
-		spdlog::error(#MDB_FUNC " error: {}", err); \
-		return ERR_RET_VAL; \
-	}
+	do { \
+		if (const auto err = MDB_FUNC(__VA_ARGS__)) { \
+			spdlog::error(#MDB_FUNC " error: {}", err); \
+			return ERR_RET_VAL; \
+		} \
+	} while (0)
 
 std::unique_ptr<WorldDatabase> WorldDatabase::Create(const char *filename, std::size_t max_size) {
 	std::unique_ptr<WorldDatabase> ret = std::make_unique<WorldDatabase>();
 
-	MDB_CALL(nullptr, mdb_env_create, &ret->m_env)
+	MDB_CALL(nullptr, mdb_env_create, &ret->m_env);
 	mdb_env_set_maxdbs(ret->m_env, 8);
 	mdb_env_set_mapsize(ret->m_env, max_size);
-	MDB_CALL(nullptr, mdb_env_open, ret->m_env, filename, MDB_NOSUBDIR, 0664)
+	MDB_CALL(nullptr, mdb_env_open, ret->m_env, filename, MDB_NOSUBDIR, 0664);
 
 	// create tables
 	MDB_txn *txn{};
 	mdb_txn_begin(ret->m_env, nullptr, 0, &txn);
-	MDB_CALL(nullptr, mdb_dbi_open, txn, kConfigDBName, MDB_CREATE, &ret->m_config_db)
-	MDB_CALL(nullptr, mdb_dbi_open, txn, kBlockDBName, MDB_CREATE, &ret->m_block_db)
-	MDB_CALL(nullptr, mdb_dbi_open, txn, kSunlightDBName, MDB_CREATE, &ret->m_sunlight_db)
+	MDB_CALL(nullptr, mdb_dbi_open, txn, kConfigDBName, MDB_CREATE, &ret->m_config_db);
+	MDB_CALL(nullptr, mdb_dbi_open, txn, kBlockDBName, MDB_CREATE, &ret->m_block_db);
+	MDB_CALL(nullptr, mdb_dbi_open, txn, kSunlightDBName, MDB_CREATE, &ret->m_sunlight_db);
 	mdb_txn_commit(txn);
 
 	return ret;
