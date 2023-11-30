@@ -2,6 +2,7 @@
 #define HYPERCRAFT_CLIENT_LOCAL_CLIENT_HPP
 
 #include <atomic>
+#include <blockingconcurrentqueue.h>
 #include <client/ClientBase.hpp>
 #include <common/WorldDatabase.hpp>
 #include <thread>
@@ -12,6 +13,7 @@ class LocalClient final : public ClientBase, public std::enable_shared_from_this
 private:
 	std::unique_ptr<WorldDatabase> m_world_database;
 
+	moodycamel::BlockingConcurrentQueue<std::vector<ChunkPos3>> m_load_chunk_queue;
 	std::atomic_bool m_thread_running{true};
 	std::thread m_tick_thread, m_load_chunk_thread;
 

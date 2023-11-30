@@ -11,6 +11,21 @@ void LocalClient::tick_thread_func() {
 	}
 }
 
+void LocalClient::load_chunk_thread_func() {
+	moodycamel::ConsumerToken token{m_load_chunk_queue};
+
+	while (m_thread_running.load(std::memory_order_acquire)) {
+		std::vector<ChunkPos3> chunk_pos_s;
+		if (m_load_chunk_queue.wait_dequeue_timed(token, chunk_pos_s, std::chrono::milliseconds(50))) {
+			auto chunk_entries = m_world_database->GetChunks(chunk_pos_s);
+
+			ChunkTaskPoolLocked locked_task_pool{&m_world_ptr->m_chunk_task_pool};
+			for (std::size_t i = 0; i < chunk_pos_s.size(); ++i)
+				locked_task_pool.Push<ChunkTaskType::kGenerate>(chunk_pos_s[i], std::move(chunk_entries[i]));
+		}
+	}
+}
+
 std::shared_ptr<LocalClient> LocalClient::Create(const std::shared_ptr<World> &world_ptr,
                                                  const char *database_filename) {
 	std::shared_ptr<LocalClient> ret = std::make_shared<LocalClient>();
@@ -23,21 +38,18 @@ std::shared_ptr<LocalClient> LocalClient::Create(const std::shared_ptr<World> &w
 		return nullptr;
 
 	ret->m_tick_thread = std::thread(&LocalClient::tick_thread_func, ret.get());
+	ret->m_load_chunk_thread = std::thread(&LocalClient::load_chunk_thread_func, ret.get());
 	return ret;
 }
 
 LocalClient::~LocalClient() {
 	m_thread_running.store(false, std::memory_order_release);
 	m_tick_thread.join();
+	m_load_chunk_thread.join();
 }
 
 void LocalClient::LoadChunks(std::span<const ChunkPos3> chunk_pos_s) {
-	auto chunk_entries = m_world_database->GetChunks(chunk_pos_s);
-	{
-		ChunkTaskPoolLocked locked_task_pool{&m_world_ptr->m_chunk_task_pool};
-		for (std::size_t i = 0; i < chunk_pos_s.size(); ++i)
-			locked_task_pool.Push<ChunkTaskType::kGenerate>(chunk_pos_s[i], std::move(chunk_entries[i]));
-	}
+	m_load_chunk_queue.enqueue(std::vector<ChunkPos3>{chunk_pos_s.begin(), chunk_pos_s.end()});
 }
 
 void LocalClient::SetChunkBlocks(ChunkPos3 chunk_pos, std::span<const ChunkSetBlockEntry> blocks) {
