@@ -173,16 +173,15 @@ public:
 
 		bool in_cur_frame = m_from_cur_frame && m_to_cur_frame;
 
-		bool is_from_attachment = m_from_references.size() == 1 && m_from_references[0].p_input &&
+		bool is_from_attachment = m_resource->GetType() == ResourceType::kImage && m_from_references.size() == 1 &&
+		                          m_from_references[0].p_input &&
 		                          UsageIsAttachment(m_from_references[0].p_input->GetUsage());
-		bool is_to_attachment = m_to_references.size() == 1 && m_to_references[0].p_input &&
-		                        UsageIsAttachment(m_to_references[0].p_input->GetUsage());
+		bool is_to_attachment = m_resource->GetType() == ResourceType::kImage && m_to_references.size() == 1 &&
+		                        m_to_references[0].p_input && UsageIsAttachment(m_to_references[0].p_input->GetUsage());
 
-#ifdef MYVK_RG_PREFER_SUBPASS_DEPENDENCY
-		// TODO: Should m_from/to_cur_frame be taken into account ?
+		// VERY NECESSARY For Validation Barriers
 		if (is_from_attachment || is_to_attachment) {
 			// Check attachment
-			assert(m_resource->GetType() == ResourceType::kImage);
 			auto *image = static_cast<const ImageBase *>(m_resource);
 			if (is_from_attachment &&
 			    m_sub_deps[RenderGraphScheduler::GetPassID(m_from_references[0].pass)].get_from_attachment_id(image) ==
@@ -193,6 +192,7 @@ public:
 				is_to_attachment = false;
 		}
 
+#ifdef MYVK_RG_PREFER_SUBPASS_DEPENDENCY
 		if (!is_from_attachment && !is_to_attachment) {
 			// Not Attachment-related, then Add a Vulkan Barrier
 
@@ -287,7 +287,7 @@ public:
 
 					if (state_from.is_valid_barrier(state_to))
 						m_sub_deps[to_pass_id].add_subpass_dependency(
-						    0,                      //
+						    0, //
 						    in_cur_frame ? ref_from.pass : nullptr, state_from.stage_mask,
 						    state_from.access_mask, //
 						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
@@ -318,7 +318,7 @@ public:
 						from_att_dep.set_final_layout(state_to.layout);
 
 					if (state_from.is_valid_barrier(state_to))
-						m_sub_deps[from_pass_id].add_subpass_dependency(0,                      //
+						m_sub_deps[from_pass_id].add_subpass_dependency(0, //
 						                                                ref_from.pass, state_from.stage_mask,
 						                                                state_from.access_mask, //
 						                                                in_cur_frame ? ref_to.pass : nullptr,
@@ -353,7 +353,7 @@ public:
 
 					if (state_from.is_valid_barrier(state_to)) {
 						m_sub_deps[to_pass_id].add_subpass_dependency(
-						    0,                      //
+						    0, //
 						    in_cur_frame ? ref_from.pass : nullptr, state_from.stage_mask,
 						    state_from.access_mask, //
 						    ref_to.pass, state_to.stage_mask, state_to.access_mask);
@@ -369,22 +369,6 @@ public:
 			}
 		}
 #else
-		// TODO: is it necessary ?
-		/* if (is_from_attachment || is_to_attachment) {
-		    // Check attachment
-		    assert(m_resource->GetType() == ResourceType::kImage);
-		    auto *image = static_cast<const ImageBase *>(m_resource);
-		    if (is_from_attachment &&
-		        m_sub_deps[RenderGraphScheduler::GetPassID(m_from_references[0].pass)].get_from_attachment_id(image) ==
-		            -1) {
-		        is_from_attachment = false;
-		    }
-		    if (is_to_attachment &&
-		        m_sub_deps[RenderGraphScheduler::GetPassID(m_to_references[0].pass)].get_to_attachment_id(image) == -1)
-		{ is_to_attachment = false;
-		    }
-		} */
-
 		// Process attachment inits
 		if (is_to_attachment) {
 			const auto &ref_to = m_to_references[0];
@@ -411,7 +395,7 @@ public:
 
 				if (state_from.is_valid_barrier(state_to)) {
 					m_sub_deps[to_pass_id].add_subpass_dependency(
-					    0,                      //
+					    0, //
 					    in_cur_frame ? ref_from.pass : nullptr, state_from.stage_mask,
 					    state_from.access_mask, //
 					    ref_to.pass, state_to.stage_mask, state_to.access_mask);
@@ -898,7 +882,7 @@ void RenderGraphExecutor::create_render_passes_and_framebuffers(
 #endif
 
 		// Create Framebuffer
-		RenderGraphScheduler::RenderPassArea area = pass_info.p_render_pass_info->area;
+		RenderPassArea area = pass_info.p_render_pass_info->area;
 
 		std::vector<VkFramebufferAttachmentImageInfo> attachment_image_infos;
 		attachment_image_infos.reserve(attachments.size());

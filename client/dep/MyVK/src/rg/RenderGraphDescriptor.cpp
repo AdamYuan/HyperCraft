@@ -26,62 +26,78 @@ void RenderGraphDescriptor::Create(const myvk::Ptr<myvk::Device> &device, const 
 
 		const auto &binding_map = pass->m_p_descriptor_set_data->m_bindings;
 		std::vector<VkDescriptorSetLayoutBinding> bindings;
-		std::vector<VkSampler> immutable_samplers;
 		bindings.reserve(binding_map.size());
-		immutable_samplers.reserve(binding_map.size());
+
+		std::vector<VkSampler> immutable_samplers;
+		{ // Ensure vector reserved size is larger than possible sampler count
+			std::size_t sampler_reserve_size = 0;
+			for (const auto &binding_data : binding_map)
+				sampler_reserve_size += binding_data.second.size();
+			immutable_samplers.reserve(sampler_reserve_size);
+		}
 
 		for (const auto &binding_data : binding_map) {
+			const auto &array = binding_data.second;
+			assert(!array.empty());
+			if (array.empty())
+				continue;
+
 			bindings.emplace_back();
 			VkDescriptorSetLayoutBinding &info = bindings.back();
 			info.binding = binding_data.first;
-			info.descriptorType = UsageGetDescriptorType(binding_data.second.GetInputPtr()->GetUsage());
-			info.descriptorCount = 1;
-			info.stageFlags =
-			    VkShaderStagesFromVkPipelineStages(binding_data.second.GetInputPtr()->GetUsagePipelineStages());
-			if (info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER &&
-			    binding_data.second.GetVkSampler()) {
-				immutable_samplers.push_back(binding_data.second.GetVkSampler()->GetHandle());
-				info.pImmutableSamplers = &immutable_samplers.back();
+			info.descriptorType = UsageGetDescriptorType(array.front().GetInputPtr()->GetUsage());
+			info.descriptorCount = array.size();
+			info.stageFlags = VkShaderStagesFromVkPipelineStages(array.front().GetInputPtr()->GetUsagePipelineStages());
+
+			// collect immutable samplers
+			if (info.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {
+				info.pImmutableSamplers = immutable_samplers.data() + immutable_samplers.size();
+				for (const auto &element : array)
+					immutable_samplers.push_back(element.GetVkSampler()->GetHandle());
 			}
 
-			const auto set_resource_binding = [&pass_desc, binding = info.binding,
-			                                   p_input = binding_data.second.GetInputPtr()](const auto *resource) {
-				using Trait = ResourceVisitorTrait<decltype(resource)>;
-				if constexpr (Trait::kType == ResourceType::kImage) {
-					if constexpr (Trait::kIsInternal)
-						pass_desc.int_image_bindings[binding] = {resource, p_input};
-					else if constexpr (Trait::kIsLastFrame)
-						pass_desc.lf_image_bindings[binding] = {resource, p_input};
-					else if constexpr (Trait::kIsExternal) {
-						if (resource->IsStatic())
-							pass_desc.static_ext_image_bindings[binding] = {resource, p_input};
-						else
-							pass_desc.dynamic_ext_image_bindings[binding] = {resource, p_input};
-					} else
-						assert(false);
-				} else {
-					if constexpr (Trait::kIsInternal)
-						pass_desc.int_buffer_bindings[binding] = {resource, p_input};
-					else if constexpr (Trait::kIsLastFrame)
-						pass_desc.lf_buffer_bindings[binding] = {resource, p_input};
-					else if constexpr (Trait::kIsExternal) {
-						if (resource->IsStatic())
-							pass_desc.static_ext_buffer_bindings[binding] = {resource, p_input};
-						else
-							pass_desc.dynamic_ext_buffer_bindings[binding] = {resource, p_input};
-					} else
-						assert(false);
-				}
-			};
+			for (uint32_t array_element = 0; array_element < array.size(); ++array_element) {
+				const auto set_resource_binding = [&pass_desc, &binding_data, array_element,
+				                                   binding = info.binding](const auto *resource) {
+					const Input *p_input = binding_data.second[array_element].GetInputPtr();
+					DescriptorKey key = {binding, array_element};
+					using Trait = ResourceVisitorTrait<decltype(resource)>;
+					if constexpr (Trait::kType == ResourceType::kImage) {
+						if constexpr (Trait::kIsInternal)
+							pass_desc.int_image_bindings[key] = {resource, p_input};
+						else if constexpr (Trait::kIsLastFrame)
+							pass_desc.lf_image_bindings[key] = {resource, p_input};
+						else if constexpr (Trait::kIsExternal) {
+							if (resource->IsStatic())
+								pass_desc.static_ext_image_bindings[key] = {resource, p_input};
+							else
+								pass_desc.dynamic_ext_image_bindings[key] = {resource, p_input};
+						} else
+							assert(false);
+					} else {
+						if constexpr (Trait::kIsInternal)
+							pass_desc.int_buffer_bindings[key] = {resource, p_input};
+						else if constexpr (Trait::kIsLastFrame)
+							pass_desc.lf_buffer_bindings[key] = {resource, p_input};
+						else if constexpr (Trait::kIsExternal) {
+							if (resource->IsStatic())
+								pass_desc.static_ext_buffer_bindings[key] = {resource, p_input};
+							else
+								pass_desc.dynamic_ext_buffer_bindings[key] = {resource, p_input};
+						} else
+							assert(false);
+					}
+				};
 
-			binding_data.second.GetInputPtr()->GetResource()->Visit([&set_resource_binding](const auto *resource) {
-				if constexpr (ResourceVisitorTrait<decltype(resource)>::kIsAlias)
-					resource->GetPointedResource()->Visit(set_resource_binding);
-				else
-					set_resource_binding(resource);
-			});
+				array[array_element].GetInputPtr()->GetResource()->Visit([&set_resource_binding](const auto *resource) {
+					if constexpr (ResourceVisitorTrait<decltype(resource)>::kIsAlias)
+						resource->GetPointedResource()->Visit(set_resource_binding);
+					else
+						set_resource_binding(resource);
+				});
+			}
 
-			++descriptor_type_counts[info.descriptorType];
+			descriptor_type_counts[info.descriptorType] += array.size();
 		}
 		descriptor_set_layouts.emplace_back(myvk::DescriptorSetLayout::Create(device, bindings));
 		// TODO: DescriptorSetLayout Create Callbacks
@@ -126,7 +142,7 @@ struct DescriptorWriter {
 	std::list<VkDescriptorImageInfo> image_infos;
 	std::list<VkDescriptorBufferInfo> buffer_infos;
 
-	inline void push_buffer_write(const myvk::Ptr<myvk::DescriptorSet> &set, uint32_t binding,
+	inline void push_buffer_write(const myvk::Ptr<myvk::DescriptorSet> &set, uint32_t binding, uint32_t array_element,
 	                              const myvk::Ptr<myvk::BufferBase> &buffer, const Input *p_input) {
 		writes.push_back({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
 		VkWriteDescriptorSet &write = writes.back();
@@ -134,6 +150,7 @@ struct DescriptorWriter {
 		write.descriptorCount = 1u;
 		write.descriptorType = UsageGetDescriptorType(p_input->GetUsage());
 		write.dstBinding = binding;
+		write.dstArrayElement = array_element;
 		write.dstSet = set->GetHandle();
 
 		buffer_infos.emplace_back();
@@ -145,7 +162,7 @@ struct DescriptorWriter {
 		write.pBufferInfo = &buffer_info;
 	}
 
-	inline void push_image_write(const myvk::Ptr<myvk::DescriptorSet> &set, uint32_t binding,
+	inline void push_image_write(const myvk::Ptr<myvk::DescriptorSet> &set, uint32_t binding, uint32_t array_element,
 	                             const myvk::Ptr<myvk::ImageView> &image_view, const Input *p_input) {
 		writes.push_back({VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET});
 		VkWriteDescriptorSet &write = writes.back();
@@ -153,6 +170,7 @@ struct DescriptorWriter {
 		write.descriptorCount = 1u;
 		write.descriptorType = UsageGetDescriptorType(p_input->GetUsage());
 		write.dstBinding = binding;
+		write.dstArrayElement = array_element;
 		write.dstSet = set->GetHandle();
 
 		image_infos.emplace_back();
@@ -192,23 +210,23 @@ void RenderGraphDescriptor::PreBind(const RenderGraphAllocator &allocated) {
 
 		const auto write_int_lf_descriptors = [&writer, &pass_desc, &allocated](bool flip = false) {
 			for (const auto &b : pass_desc.int_image_bindings)
-				writer.push_image_write(pass_desc.sets[flip], b.first,
+				writer.push_image_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
 				                        allocated.GetVkImageView(b.second.resource, flip), b.second.p_input);
 			for (const auto &b : pass_desc.lf_image_bindings)
-				writer.push_image_write(pass_desc.sets[flip], b.first,
+				writer.push_image_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
 				                        allocated.GetVkImageView(b.second.resource, flip), b.second.p_input);
 			for (const auto &b : pass_desc.int_buffer_bindings)
-				writer.push_buffer_write(pass_desc.sets[flip], b.first, allocated.GetVkBuffer(b.second.resource, flip),
-				                         b.second.p_input);
+				writer.push_buffer_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
+				                         allocated.GetVkBuffer(b.second.resource, flip), b.second.p_input);
 			for (const auto &b : pass_desc.lf_buffer_bindings)
-				writer.push_buffer_write(pass_desc.sets[flip], b.first, allocated.GetVkBuffer(b.second.resource, flip),
-				                         b.second.p_input);
+				writer.push_buffer_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
+				                         allocated.GetVkBuffer(b.second.resource, flip), b.second.p_input);
 			for (const auto &b : pass_desc.static_ext_image_bindings)
-				writer.push_image_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkImageView(),
-				                        b.second.p_input);
+				writer.push_image_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
+				                        b.second.resource->GetVkImageView(), b.second.p_input);
 			for (const auto &b : pass_desc.static_ext_buffer_bindings)
-				writer.push_buffer_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkBuffer(),
-				                         b.second.p_input);
+				writer.push_buffer_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
+				                         b.second.resource->GetVkBuffer(), b.second.p_input);
 		};
 
 		write_int_lf_descriptors();
@@ -230,11 +248,11 @@ void RenderGraphDescriptor::ExecutionBind(bool flip) {
 	for (auto &pass_desc : m_pass_descriptors) {
 		const auto write_ext_descriptors = [&writer, &pass_desc](bool flip = false) {
 			for (const auto &b : pass_desc.dynamic_ext_image_bindings)
-				writer.push_image_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkImageView(),
-				                        b.second.p_input);
+				writer.push_image_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
+				                        b.second.resource->GetVkImageView(), b.second.p_input);
 			for (const auto &b : pass_desc.dynamic_ext_buffer_bindings)
-				writer.push_buffer_write(pass_desc.sets[flip], b.first, b.second.resource->GetVkBuffer(),
-				                         b.second.p_input);
+				writer.push_buffer_write(pass_desc.sets[flip], b.first.binding, b.first.array_element,
+				                         b.second.resource->GetVkBuffer(), b.second.p_input);
 		};
 		write_ext_descriptors(flip);
 	}

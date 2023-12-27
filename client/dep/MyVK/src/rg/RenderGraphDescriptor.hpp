@@ -15,7 +15,17 @@ private:
 		const Resource *resource{};
 		const Input *p_input{};
 	};
-	template <typename Resource> using DescriptorBindingMap = std::unordered_map<uint32_t, DescriptorBinding<Resource>>;
+	struct DescriptorKey {
+		uint32_t binding, array_element;
+		inline bool operator==(DescriptorKey r) const {
+			return binding == r.binding && array_element == r.array_element;
+		}
+	};
+	struct DescriptorKeyHash {
+		inline std::size_t operator()(DescriptorKey key) const { return key.binding | (key.array_element << 16u); }
+	};
+	template <typename Resource>
+	using DescriptorBindingMap = std::unordered_map<DescriptorKey, DescriptorBinding<Resource>, DescriptorKeyHash>;
 	struct PassDescriptor {
 		DescriptorBindingMap<InternalImageBase> int_image_bindings;
 		DescriptorBindingMap<LastFrameImage> lf_image_bindings;

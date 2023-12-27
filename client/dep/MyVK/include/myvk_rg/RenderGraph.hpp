@@ -30,6 +30,11 @@ using LastFrameBuffer = _details_::LastFrameBuffer;
 using ExternalBufferBase = _details_::ExternalBufferBase;
 
 using SubImageSize = _details_::SubImageSize;
+using RenderPassArea = _details_::RenderPassArea;
+
+using BufferDescriptorInput = _details_::BufferDescriptorInput;
+using ImageDescriptorInput = _details_::ImageDescriptorInput;
+using SamplerDescriptorInput = _details_::SamplerDescriptorInput;
 
 template <typename Derived> using RenderGraph = _details_::RenderGraph<Derived>;
 

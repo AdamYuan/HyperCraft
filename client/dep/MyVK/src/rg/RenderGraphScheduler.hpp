@@ -21,13 +21,6 @@ public:
 		std::vector<ResourceReference> from, to;
 		DependencyType type{};
 	};
-	struct RenderPassArea {
-		VkExtent2D extent{};
-		uint32_t layers{};
-		inline bool operator==(const RenderPassArea &r) const {
-			return std::tie(extent.width, extent.height, layers) == std::tie(r.extent.width, r.extent.height, r.layers);
-		}
-	};
 	struct RenderPassInfo {
 		std::vector<SubpassDependency> subpass_dependencies;
 		std::unordered_map<const ImageBase *, uint32_t> attachment_id_map;

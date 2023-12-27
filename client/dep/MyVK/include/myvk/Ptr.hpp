@@ -6,6 +6,9 @@
 
 namespace myvk {
 template <typename T> using Ptr = std::shared_ptr<T>;
+template <typename T, typename... Args> inline Ptr<T> MakePtr(Args &&...args) {
+	return std::make_shared<T>(std::forward<Args>(args)...);
 }
+} // namespace myvk
 
 #endif // MYVK_PTR_HPP

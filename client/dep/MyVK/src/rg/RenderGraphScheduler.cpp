@@ -53,6 +53,15 @@ RenderGraphScheduler::_compute_pass_merge_info(const RenderGraphResolver &resolv
 			continue;
 
 		RenderPassArea &area = merge_infos[i].area;
+
+		{
+			auto opt_area = pass->get_opt_area();
+			if (opt_area) {
+				area = *opt_area;
+				continue;
+			}
+		}
+
 		const auto maintain_area = [&area](const auto *resource) {
 			if constexpr (ResourceVisitorTrait<decltype(resource)>::kType == ResourceType::kImage) {
 				RenderPassArea desired_area;
@@ -81,10 +90,9 @@ RenderGraphScheduler::_compute_pass_merge_info(const RenderGraphResolver &resolv
 					});
 				} else
 					assert(false);
-				if (area.layers == 0)
-					area = desired_area;
-				else
+				if (area.extent.width != 0)
 					assert(area == desired_area);
+				area = desired_area;
 			} else
 				assert(false);
 		};
@@ -298,12 +306,13 @@ void RenderGraphScheduler::sort_and_insert_image_dependencies() {
 			for (const auto &link : links) {
 				if (link.p_input && !p_cur_dep->to.empty()) {
 					const auto &prev_link = p_cur_dep->to.back();
-					bool prev_is_attachment = UsageIsAttachment(prev_link.p_input->GetUsage());
+					bool any_attachment =
+					    UsageIsAttachment(prev_link.p_input->GetUsage()) || UsageIsAttachment(link.p_input->GetUsage());
 					bool image_layout_changed = UsageGetImageLayout(prev_link.p_input->GetUsage()) !=
 					                            UsageGetImageLayout(link.p_input->GetUsage());
 					bool is_write_or_result = !UsageIsReadOnly(link.p_input->GetUsage());
 					assert(!is_write_or_result || link.pass == links.back().pass);
-					if (prev_is_attachment || image_layout_changed || is_write_or_result) {
+					if (any_attachment || image_layout_changed || is_write_or_result) {
 						m_pass_dependencies.push_back({p_cur_dep->resource, p_cur_dep->to,
 						                               std::vector<ResourceReference>{}, DependencyType::kDependency});
 						p_cur_dep = &m_pass_dependencies.back();

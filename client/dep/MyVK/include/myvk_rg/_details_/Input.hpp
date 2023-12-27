@@ -220,7 +220,7 @@ public:
 
 class DescriptorSetData {
 private:
-	std::unordered_map<uint32_t, DescriptorBinding> m_bindings;
+	std::unordered_map<uint32_t, std::vector<DescriptorBinding>> m_bindings;
 
 	template <typename> friend class DescriptorInputSlot;
 
@@ -228,8 +228,8 @@ private:
 
 public:
 	inline bool IsBindingExist(uint32_t binding) const { return m_bindings.find(binding) != m_bindings.end(); }
-	inline void AddBinding(uint32_t binding, const Input *input, const myvk::Ptr<myvk::Sampler> &sampler = nullptr) {
-		m_bindings.insert({binding, DescriptorBinding{input, sampler}});
+	inline void AddBinding(uint32_t binding, std::vector<DescriptorBinding> &&inputs) {
+		m_bindings.insert({binding, std::move(inputs)});
 	}
 	inline void RemoveBinding(uint32_t binding) { m_bindings.erase(binding); }
 	inline void ClearBindings() { m_bindings.clear(); }
@@ -286,6 +286,32 @@ public:
 	}
 };
 
+struct BufferDescriptorInput {
+	PoolKey input_key;
+	const BufferBase *resource;
+
+private:
+	inline static auto get_sampler() { return nullptr; }
+	template <typename> friend class DescriptorInputSlot;
+};
+struct ImageDescriptorInput {
+	PoolKey input_key;
+	const ImageBase *resource;
+
+private:
+	inline static auto get_sampler() { return nullptr; }
+	template <typename> friend class DescriptorInputSlot;
+};
+struct SamplerDescriptorInput {
+	PoolKey input_key;
+	const ImageBase *resource;
+	myvk::Ptr<myvk::Sampler> sampler;
+
+private:
+	inline auto get_sampler() const { return sampler; }
+	template <typename> friend class DescriptorInputSlot;
+};
+
 template <typename Derived> class DescriptorInputSlot {
 private:
 	DescriptorSetData m_descriptor_set_data;
@@ -312,22 +338,29 @@ private:
 			return static_cast<const RenderGraphBase *>(static_cast<const Derived *>(this));
 	}
 
-	template <typename Type>
-	inline Input *add_input_descriptor(const PoolKey &input_key, Type *resource, Usage usage,
+	template <typename DescriptorInputType>
+	inline Input *add_input_descriptor(const std::vector<DescriptorInputType> &input_resources, Usage usage,
 	                                   VkPipelineStageFlags2 pipeline_stage_flags, uint32_t binding,
-	                                   const myvk::Ptr<myvk::Sampler> &sampler = nullptr,
 	                                   uint32_t attachment_index = UINT32_MAX) {
 		assert(!m_descriptor_set_data.IsBindingExist(binding));
 		if (m_descriptor_set_data.IsBindingExist(binding))
 			return nullptr;
-		auto input = get_input_pool_ptr()->add_input(input_key, resource, usage, pipeline_stage_flags, binding,
-		                                             attachment_index);
-		assert(input);
-		if (!input)
+		std::vector<DescriptorBinding> inputs;
+		inputs.reserve(input_resources.size());
+		Input *ret_input = nullptr;
+		for (const auto &p : input_resources) {
+			auto input = get_input_pool_ptr()->add_input(p.input_key, p.resource, usage, pipeline_stage_flags, binding,
+			                                             attachment_index);
+			assert(input);
+			ret_input = input;
+			inputs.push_back(DescriptorBinding{input, p.get_sampler()});
+		}
+		assert(!inputs.empty());
+		if (inputs.empty())
 			return nullptr;
-		m_descriptor_set_data.AddBinding(binding, input, sampler);
+		m_descriptor_set_data.AddBinding(binding, std::move(inputs));
 		get_render_graph_ptr()->SetCompilePhrases(CompilePhrase::kCreateDescriptor);
-		return input;
+		return ret_input; // Return pInput of last array element
 	}
 
 	inline void pre_remove_input(const Input *input) {
@@ -353,11 +386,28 @@ public:
 protected:
 	inline const DescriptorSetData &GetDescriptorSetData() const { return m_descriptor_set_data; }
 
+	// Buffer don't specify pipeline stage
+	template <uint32_t Binding, Usage Usage,
+	          typename = std::enable_if_t<!kUsageIsAttachment<Usage> && kUsageIsDescriptor<Usage> &&
+	                                      kUsageHasSpecifiedPipelineStages<Usage> && kUsageForBuffer<Usage>>>
+	inline bool AddDescriptorInput(const std::vector<BufferDescriptorInput> &buffer_descriptor_array) {
+		return add_input_descriptor(buffer_descriptor_array, Usage, kUsageGetSpecifiedPipelineStages<Usage>, Binding);
+	}
 	template <uint32_t Binding, Usage Usage,
 	          typename = std::enable_if_t<!kUsageIsAttachment<Usage> && kUsageIsDescriptor<Usage> &&
 	                                      kUsageHasSpecifiedPipelineStages<Usage> && kUsageForBuffer<Usage>>>
 	inline bool AddDescriptorInput(const PoolKey &input_key, const BufferBase *buffer) {
-		return add_input_descriptor(input_key, buffer, Usage, kUsageGetSpecifiedPipelineStages<Usage>, Binding);
+		return AddDescriptorInput<Binding, Usage>({BufferDescriptorInput{input_key, buffer}});
+	}
+
+	// Buffer specify pipeline stage
+	template <uint32_t Binding, Usage Usage, VkPipelineStageFlags2 PipelineStageFlags,
+	          typename = std::enable_if_t<
+	              !kUsageIsAttachment<Usage> && kUsageIsDescriptor<Usage> && !kUsageHasSpecifiedPipelineStages<Usage> &&
+	              (PipelineStageFlags & kUsageGetOptionalPipelineStages<Usage>) == PipelineStageFlags &&
+	              kUsageForBuffer<Usage>>>
+	inline bool AddDescriptorInput(const std::vector<BufferDescriptorInput> &buffer_descriptor_array) {
+		return add_input_descriptor(buffer_descriptor_array, Usage, PipelineStageFlags, Binding);
 	}
 	template <uint32_t Binding, Usage Usage, VkPipelineStageFlags2 PipelineStageFlags,
 	          typename = std::enable_if_t<
@@ -365,14 +415,34 @@ protected:
 	              (PipelineStageFlags & kUsageGetOptionalPipelineStages<Usage>) == PipelineStageFlags &&
 	              kUsageForBuffer<Usage>>>
 	inline bool AddDescriptorInput(const PoolKey &input_key, const BufferBase *buffer) {
-		return add_input_descriptor(input_key, buffer, Usage, PipelineStageFlags, Binding);
+		return AddDescriptorInput<Binding, Usage, PipelineStageFlags>({BufferDescriptorInput{input_key, buffer}});
+	}
+
+	// Image don't specify pipeline stage
+	template <uint32_t Binding, Usage Usage,
+	          typename = std::enable_if_t<!kUsageIsAttachment<Usage> && Usage != Usage::kSampledImage &&
+	                                      kUsageIsDescriptor<Usage> && kUsageHasSpecifiedPipelineStages<Usage> &&
+	                                      kUsageForImage<Usage>>>
+	inline bool AddDescriptorInput(const std::vector<ImageDescriptorInput> &image_descriptor_array) {
+		return add_input_descriptor(image_descriptor_array, Usage, kUsageGetSpecifiedPipelineStages<Usage>, Binding);
 	}
 	template <uint32_t Binding, Usage Usage,
 	          typename = std::enable_if_t<!kUsageIsAttachment<Usage> && Usage != Usage::kSampledImage &&
 	                                      kUsageIsDescriptor<Usage> && kUsageHasSpecifiedPipelineStages<Usage> &&
 	                                      kUsageForImage<Usage>>>
 	inline bool AddDescriptorInput(const PoolKey &input_key, const ImageBase *image) {
-		return add_input_descriptor(input_key, image, Usage, kUsageGetSpecifiedPipelineStages<Usage>, Binding);
+		return AddDescriptorInput<Binding, Usage>({ImageDescriptorInput{input_key, image}});
+	}
+
+	// Image specify pipeline stage
+	template <uint32_t Binding, Usage Usage, VkPipelineStageFlags2 PipelineStageFlags,
+	          typename = std::enable_if_t<!kUsageIsAttachment<Usage> && Usage != Usage::kSampledImage &&
+	                                      kUsageIsDescriptor<Usage> && !kUsageHasSpecifiedPipelineStages<Usage> &&
+	                                      (PipelineStageFlags & kUsageGetOptionalPipelineStages<Usage>) ==
+	                                          PipelineStageFlags &&
+	                                      kUsageForImage<Usage>>>
+	inline bool AddDescriptorInput(const std::vector<ImageDescriptorInput> &image_descriptor_array) {
+		return add_input_descriptor(image_descriptor_array, Usage, PipelineStageFlags, Binding);
 	}
 	template <uint32_t Binding, Usage Usage, VkPipelineStageFlags2 PipelineStageFlags,
 	          typename = std::enable_if_t<!kUsageIsAttachment<Usage> && Usage != Usage::kSampledImage &&
@@ -381,7 +451,15 @@ protected:
 	                                          PipelineStageFlags &&
 	                                      kUsageForImage<Usage>>>
 	inline bool AddDescriptorInput(const PoolKey &input_key, const ImageBase *image) {
-		return add_input_descriptor(input_key, image, Usage, PipelineStageFlags, Binding);
+		return AddDescriptorInput<Binding, Usage, PipelineStageFlags>({ImageDescriptorInput{input_key, image}});
+	}
+
+	// Image + sampler don't specify pipeline stage
+	template <uint32_t Binding, Usage Usage,
+	          typename = std::enable_if_t<Usage == Usage::kSampledImage && kUsageHasSpecifiedPipelineStages<Usage> &&
+	                                      kUsageForImage<Usage>>>
+	inline bool AddDescriptorInput(const std::vector<SamplerDescriptorInput> &sampler_descriptor_array) {
+		return add_input_descriptor(sampler_descriptor_array, Usage, kUsageGetSpecifiedPipelineStages<Usage>, Binding);
 	}
 	template <uint32_t Binding, Usage Usage,
 	          typename = std::enable_if_t<Usage == Usage::kSampledImage && kUsageHasSpecifiedPipelineStages<Usage> &&
@@ -389,7 +467,17 @@ protected:
 	inline bool AddDescriptorInput(const PoolKey &input_key, const ImageBase *image,
 	                               const myvk::Ptr<myvk::Sampler> &sampler) {
 		assert(sampler);
-		return add_input_descriptor(input_key, image, Usage, kUsageGetSpecifiedPipelineStages<Usage>, Binding, sampler);
+		return AddDescriptorInput<Binding, Usage>({SamplerDescriptorInput{input_key, image, sampler}});
+	}
+
+	// Image + sampler specify pipeline stage
+	template <uint32_t Binding, Usage Usage, VkPipelineStageFlags2 PipelineStageFlags,
+	          typename = std::enable_if_t<Usage == Usage::kSampledImage && !kUsageHasSpecifiedPipelineStages<Usage> &&
+	                                      (PipelineStageFlags & kUsageGetOptionalPipelineStages<Usage>) ==
+	                                          PipelineStageFlags &&
+	                                      kUsageForImage<Usage>>>
+	inline bool AddDescriptorInput(const std::vector<SamplerDescriptorInput> &sampler_descriptor_array) {
+		return add_input_descriptor(sampler_descriptor_array, Usage, PipelineStageFlags, Binding);
 	}
 	template <uint32_t Binding, Usage Usage, VkPipelineStageFlags2 PipelineStageFlags,
 	          typename = std::enable_if_t<Usage == Usage::kSampledImage && !kUsageHasSpecifiedPipelineStages<Usage> &&
@@ -399,7 +487,8 @@ protected:
 	inline bool AddDescriptorInput(const PoolKey &input_key, const ImageBase *image,
 	                               const myvk::Ptr<myvk::Sampler> &sampler) {
 		assert(sampler);
-		return add_input_descriptor(input_key, image, Usage, PipelineStageFlags, Binding, sampler);
+		return AddDescriptorInput<Binding, Usage, PipelineStageFlags>(
+		    {SamplerDescriptorInput{input_key, image, sampler}});
 	}
 
 	inline const myvk::Ptr<myvk::DescriptorSetLayout> &GetVkDescriptorSetLayout() const {
@@ -486,8 +575,8 @@ protected:
 		if (m_attachment_data.IsInputAttachmentExist(AttachmentIndex))
 			return false;
 		auto input = get_descriptor_slot_ptr()->add_input_descriptor(
-		    input_key, image, Usage::kInputAttachment, kUsageGetSpecifiedPipelineStages<Usage::kInputAttachment>,
-		    DescriptorBinding, nullptr, AttachmentIndex);
+		    std::vector<ImageDescriptorInput>{ImageDescriptorInput{input_key, image}}, Usage::kInputAttachment,
+		    kUsageGetSpecifiedPipelineStages<Usage::kInputAttachment>, DescriptorBinding, AttachmentIndex);
 		assert(input);
 		if (!input)
 			return false;
